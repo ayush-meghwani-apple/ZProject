@@ -3,14 +3,11 @@
 A monorepo of small, independent, offline-first web apps. Each project lives in
 its own top-level folder and is deployed to its own sub-path on GitHub Pages.
 
-> Replace `<username>` below with your personal GitHub username once the repo is
-> pushed.
-
 | Project | Folder | Live URL |
 | ------- | ------ | -------- |
-| Expense Tracker | [`expense-tracker/`](expense-tracker/) | `https://<username>.github.io/ZProject/expense-tracker/` |
+| Expense Tracker | [`expense-tracker/`](expense-tracker/) | `https://ayush-meghwani-apple.github.io/ZProject/expense-tracker/` |
 
-Landing page: `https://<username>.github.io/ZProject/`
+Landing page: `https://ayush-meghwani-apple.github.io/ZProject/`
 
 ## How deployment works
 
@@ -39,7 +36,7 @@ You never edit the workflow to add a project — it's automatic.
 
 4. Add a link card to the root [`index.html`](index.html).
 5. Commit and push — CI builds and deploys it at
-   `https://<username>.github.io/ZProject/my-new-app/`.
+   `https://ayush-meghwani-apple.github.io/ZProject/my-new-app/`.
 
 ## One-time setup (do this once on GitHub)
 
@@ -48,7 +45,7 @@ Repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 ## Data safety note
 
 GitHub Pages serves all projects from the **same origin**
-(`<username>.github.io`). Browser storage (IndexedDB / localStorage) is scoped to
+(`ayush-meghwani-apple.github.io`). Browser storage (IndexedDB / localStorage) is scoped to
 the **origin**, so projects share a storage space but are isolated by **database
 name** — keep each app's DB name unique (Expense Tracker uses `expense-tracker`)
 and they never collide.
