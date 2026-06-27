@@ -124,7 +124,7 @@ export default function EditExpenseModal({
           <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
 
-        <div className="inline" style={{ marginTop: 16, justifyContent: 'flex-end' }}>
+        <div className="modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>
             Cancel
           </button>

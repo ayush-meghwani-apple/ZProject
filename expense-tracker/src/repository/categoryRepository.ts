@@ -24,6 +24,8 @@ export const CategoryRepository = {
   async addCategory(name: string, icon = '📦', color = '#64748b'): Promise<Category> {
     const category: Category = { id: newId(), name, icon, color };
     await storage.categories.put(category);
+    // Register the name as an alias so the chat parser can match it.
+    await this.addAlias(name, category.id);
     await ActivityRepository.log('category.added', 'category', category.id, { name });
     return category;
   },
@@ -43,6 +45,8 @@ export const CategoryRepository = {
   async addSubcategory(categoryId: ID, name: string): Promise<Subcategory> {
     const sub: Subcategory = { id: newId(), categoryId, name };
     await storage.subcategories.put(sub);
+    // Register the name as an alias so the chat parser can match it.
+    await this.addAlias(name, categoryId, sub.id);
     return sub;
   },
 

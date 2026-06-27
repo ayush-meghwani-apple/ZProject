@@ -4,7 +4,7 @@ import { formatINR } from '../core/util';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
-import type { Alias, Category, Subcategory } from '../types/models';
+import type { Category, Subcategory } from '../types/models';
 
 export interface ChatMessage {
   id: number;
@@ -43,18 +43,15 @@ interface Props {
 
 export default function Chat({ messages, setMessages, onChange }: Props) {
   const [text, setText] = useState('');
-  const [aliases, setAliases] = useState<Alias[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     Promise.all([
-      CategoryRepository.getAliases(),
       CategoryRepository.getCategories(),
       CategoryRepository.getSubcategories(),
-    ]).then(([a, c, s]) => {
-      setAliases(a);
+    ]).then(([c, s]) => {
       setCategories(c);
       setSubcategories(s);
     });
@@ -68,9 +65,14 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
     setMessages((m) => [...m, { id: nextId(), role: 'bot', text, error }]);
   }
 
-  function labelFor(categoryId?: string, subcategoryId?: string): string {
-    const cat = categories.find((c) => c.id === categoryId);
-    const sub = subcategories.find((s) => s.id === subcategoryId);
+  function labelFor(
+    categoryId?: string,
+    subcategoryId?: string,
+    cats: Category[] = categories,
+    subs: Subcategory[] = subcategories,
+  ): string {
+    const cat = cats.find((c) => c.id === categoryId);
+    const sub = subs.find((s) => s.id === subcategoryId);
     if (cat && sub) return `${cat.icon} ${cat.name} › ${sub.name}`;
     if (cat) return `${cat.icon} ${cat.name}`;
     return 'Uncategorized';
@@ -84,7 +86,17 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
     setMessages((m) => [...m, { id: nextId(), role: 'user', text: raw }]);
     setText('');
 
-    const cmd = parseInput(raw, aliases);
+    // Always parse against the latest categories/aliases so a category you
+    // just added is recognized without reloading the app.
+    const [freshAliases, freshCats, freshSubs] = await Promise.all([
+      CategoryRepository.getAliases(),
+      CategoryRepository.getCategories(),
+      CategoryRepository.getSubcategories(),
+    ]);
+    setCategories(freshCats);
+    setSubcategories(freshSubs);
+
+    const cmd = parseInput(raw, freshAliases, freshCats, freshSubs);
 
     if (cmd.kind === 'help') {
       pushBot(HELP_TEXT);
@@ -118,7 +130,7 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
       note: cmd.note,
       rawText: cmd.rawText,
     });
-    const label = labelFor(cmd.categoryId, cmd.subcategoryId);
+    const label = labelFor(cmd.categoryId, cmd.subcategoryId, freshCats, freshSubs);
     pushBot(`Added ${formatINR(cmd.amount)} · ${label} ✅`);
     onChange();
   }
