@@ -1,0 +1,74 @@
+{
+  "paymentMethods": ["Cash", "UPI", "Card", "NetBanking"],
+  "categories": [
+    {
+      "name": "Food",
+      "icon": "🍔",
+      "color": "#f97316",
+      "subcategories": [
+        { "name": "Tea/Coffee", "aliases": ["tea", "chai", "coffee", "cutting"] },
+        { "name": "Snacks", "aliases": ["snack", "snacks", "samosa", "biscuit"] },
+        { "name": "Restaurant", "aliases": ["lunch", "dinner", "restaurant", "swiggy", "zomato"] },
+        { "name": "Groceries", "aliases": ["grocery", "groceries", "vegetables", "milk"] }
+      ]
+    },
+    {
+      "name": "Transport",
+      "icon": "🚌",
+      "color": "#0ea5e9",
+      "subcategories": [
+        { "name": "Auto/Cab", "aliases": ["auto", "cab", "uber", "ola", "rapido"] },
+        { "name": "Fuel", "aliases": ["petrol", "fuel", "diesel"] },
+        { "name": "Public Transit", "aliases": ["bus", "metro", "train", "ticket"] }
+      ]
+    },
+    {
+      "name": "Health",
+      "icon": "💊",
+      "color": "#ef4444",
+      "subcategories": [
+        { "name": "Medicine", "aliases": ["medicine", "apollo", "pharmacy", "tablet"] },
+        { "name": "Gym/Fitness", "aliases": ["gym", "protein", "supplement", "fitness"] },
+        { "name": "Doctor", "aliases": ["doctor", "clinic", "consultation"] }
+      ]
+    },
+    {
+      "name": "Bills",
+      "icon": "🧾",
+      "color": "#8b5cf6",
+      "subcategories": [
+        { "name": "Mobile/Internet", "aliases": ["recharge", "wifi", "internet", "jio", "airtel"] },
+        { "name": "Electricity", "aliases": ["electricity", "current", "power"] },
+        { "name": "Rent", "aliases": ["rent"] },
+        { "name": "Subscription", "aliases": ["netflix", "spotify", "subscription", "prime"] }
+      ]
+    },
+    {
+      "name": "Shopping",
+      "icon": "🛍️",
+      "color": "#ec4899",
+      "subcategories": [
+        { "name": "Clothing", "aliases": ["clothes", "shirt", "shopping", "myntra"] },
+        { "name": "Electronics", "aliases": ["electronics", "gadget", "amazon"] },
+        { "name": "Household", "aliases": ["household", "cleaning", "utensils"] }
+      ]
+    },
+    {
+      "name": "Entertainment",
+      "icon": "🎬",
+      "color": "#22c55e",
+      "subcategories": [
+        { "name": "Movies", "aliases": ["movie", "cinema", "pvr", "bookmyshow"] },
+        { "name": "Outing", "aliases": ["outing", "trip", "weekend"] }
+      ]
+    },
+    {
+      "name": "Misc",
+      "icon": "📦",
+      "color": "#64748b",
+      "subcategories": [
+        { "name": "Other", "aliases": ["misc", "other"] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+name: Deploy to GitHub Pages
+
+# Builds EVERY mini-project in this repo (any top-level folder that has a
+# package.json) and publishes each one to its own sub-path:
+#   https://<user>.github.io/<repo>/<project>/
+# A landing page at the repo root (index.html) is served at:
+#   https://<user>.github.io/<repo>/
+#
+# Adding a new project later requires NO changes to this file — just drop a new
+# folder with its own package.json + `npm run build` that outputs to ./dist.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build all projects
+        run: |
+          set -e
+          REPO="${{ github.event.repository.name }}"
+          mkdir -p _site
+
+          # Copy a committed landing page (and any root static assets) if present.
+          [ -f index.html ] && cp index.html _site/index.html || true
+
+          for pkg in */package.json; do
+            name="$(dirname "$pkg")"
+            echo "::group::Building $name"
+            (
+              cd "$name"
+              npm ci
+              # Each project is served from /<repo>/<project>/ on GitHub Pages.
+              VITE_BASE="/$REPO/$name/" npm run build
+            )
+            mkdir -p "_site/$name"
+            cp -r "$name/dist/." "_site/$name/"
+            echo "::endgroup::"
+          done
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
