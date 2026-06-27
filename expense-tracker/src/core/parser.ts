@@ -63,11 +63,21 @@ export function parseInput(
     return { kind: 'unknown', rawText: raw, reason: 'Could not find an amount. Try "tea 20".' };
   }
 
-  // Tokenize words (ignore the number and currency symbols) and match aliases.
-  const words = lower
+  // An explicit note can be given after a comma: "1000 mobile, paid for ayush".
+  let explicitNote: string | undefined;
+  let body = lower;
+  const commaIdx = lower.indexOf(',');
+  if (commaIdx !== -1) {
+    explicitNote = raw.slice(commaIdx + 1).trim() || undefined;
+    body = lower.slice(0, commaIdx);
+  }
+
+  // Tokenize words (ignore the number, currency symbols, and punctuation).
+  const words = body
     .replace(NUMBER_RE, ' ')
     .replace(/[₹]/g, ' ')
     .split(/\s+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
     .filter(Boolean);
 
   let categoryId: string | undefined;
@@ -103,8 +113,9 @@ export function parseInput(
     }
   }
 
-  // Leftover words (excluding the matched word) become the note.
-  const note = words.filter((w) => w !== matchedWord).join(' ').trim() || undefined;
+  // Leftover words plus any explicit (post-comma) note.
+  const leftover = words.filter((w) => w !== matchedWord).join(' ').trim();
+  const note = [leftover, explicitNote].filter(Boolean).join(' ').trim() || undefined;
 
   return {
     kind: 'expense',

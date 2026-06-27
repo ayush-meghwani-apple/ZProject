@@ -11,8 +11,9 @@ import {
   YAxis,
 } from 'recharts';
 import {
+  countCycles,
   getCategorySummary,
-  getDailyAverage,
+  getCycleAverage,
   getMonthlyTotals,
   getSubcategorySummary,
   getTopExpenses,
@@ -57,7 +58,8 @@ export default function Reports({ version }: { version: number }) {
   const categorySummary = getCategorySummary(scoped, categories);
   const monthly = getMonthlyTotals(scoped);
   const topExpenses = getTopExpenses(scoped, 5);
-  const dailyAvg = getDailyAverage(scoped);
+  const cycleAvg = getCycleAverage(scoped);
+  const nCycles = countCycles(scoped);
 
   const activeCatId = catId || categorySummary[0]?.categoryId || '';
   const subSummary = activeCatId
@@ -81,9 +83,9 @@ export default function Reports({ version }: { version: number }) {
               <div className="stat--sub">{scoped.length} expenses</div>
             </div>
             <div className="card">
-              <h3>Daily Average</h3>
-              <div className="stat">{formatINR(dailyAvg)}</div>
-              <div className="stat--sub">across active days</div>
+              <h3>Cycle Average</h3>
+              <div className="stat">{formatINR(cycleAvg)}</div>
+              <div className="stat--sub">across {nCycles} cycle{nCycles === 1 ? '' : 's'}</div>
             </div>
           </div>
 

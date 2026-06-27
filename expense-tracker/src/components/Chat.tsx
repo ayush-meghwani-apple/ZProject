@@ -46,6 +46,7 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -76,6 +77,31 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
     if (cat && sub) return `${cat.icon} ${cat.name} › ${sub.name}`;
     if (cat) return `${cat.icon} ${cat.name}`;
     return 'Uncategorized';
+  }
+
+  // Type "/" (or 2+ letters of a name) to get category / subcategory suggestions.
+  const lastToken = text.split(' ').pop() ?? '';
+  const slash = lastToken.startsWith('/');
+  const query = (slash ? lastToken.slice(1) : lastToken).toLowerCase();
+  const showSuggest = slash || query.length >= 2;
+  const suggestions = showSuggest
+    ? [
+        ...categories.map((c) => ({
+          key: 'c' + c.id,
+          label: `${c.icon} ${c.name}`,
+          value: c.name,
+        })),
+        ...subcategories.map((s) => ({ key: 's' + s.id, label: `↳ ${s.name}`, value: s.name })),
+      ]
+        .filter((o) => o.value.toLowerCase().startsWith(query))
+        .slice(0, 8)
+    : [];
+
+  function applySuggestion(value: string) {
+    const tokens = text.split(' ');
+    tokens[tokens.length - 1] = value;
+    setText(tokens.join(' ') + ' ');
+    inputRef.current?.focus();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -151,8 +177,24 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
         <div ref={endRef} />
       </div>
 
+      {suggestions.length > 0 && (
+        <div className="suggest">
+          {suggestions.map((s) => (
+            <button
+              type="button"
+              key={s.key}
+              className="suggest__chip"
+              onClick={() => applySuggestion(s.value)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <form className="chat__input" onSubmit={handleSubmit}>
         <input
+          ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder='e.g. "tea 20"'

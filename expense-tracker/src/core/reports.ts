@@ -111,6 +111,17 @@ export function getDailyAverage(expenses: Expense[]): number {
   return totalSpend(expenses) / days.size;
 }
 
+/** Number of distinct salary cycles represented in the expenses. */
+export function countCycles(expenses: Expense[]): number {
+  return new Set(expenses.map((e) => e.salaryCycleId ?? 'none')).size;
+}
+
+/** Average spend per cycle. */
+export function getCycleAverage(expenses: Expense[]): number {
+  if (expenses.length === 0) return 0;
+  return totalSpend(expenses) / countCycles(expenses);
+}
+
 /** Totals grouped by calendar month, oldest first. */
 export function getMonthlyTotals(expenses: Expense[]): MonthlyTotalRow[] {
   const totals = new Map<string, number>();

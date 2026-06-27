@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import type { Category, Expense, Subcategory } from '../types/models';
 
@@ -56,7 +57,7 @@ export default function EditExpenseModal({
     onSaved();
   }
 
-  return (
+  return createPortal(
     <div className="modal__backdrop" onClick={onClose}>
       <div className="modal__card" onClick={(e) => e.stopPropagation()}>
         <h3>Edit Expense</h3>
@@ -133,6 +134,7 @@ export default function EditExpenseModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
