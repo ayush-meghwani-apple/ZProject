@@ -11,14 +11,20 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Done
 
+- ✅ **(2026-06-28)** Expense **Reels** — a fun, Instagram-style way to review a cycle's expenses.
+  - _Fix:_ added a 6th bottom-bar tab. A centred picker at the top (‹ / › arrows, defaults to the current cycle) chooses the cycle and shows its total + count. Below it, expenses are full-screen cards you swipe vertically (scroll-snap), each with a big category icon, amount, category/subcategory, date and note, plus inline **Edit** and **Delete**. A live counter shows your position.
+
+- ✅ **(2026-06-28)** Edit screen Save/Cancel buttons were hidden behind the bottom tab bar.
+  - _Fix:_ the edit modal now renders in a top-level portal above everything (z-index raised), so the buttons always sit above the tab bar.
+- ✅ **(2026-06-28)** Dashboard "this cycle" / "all-time" totals were too wide and caused horizontal scrolling.
+  - _Fix:_ stat numbers now wrap, grid columns can shrink, and the app clips horizontal overflow.
+- ✅ **(2026-06-28)** Reports "Spent" / "Daily Average" were too wide; wanted cycle average instead of daily.
+  - _Fix:_ same overflow fixes, and "Daily Average" is replaced by **Cycle Average** (total ÷ number of cycles).
+- ✅ **(2026-06-28)** Wanted to add a note alongside the category from chat, e.g. `1000 mobile, ayush`.
+  - _Fix:_ text after a comma is now saved as the expense note; the part before is parsed for amount + category.
+- ✅ **(2026-06-28)** Wanted suggestions / autocomplete for categories & subcategories in chat (incl. typing `/`).
+  - _Fix:_ a suggestion strip now appears above the input — type `/` (or 2+ letters of a name) and tap a chip to insert it.
+- ✅ **(2026-06-28)** Overall UI felt basic; wanted a more modern, classy iPhone-like look.
+  - _Fix:_ refreshed theme — indigo→violet gradients, softer dark palette, elevated cards with shadows, gradient buttons/bubbles, pill-highlighted active tab, gradient app title.
 - ✅ **(2026-06-28)** A newly added category wasn't recognized when adding an expense (went to Uncategorized), and the edit screen had no visible Save button on phone.
   - _Fix:_ categories/subcategories now register an alias; parser also matches category names directly; chat reloads categories per entry; edit-modal footer pinned so Save is always visible.
-- 🔴 edit screen of already exisiting expenses has now cancel and save button, but they are hidden in ui of 5 bootom tabs bar(one which show add, category, report dashboard setting)
-- 🔴 In dashboard tab, ui of all cycle, and all-time sis too big that it brings horizontal scroll bar
-- 🔴 in reports tab also same issue, spent and daily average has too bigh of widtha dn instead of daily average i woul like to see cycle average
-- 🔴 i would like to add notes as well with category, for ex - if 1000 mobile, ayush after command i mean that add it in notes of this expense and category is mobile only
-- 🔴 also i want to see suggestions/auto-complete from existing sub-categories in chat or may be if i add "/" in chat it will show me categories and sub-categories
-- 🔴 its no issue, but overall app them seems very basic and not something very modern app like an iphone app, can we improve ui of overall app make it more fun and exciting and classy
-
-
-- 🔴 In bootom bar, we can add 6th option as well of expense-Reels, where on top-centre, we can choose cycle(default is current cycle) and then we can scroll reels/shorts, where each reel is a expense added by use and obvious we can edit it but point is like instagram, i can scroll all my expenses of that month to review them and i can edit them also from their itself - and it will be very cool!!

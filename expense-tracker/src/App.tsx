@@ -2,17 +2,19 @@ import { useEffect, useState } from 'react';
 import Chat, { initialChatMessages, type ChatMessage } from './components/Chat';
 import Dashboard from './components/Dashboard';
 import Reports from './components/Reports';
+import Reels from './components/Reels';
 import Categories from './components/Categories';
 import Settings from './components/Settings';
 import { ExpenseRepository } from './repository/expenseRepository';
 import { BackupRepository } from './repository/backupRepository';
 
-type Tab = 'chat' | 'dashboard' | 'reports' | 'categories' | 'settings';
+type Tab = 'chat' | 'dashboard' | 'reports' | 'reels' | 'categories' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'chat', label: 'Add', icon: '💬' },
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'reports', label: 'Reports', icon: '📈' },
+  { id: 'reels', label: 'Reels', icon: '🎞️' },
   { id: 'categories', label: 'Categories', icon: '🏷️' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
@@ -54,6 +56,7 @@ export default function App() {
         )}
         {tab === 'dashboard' && <Dashboard version={version} onChange={onChange} />}
         {tab === 'reports' && <Reports version={version} />}
+        {tab === 'reels' && <Reels version={version} onChange={onChange} />}
         {tab === 'categories' && <Categories version={version} onChange={onChange} />}
         {tab === 'settings' && <Settings version={version} onChange={onChange} />}
       </main>

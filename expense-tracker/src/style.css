@@ -78,11 +78,13 @@ body {
 
 .tabbar button {
   flex: 1;
+  min-width: 0;
   background: none;
   border: none;
   color: var(--muted);
-  padding: 12px 4px;
-  font-size: 12px;
+  padding: 12px 2px;
+  font-size: 11px;
+  white-space: nowrap;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -491,4 +493,175 @@ body {
   .modal__card {
     border-radius: 18px;
   }
+}
+
+/* ---- Expense Reels ---- */
+.reels {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.reels__bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(22, 29, 51, 0.72);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.reels__nav {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reels__nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.reels__cycle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 0 4px;
+}
+
+.reels__cycle-name {
+  font-weight: 800;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.reels__cycle-sub {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.reels__track {
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.reels__track::-webkit-scrollbar {
+  display: none;
+}
+
+.reel {
+  height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 64px 28px 28px;
+  text-align: center;
+}
+
+.reel__icon {
+  width: 110px;
+  height: 110px;
+  border-radius: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.reel__amount {
+  font-size: 46px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.reel__cat {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.reel__sub {
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.reel__date {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.reel__note {
+  font-size: 16px;
+  font-style: italic;
+  color: var(--text);
+  max-width: 320px;
+  line-height: 1.4;
+}
+
+.reel__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.reels__counter {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(22, 29, 51, 0.72);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  font-variant-numeric: tabular-nums;
+}
+
+.reels__empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 24px;
+}
+
+.reels__empty-emoji {
+  font-size: 56px;
+  margin-bottom: 8px;
 }
