@@ -66,6 +66,18 @@ export const CategoryRepository = {
     );
   },
 
+  /** Persist an explicit, fully-ordered list of category ids (drag reorder). */
+  async setCategoryOrder(orderedIds: ID[]): Promise<void> {
+    const all = await storage.categories.getAll();
+    const byId = new Map(all.map((c) => [c.id, c]));
+    await Promise.all(
+      orderedIds.map((id, i) => {
+        const c = byId.get(id);
+        return c ? storage.categories.put({ ...c, order: i }) : Promise.resolve();
+      }),
+    );
+  },
+
   async addSubcategory(categoryId: ID, name: string, icon?: string): Promise<Subcategory> {
     const sub: Subcategory = { id: newId(), categoryId, name, icon: icon?.trim() || undefined };
     await storage.subcategories.put(sub);

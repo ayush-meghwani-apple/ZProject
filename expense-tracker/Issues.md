@@ -13,6 +13,13 @@ _(nothing open right now — add a bullet here whenever you think of something)_
 
 ## Done
 
+- ✅ **(2026-06-28)** **Cleaner tab swiping.** Diagonal swipes no longer cause a jarring jump: the gesture now locks to either vertical scroll or horizontal swipe on the first movement, so scrolling won't accidentally flip tabs. While you swipe sideways a floating hint shows which tab you're heading to (e.g. `📈 Reports ›`), the content follows your finger a little, and the new tab fades in smoothly instead of snapping.
+- ✅ **(2026-06-28)** **Review a big spend.** On a “big spend” reel you can now tap **✅ Reviewed** to acknowledge it — the card turns calm **green** with a steady “✅ Reviewed” badge (no more pulsing pink) so it stops grabbing your attention. Tap **↩️ Unreview** to flip it back.
+- ✅ **(2026-06-28)** **Category reordering redone.** Replaced the up/down arrows with a **drag handle** (⠿) — press and drag it to move a category anywhere in the list; the new order saves automatically.
+- ✅ **(2026-06-28)** **Sound cues.** Adding an expense now plays a short, fun sound — a happy rising chime when it lands in a category, a different falling tone when it's uncategorized, and a soft blip when you save a note. Toggle it in **Settings → Sounds** (on by default; no audio files, so nothing extra is downloaded).
+- ✅ **(2026-06-28)** **Notes are now Reels.** A chat message with no amount is saved as a note and shows up as an amber **📝 Note** card in the Reels feed (so chat stays uncluttered). On that card you can type an amount and **➕ Add expense** — any category/sub-category mentioned in the note is picked up automatically — or mark it **✓ Done**, or **🗑️ Delete** it. Plain notes with no category still show clearly for reference.
+
+
 - ✅ **(2026-06-28)** Duplicate sub-category went to the wrong parent. Typing `200 mobile` and picking **Home → Mobile Recharge** used to save under **Ayush → Mobile Recharge**. The parser now matches the **category name first**, then resolves the sub-category *inside that category*, so the one you pick is the one that's saved.
 - ✅ **(2026-06-28)** **Swipe between tabs.** You can now swipe left/right anywhere on the screen to move between the bottom tabs, like a normal phone gesture (vertical scrolling still works as before).
 - ✅ **(2026-06-28)** **Recurring (repeat) expenses.** Settings now has a **Recurring** card where you can set up expenses that repeat **daily / weekly / monthly** (e.g. rent on a fixed day). They're added automatically when you open the app; if a date needs changing you can edit that one expense normally. Recurring rules are included in backups. (Kept out of chat on purpose so chat stays simple.)

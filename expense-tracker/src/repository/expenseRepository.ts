@@ -64,6 +64,13 @@ export const ExpenseRepository = {
     await ActivityRepository.log('expense.edited', 'expense', expense.id);
   },
 
+  /** Toggle the “reviewed” flag used to calm big-spend highlighting in Reels. */
+  async setReviewed(id: ID, reviewed: boolean): Promise<void> {
+    const existing = await storage.expenses.get(id);
+    if (!existing) return;
+    await storage.expenses.put({ ...existing, reviewed, updatedAt: now() });
+  },
+
   async deleteExpense(id: ID): Promise<void> {
     const existing = await storage.expenses.get(id);
     await storage.expenses.delete(id);

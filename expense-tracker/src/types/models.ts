@@ -92,6 +92,7 @@ export interface Expense {
   paymentMethodId?: ID;
   note?: string;
   rawText?: string; // original chat input, for transparency
+  reviewed?: boolean; // user acknowledged a “big spend” so it stops drawing attention
   createdAt: ISODate;
   updatedAt: ISODate;
 }

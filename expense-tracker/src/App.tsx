@@ -56,25 +56,55 @@ export default function App() {
   }, []);
 
   // Horizontal swipe to move between tabs (left = next, right = previous).
+  // We lock to a horizontal or vertical gesture on the first real movement so a
+  // mostly-vertical scroll never accidentally flips the tab, and we show a live
+  // hint of where the swipe is heading instead of switching with a jolt.
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const dirLock = useRef<'h' | 'v' | null>(null);
+  const [swipeX, setSwipeX] = useState(0);
+
+  const tabIdx = TABS.findIndex((x) => x.id === tab);
+  // While dragging horizontally, which tab would we land on?
+  const swipeTarget =
+    swipeX < -20 && tabIdx < TABS.length - 1
+      ? TABS[tabIdx + 1]
+      : swipeX > 20 && tabIdx > 0
+        ? TABS[tabIdx - 1]
+        : null;
 
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
+    dirLock.current = null;
+    setSwipeX(0);
   }
 
-  function onTouchEnd(e: React.TouchEvent) {
+  function onTouchMove(e: React.TouchEvent) {
     const start = touchStart.current;
-    touchStart.current = null;
     if (!start) return;
-    const t = e.changedTouches[0];
+    const t = e.touches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
-    // Only treat clearly-horizontal, deliberate swipes as a tab change.
-    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    const idx = TABS.findIndex((x) => x.id === tab);
-    if (dx < 0 && idx < TABS.length - 1) setTab(TABS[idx + 1].id);
-    else if (dx > 0 && idx > 0) setTab(TABS[idx - 1].id);
+    if (dirLock.current === null && Math.abs(dx) + Math.abs(dy) > 12) {
+      dirLock.current = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'h' : 'v';
+    }
+    if (dirLock.current === 'h') {
+      // Resist at the ends so it feels bounded, not broken.
+      const atEnd =
+        (dx < 0 && tabIdx === TABS.length - 1) || (dx > 0 && tabIdx === 0);
+      setSwipeX(atEnd ? dx * 0.25 : dx);
+    }
+  }
+
+  function onTouchEnd() {
+    const horizontal = dirLock.current === 'h';
+    const dx = swipeX;
+    touchStart.current = null;
+    dirLock.current = null;
+    setSwipeX(0);
+    if (!horizontal || Math.abs(dx) < 60) return;
+    if (dx < 0 && tabIdx < TABS.length - 1) setTab(TABS[tabIdx + 1].id);
+    else if (dx > 0 && tabIdx > 0) setTab(TABS[tabIdx - 1].id);
   }
 
   return (
@@ -84,15 +114,43 @@ export default function App() {
         <span className="pill">{TABS.find((t) => t.id === tab)?.label}</span>
       </header>
 
-      <main className="app__body" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        {tab === 'chat' && (
-          <Chat messages={chatMessages} setMessages={setChatMessages} onChange={onChange} />
+      <main
+        className="app__body"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        {swipeTarget && (
+          <div className={`swipe-hint swipe-hint--${swipeX < 0 ? 'next' : 'prev'}`}>
+            {swipeX < 0 ? (
+              <>
+                {swipeTarget.icon} {swipeTarget.label} ›
+              </>
+            ) : (
+              <>
+                ‹ {swipeTarget.icon} {swipeTarget.label}
+              </>
+            )}
+          </div>
         )}
-        {tab === 'dashboard' && <Dashboard version={version} onChange={onChange} />}
-        {tab === 'reports' && <Reports version={version} />}
-        {tab === 'reels' && <Reels version={version} onChange={onChange} />}
-        {tab === 'categories' && <Categories version={version} onChange={onChange} />}
-        {tab === 'settings' && <Settings version={version} onChange={onChange} />}
+        <div
+          key={tab}
+          className="app__view"
+          style={
+            swipeX !== 0
+              ? { transform: `translateX(${swipeX * 0.18}px)`, transition: 'none' }
+              : undefined
+          }
+        >
+          {tab === 'chat' && (
+            <Chat messages={chatMessages} setMessages={setChatMessages} onChange={onChange} />
+          )}
+          {tab === 'dashboard' && <Dashboard version={version} onChange={onChange} />}
+          {tab === 'reports' && <Reports version={version} />}
+          {tab === 'reels' && <Reels version={version} onChange={onChange} />}
+          {tab === 'categories' && <Categories version={version} onChange={onChange} />}
+          {tab === 'settings' && <Settings version={version} onChange={onChange} />}
+        </div>
       </main>
 
       <nav className="tabbar">

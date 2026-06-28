@@ -3,6 +3,7 @@ import { cycleName, cycleLabel } from '../core/salaryCycle';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import { BackupRepository } from '../repository/backupRepository';
 import { getPrefs, setPrefs } from '../core/preferences';
+import { playSound } from '../core/sound';
 import RecurringManager from './RecurringManager';
 import {
   ensurePersistentStorage,
@@ -36,6 +37,7 @@ export default function Settings({ version, onChange }: Props) {
   const [usage, setUsage] = useState('');
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [bigThreshold, setBigThreshold] = useState('');
+  const [soundOn, setSoundOn] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -49,6 +51,7 @@ export default function Settings({ version, onChange }: Props) {
     setUsage(est ? `${formatBytes(est.usage)} used` : 'unknown');
     setLastBackup(BackupRepository.getLastBackupAt());
     setBigThreshold(String(getPrefs().bigExpenseThreshold || ''));
+    setSoundOn(getPrefs().soundEnabled);
   }
   useEffect(() => {
     load();
@@ -245,6 +248,29 @@ export default function Settings({ version, onChange }: Props) {
             }}
           >
             Save
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>Sounds</h3>
+        <div className="muted" style={{ marginBottom: 12 }}>
+          Play a little sound when you add an expense (one cue when it lands in a
+          category, a different one when it doesn’t) or save a note.
+        </div>
+        <div className="row">
+          <span>Sound effects</span>
+          <button
+            className={`btn${soundOn ? '' : ' btn--ghost'}`}
+            onClick={() => {
+              const next = !soundOn;
+              setSoundOn(next);
+              setPrefs({ soundEnabled: next });
+              if (next) playSound('success');
+              onChange();
+            }}
+          >
+            {soundOn ? '🔊 On' : '🔇 Off'}
           </button>
         </div>
       </div>

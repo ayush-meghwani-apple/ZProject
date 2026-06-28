@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CategoryRepository } from '../repository/categoryRepository';
 import type { Alias, Category, Subcategory } from '../types/models';
 
@@ -17,6 +17,13 @@ export default function Categories({ version, onChange }: Props) {
   const [subIconDraft, setSubIconDraft] = useState<Record<string, string>>({});
   const [editCat, setEditCat] = useState<{ id: string; name: string; icon: string } | null>(null);
   const [editSub, setEditSub] = useState<{ id: string; name: string; icon: string } | null>(null);
+
+  // Drag-to-reorder state. dragId is the category being dragged; dragOrder is
+  // the live ordering shown while dragging. Card elements are tracked so we can
+  // work out where the finger is.
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOrder, setDragOrder] = useState<string[]>([]);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   async function load() {
     const [c, s, a] = await Promise.all([
@@ -61,8 +68,34 @@ export default function Categories({ version, onChange }: Props) {
     onChange();
   }
 
-  async function move(id: string, direction: -1 | 1) {
-    await CategoryRepository.moveCategory(id, direction);
+  function startDrag(e: React.PointerEvent, id: string) {
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setDragId(id);
+    setDragOrder(categories.map((c) => c.id));
+  }
+
+  function onDragMove(e: React.PointerEvent) {
+    if (!dragId) return;
+    const y = e.clientY;
+    // Insertion index = how many other cards have their midpoint above the finger.
+    let target = 0;
+    for (const id of dragOrder) {
+      if (id === dragId) continue;
+      const el = cardRefs.current.get(id);
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (y > r.top + r.height / 2) target++;
+    }
+    const order = dragOrder.filter((id) => id !== dragId);
+    order.splice(target, 0, dragId);
+    if (order.some((id, i) => id !== dragOrder[i])) setDragOrder(order);
+  }
+
+  async function endDrag() {
+    if (!dragId) return;
+    const finalOrder = dragOrder;
+    setDragId(null);
+    await CategoryRepository.setCategoryOrder(finalOrder);
     await load();
     onChange();
   }
@@ -130,11 +163,21 @@ export default function Categories({ version, onChange }: Props) {
         </div>
       </div>
 
-      {categories.map((cat, idx) => {
+      {(dragId
+        ? dragOrder.map((id) => categories.find((c) => c.id === id)!).filter(Boolean)
+        : categories
+      ).map((cat) => {
         const subs = subcategories.filter((s) => s.categoryId === cat.id);
         const isEditing = editCat?.id === cat.id;
         return (
-          <div className="card" key={cat.id}>
+          <div
+            className={`card${dragId === cat.id ? ' card--dragging' : ''}`}
+            key={cat.id}
+            ref={(el) => {
+              if (el) cardRefs.current.set(cat.id, el);
+              else cardRefs.current.delete(cat.id);
+            }}
+          >
             <div className="row" style={{ paddingTop: 0 }}>
               {isEditing ? (
                 <div className="inline" style={{ flex: 1 }}>
@@ -160,28 +203,23 @@ export default function Categories({ version, onChange }: Props) {
               ) : (
                 <>
                   <div className="row__left">
+                    <span
+                      className="drag-handle"
+                      onPointerDown={(e) => startDrag(e, cat.id)}
+                      onPointerMove={onDragMove}
+                      onPointerUp={endDrag}
+                      onPointerCancel={endDrag}
+                      title="Drag to reorder"
+                      aria-label="Drag to reorder"
+                    >
+                      ⠿
+                    </span>
                     <span className="dot" style={{ background: cat.color }} />
                     <strong>
                       {cat.icon} {cat.name}
                     </strong>
                   </div>
                   <div className="inline">
-                    <button
-                      className="iconbtn"
-                      onClick={() => move(cat.id, -1)}
-                      disabled={idx === 0}
-                      title="Move up"
-                    >
-                      ⬆️
-                    </button>
-                    <button
-                      className="iconbtn"
-                      onClick={() => move(cat.id, 1)}
-                      disabled={idx === categories.length - 1}
-                      title="Move down"
-                    >
-                      ⬇️
-                    </button>
                     <button
                       className="iconbtn"
                       onClick={() => setEditCat({ id: cat.id, name: cat.name, icon: cat.icon })}

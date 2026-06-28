@@ -75,6 +75,59 @@ body {
   -webkit-overflow-scrolling: touch;
   /* Keep scroll momentum contained so it never bubbles to the page/body. */
   overscroll-behavior-y: contain;
+  /* Let the browser own vertical scrolling while we handle horizontal swipes,
+     so a diagonal gesture never fights the page or flips tabs by accident. */
+  touch-action: pan-y;
+  position: relative;
+}
+
+/* The active tab's content; eases back after a partial swipe and fades in on
+   a real tab change (it remounts via its React key). */
+.app__view {
+  transition: transform 0.22s ease;
+  animation: viewIn 0.22s ease;
+}
+
+@keyframes viewIn {
+  from {
+    opacity: 0.35;
+    transform: translateX(0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Floating hint showing which tab a swipe will land on. */
+.swipe-hint {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  animation: hintIn 0.12s ease;
+}
+
+@keyframes hintIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .tabbar {
@@ -287,6 +340,33 @@ body {
   padding: 16px;
   min-width: 0;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+/* Drag-to-reorder handle on category cards. */
+.drag-handle {
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  padding: 4px 8px;
+  margin-left: -4px;
+  border-radius: 8px;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: var(--text);
+}
+
+.card--dragging {
+  opacity: 0.92;
+  transform: scale(1.02);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  border-color: var(--accent);
+  position: relative;
+  z-index: 5;
 }
 
 .card h3 {
@@ -764,6 +844,52 @@ body {
   border-radius: 999px;
   box-shadow: 0 8px 22px rgba(225, 29, 72, 0.45);
   animation: reelPulse 1.4s ease-in-out infinite;
+}
+
+/* Calm, reviewed big-spend badge — no pulsing, green instead of hot pink. */
+.reel__flame--ok {
+  color: #d1fae5;
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: 0 8px 22px rgba(5, 150, 105, 0.4);
+  animation: none;
+}
+
+/* Note reels — reminders typed in chat, surfaced for review/conversion. */
+.reel--note {
+  background: radial-gradient(
+    130% 90% at 50% 0%,
+    rgba(245, 158, 11, 0.32) 0%,
+    rgba(245, 158, 11, 0.08) 45%,
+    transparent 70%
+  );
+}
+
+.reel__flame--note {
+  color: #fffbeb;
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  box-shadow: 0 8px 22px rgba(217, 119, 6, 0.4);
+  animation: none;
+}
+
+.reel__note-text {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.4;
+  max-width: 90%;
+  overflow-wrap: anywhere;
+}
+
+.reel__note-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  max-width: 340px;
+}
+
+.reel__note-add .input {
+  flex: 1;
+  min-width: 0;
 }
 
 @keyframes reelPulse {

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { parseInput } from '../core/parser';
 import { formatINR } from '../core/util';
+import { playSound } from '../core/sound';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { ExpenseRepository } from '../repository/expenseRepository';
+import { NotesRepository } from '../repository/notesRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import type { Category, Subcategory } from '../types/models';
 
@@ -251,7 +253,10 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
     }
 
     if (cmd.kind === 'note') {
-      pushBot('📝 Saved as a note.');
+      NotesRepository.add(cmd.text);
+      playSound('note');
+      onChange();
+      pushBot('📝 Saved as a note — review it on the Reels tab.');
       return;
     }
 
@@ -282,6 +287,7 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
       note: cmd.note,
       rawText: cmd.rawText,
     });
+    playSound(cmd.categoryId ? 'success' : 'uncategorized');
     const label = labelFor(cmd.categoryId, cmd.subcategoryId, freshCats, freshSubs);
     pushBot(`Added ${formatINR(cmd.amount)} · ${label} ✅`);
     onChange();
