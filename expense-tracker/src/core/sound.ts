@@ -1,8 +1,9 @@
 import { getPrefs } from './preferences';
 
 /**
- * Tiny synthesized sound cues (Web Audio) — no audio files, so nothing is added
- * to the bundle and it works fully offline. Respects the user's sound setting.
+ * Sound cues. The "success" cue plays a real audio clip (public/faaah.mp3);
+ * the rest are tiny synthesized Web Audio tones. Everything works offline (the
+ * mp3 is precached by the service worker) and respects the user's sound setting.
  */
 export type SoundKind = 'success' | 'note' | 'uncategorized';
 
@@ -12,17 +13,8 @@ interface Tone {
   dur: number; // seconds
 }
 
-const PATTERNS: Record<SoundKind, Tone[]> = {
-  // Triumphant rising "ta-daa" fanfare for a clean, categorized expense — a
-  // major arpeggio (C–E–G) that lands on a bright high C, so a successful add
-  // feels like a little win. (Synthesized, so it stays offline and adds no
-  // bundle weight; a real meme clip would mean shipping a copyrighted file.)
-  success: [
-    { freq: 523.25, start: 0, dur: 0.1 },
-    { freq: 659.25, start: 0.08, dur: 0.1 },
-    { freq: 783.99, start: 0.16, dur: 0.1 },
-    { freq: 1046.5, start: 0.24, dur: 0.28 },
-  ],
+// Synthesized fallbacks for the non-success cues.
+const PATTERNS: Record<'note' | 'uncategorized', Tone[]> = {
   // Soft single blip for a saved note.
   note: [{ freq: 523.25, start: 0, dur: 0.18 }],
   // Neutral falling two-note for an expense with no matching category.
@@ -47,11 +39,32 @@ function audio(): AudioContext | null {
   }
 }
 
-export function playSound(kind: SoundKind): void {
-  if (!getPrefs().soundEnabled) return;
+// The "faaah" success clip. Served from the app's base path (e.g.
+// /ZProject/expense-tracker/faaah.mp3 on GitHub Pages) and precached for offline.
+let successClip: HTMLAudioElement | null = null;
+
+function playSuccessClip(): void {
+  if (typeof window === 'undefined' || typeof Audio === 'undefined') return;
+  try {
+    if (!successClip) {
+      successClip = new Audio(`${import.meta.env.BASE_URL}faaah.mp3`);
+      successClip.preload = 'auto';
+      successClip.volume = 0.7;
+    }
+    // Rewind so rapid successive adds always retrigger from the start.
+    successClip.currentTime = 0;
+    void successClip.play().catch(() => {
+      /* Autoplay can be blocked outside a user gesture — fine to ignore. */
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+function playTones(kind: 'note' | 'uncategorized'): void {
   const ac = audio();
   if (!ac) return;
-  // Must be resumed from a user gesture (we call this on chat submit).
+  // Must be resumed from a user gesture (we call this on chat submit / taps).
   if (ac.state === 'suspended') void ac.resume();
 
   const t0 = ac.currentTime;
@@ -70,3 +83,13 @@ export function playSound(kind: SoundKind): void {
     osc.stop(end + 0.02);
   }
 }
+
+export function playSound(kind: SoundKind): void {
+  if (!getPrefs().soundEnabled) return;
+  if (kind === 'success') {
+    playSuccessClip();
+    return;
+  }
+  playTones(kind);
+}
+
