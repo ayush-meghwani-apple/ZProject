@@ -7,9 +7,16 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-- **Trending meme success sound (the "faaaaa").** I made the success sound a more exciting, triumphant rising **fanfare** (a little "ta‑daa" when an expense lands cleanly). I deliberately did **not** ship the actual meme clip: it's a copyrighted audio file and bundling it would also break the offline‑only design (right now there are zero audio files — everything is synthesized). If you want that exact sound, drop an `.mp3`/`.wav` into the project and tell me — I'll wire it up to play on success.
+_(nothing open right now — add a bullet here whenever you think of something)_
 
 ## Done
+
+- ✅ **(2026-06-28)** **"Faaah" success sound.** Your `faaah.mp3` now plays on every successful expense add (chat add, note→expense, and reviewing a big spend), precached so it works offline, still behind the **Settings → Sounds** toggle.
+- ✅ **(2026-06-28)** **Reels content is back.** Reels were showing blank cards (only the count was right): the last layout change broke the height chain that the full-screen cards depend on. Restored a definite height so each reel renders its icon, amount, category and actions again.
+- ✅ **(2026-06-28)** **Removed the gap under the chat box.** The input bar had an extra bottom inset on top of the one the tab bar already adds — trimmed, so it now sits flush above the tabs.
+- ✅ **(2026-06-28)** **No more stray horizontal scrollbar.** The scroll area implicitly allowed sideways scrolling; locked it to vertical only, so the phantom horizontal bar during swiping is gone.
+- ✅ **(2026-06-28)** **Reliable category reordering.** Drag-and-drop was flaky on the phone (couldn't drop, or only scrolled), so it's replaced with simple **⬆️ / ⬇️ buttons** on each category — tap to move it up or down; the order saves instantly.
+
 
 - ✅ **(2026-06-28)** **Chat input pinned to the bottom.** The typing box + symbol bar now sit just above the tab bar even when there are only a few messages — no more empty gap. (Root cause: the swipe wrapper added last release had no height, which collapsed the chat/reels layout; fixed with a proper flex height chain.)
 - ✅ **(2026-06-28)** **`#` category list scrolls without flipping tabs.** The category/symbol strips now scroll horizontally on their own; a sideways drag there no longer gets read as a tab swipe.
