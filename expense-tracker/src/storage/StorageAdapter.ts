@@ -4,6 +4,7 @@ import type {
   Category,
   Context,
   Expense,
+  Goal,
   Merchant,
   PaymentMethod,
   RecurringExpense,
@@ -39,4 +40,5 @@ export interface StorageAdapter {
   expenses: StorageTable<Expense>;
   activities: StorageTable<Activity>;
   recurring: StorageTable<RecurringExpense>;
+  goals: StorageTable<Goal>;
 }

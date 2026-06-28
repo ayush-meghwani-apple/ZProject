@@ -5,6 +5,7 @@ import type {
   Category,
   Context,
   Expense,
+  Goal,
   Merchant,
   PaymentMethod,
   RecurringExpense,
@@ -18,7 +19,7 @@ import type {
  * existing data instead of dropping it — this is what keeps iterative
  * development from breaking an existing database.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export class ExpenseDB extends Dexie {
   categories!: Table<Category, string>;
@@ -31,6 +32,7 @@ export class ExpenseDB extends Dexie {
   expenses!: Table<Expense, string>;
   activities!: Table<Activity, string>;
   recurring!: Table<RecurringExpense, string>;
+  goals!: Table<Goal, string>;
 
   constructor() {
     super('expense-tracker');
@@ -63,6 +65,23 @@ export class ExpenseDB extends Dexie {
       expenses: 'id, salaryCycleId, categoryId, subcategoryId, date',
       activities: 'id, type, timestamp',
       recurring: 'id, nextDate, active',
+    });
+
+    // ---- Version 3 -------------------------------------------------------
+    // Adds financial goals (the Goals sub-app). Existing stores are repeated so
+    // Dexie keeps their data; only the new `goals` table is introduced.
+    this.version(3).stores({
+      categories: 'id, name',
+      subcategories: 'id, categoryId',
+      merchants: 'id, name',
+      contexts: 'id, name',
+      paymentMethods: 'id, name',
+      aliases: 'id, text, subcategoryId, categoryId',
+      salaryCycles: 'id, startDate, endDate',
+      expenses: 'id, salaryCycleId, categoryId, subcategoryId, date',
+      activities: 'id, type, timestamp',
+      recurring: 'id, nextDate, active',
+      goals: 'id, createdAt',
     });
   }
 }

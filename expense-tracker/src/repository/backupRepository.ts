@@ -18,6 +18,7 @@ export const BackupRepository = {
       expenses,
       activities,
       recurring,
+      goals,
     ] = await Promise.all([
       storage.categories.getAll(),
       storage.subcategories.getAll(),
@@ -29,6 +30,7 @@ export const BackupRepository = {
       storage.expenses.getAll(),
       storage.activities.getAll(),
       storage.recurring.getAll(),
+      storage.goals.getAll(),
     ]);
 
     return {
@@ -46,6 +48,7 @@ export const BackupRepository = {
         expenses,
         activities,
         recurring,
+        goals,
       },
     };
   },
@@ -56,7 +59,7 @@ export const BackupRepository = {
    */
   async importAll(file: BackupFile): Promise<void> {
     if (file.app !== 'expense-tracker') {
-      throw new Error('Not an Expense Tracker backup file.');
+      throw new Error('Not an Expensify backup file.');
     }
     if (file.schema > SCHEMA_VERSION) {
       throw new Error(
@@ -75,6 +78,7 @@ export const BackupRepository = {
     await storage.expenses.bulkPut(d.expenses ?? []);
     await storage.activities.bulkPut(d.activities ?? []);
     await storage.recurring.bulkPut(d.recurring ?? []);
+    await storage.goals.bulkPut(d.goals ?? []);
 
     await ActivityRepository.log('data.imported', 'backup', newId(), {
       expenses: d.expenses?.length ?? 0,

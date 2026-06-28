@@ -1,8 +1,9 @@
-# Expense Tracker
+# Expensify
 
-Offline-first personal expense tracker. Chat-style entry (`tea 20`), salary
-cycles, dashboard, reports, and JSON backup/restore. No backend, no auth, no
-internet required. Installable on iPhone as a PWA.
+Offline-first personal finance app. Chat-style expense entry (`tea 20`), salary
+cycles, a merged spending summary, goal planning with step-up SIP projections,
+and JSON backup/restore. A hamburger menu switches between sub-apps (Expensify,
+Goals). No backend, no auth, no internet required. Installable on iPhone as a PWA.
 
 See [ExpenseTracker-Architecture.md](ExpenseTracker-Architecture.md) for the full
 design and the locked V1 decisions.
@@ -142,7 +143,7 @@ GitHub repo name = same `…github.io/<repo>/` URL = same data).
    The service worker is set to `autoUpdate`, so it fetches the new version on
    the next launch. If you don't see the change immediately, close and reopen
    once more (the first launch downloads it, the second activates it).
-6. Your expenses are all still there — verify on the Dashboard. Done.
+6. Your expenses are all still there — verify on the Summary tab. Done.
 
 ### Why your data can't vanish on an update
 

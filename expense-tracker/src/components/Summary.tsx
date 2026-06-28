@@ -1,5 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { totalSpend, getCategoryBreakdown } from '../core/reports';
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
+  getCategoryBreakdown,
+  getCategorySummary,
+  getMonthlyTotals,
+  totalSpend,
+} from '../core/reports';
 import { formatINR, formatDate } from '../core/util';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
@@ -13,7 +29,13 @@ interface Props {
   onChange: () => void;
 }
 
-export default function Dashboard({ version, onChange }: Props) {
+/**
+ * The single "Summary" tab: combines the at-a-glance totals + collapsible
+ * category breakdown + recent expenses (formerly Dashboard) with the charts
+ * (pie + monthly trend, formerly Reports), so there's one place to understand
+ * your spending instead of two overlapping tabs.
+ */
+export default function Summary({ version, onChange }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -35,7 +57,6 @@ export default function Dashboard({ version, onChange }: Props) {
     setSubcategories(s);
     setCycles(cy);
 
-    // Default the filter to the current (open) cycle, first load only.
     if (!initialized.current && cy.length > 0) {
       const open = cy.find((x) => !x.endDate) ?? cy[0];
       setSelected([open.id]);
@@ -52,6 +73,8 @@ export default function Dashboard({ version, onChange }: Props) {
   const scopeTotal = totalSpend(scoped);
   const allTimeTotal = totalSpend(expenses);
   const breakdown = getCategoryBreakdown(scoped, categories, subcategories);
+  const categorySummary = getCategorySummary(scoped, categories);
+  const monthly = getMonthlyTotals(scoped);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -93,12 +116,33 @@ export default function Dashboard({ version, onChange }: Props) {
         </div>
       </div>
 
+      {scoped.length > 0 && (
+        <div className="card">
+          <h3>Spend by Category</h3>
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart>
+              <Pie
+                data={categorySummary}
+                dataKey="total"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                label={(d) => d.name}
+              >
+                {categorySummary.map((c) => (
+                  <Cell key={c.categoryId} fill={c.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v: number) => formatINR(v)} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       <div className="card">
         <h3>Spending by Category</h3>
-        <p className="card__subtitle">
-          Quick glance for {selectionLabel(cycles, selected).toLowerCase()} — tap a category to
-          expand its sub-categories.
-        </p>
+        <p className="card__subtitle">Tap a category to expand its sub-categories.</p>
         {breakdown.length === 0 ? (
           <div className="muted">No expenses yet.</div>
         ) : (
@@ -147,6 +191,23 @@ export default function Dashboard({ version, onChange }: Props) {
           })
         )}
       </div>
+
+      {monthly.length > 0 && (
+        <div className="card">
+          <h3>Monthly Spend</h3>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={monthly}>
+              <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
+              <YAxis stroke="#94a3b8" fontSize={11} width={40} />
+              <Tooltip
+                formatter={(v: number) => formatINR(v)}
+                contentStyle={{ background: '#1e293b', border: '1px solid #334155' }}
+              />
+              <Bar dataKey="total" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       <div className="card">
         <h3>Recent Expenses</h3>

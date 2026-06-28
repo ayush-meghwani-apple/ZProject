@@ -19,9 +19,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'faaah.mp3'],
       manifest: {
-        name: 'Expense Tracker',
-        short_name: 'Expenses',
-        description: 'Offline-first personal expense tracker',
+        name: 'Expensify',
+        short_name: 'Expensify',
+        description: 'Offline-first personal finance — expenses, goals and more',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',

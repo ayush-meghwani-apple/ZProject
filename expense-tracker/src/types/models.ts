@@ -98,6 +98,26 @@ export interface Expense {
   updatedAt: ISODate;
 }
 
+/**
+ * A financial goal you're saving towards. Projects an inflation-adjusted
+ * future cost and the corpus a (optionally stepped-up) monthly SIP plus any
+ * current savings should grow to, so you can see if you're on track.
+ */
+export interface Goal {
+  id: ID;
+  name: string;
+  icon?: string;
+  presentCost: number; // what the goal costs today
+  inflationPct: number; // expected annual inflation for this goal, %
+  years: number; // years from now until you need it
+  currentSavings: number; // money already set aside for this goal
+  monthlySaving: number; // monthly SIP you can contribute now
+  stepUpPct: number; // annual step-up applied to the SIP, % (0 = none)
+  expectedReturnPct: number; // expected annual return on investments, %
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
 export type ActivityType =
   | 'expense.added'
   | 'expense.edited'
@@ -135,5 +155,6 @@ export interface BackupFile {
     expenses: Expense[];
     activities: Activity[];
     recurring?: RecurringExpense[];
+    goals?: Goal[];
   };
 }

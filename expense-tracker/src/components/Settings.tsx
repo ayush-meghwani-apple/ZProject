@@ -16,6 +16,9 @@ import type { SalaryCycle } from '../types/models';
 interface Props {
   version: number;
   onChange: () => void;
+  /** When true (shared Settings inside a sub-app), show only the cross-app
+   * cards: Data Safety, Backup & Sync and About. */
+  global?: boolean;
 }
 
 /** ISO string -> yyyy-mm-dd in local time, for <input type="date">. */
@@ -30,7 +33,7 @@ function fromDateInput(value: string): string {
   return new Date(`${value}T00:00:00`).toISOString();
 }
 
-export default function Settings({ version, onChange }: Props) {
+export default function Settings({ version, onChange, global = false }: Props) {
   const [cycles, setCycles] = useState<SalaryCycle[]>([]);
   const [dateValue, setDateValue] = useState('');
   const [persisted, setPersisted] = useState(false);
@@ -118,17 +121,19 @@ export default function Settings({ version, onChange }: Props) {
 
   return (
     <div className="page">
-      <div className="card">
-        <h3>Current Cycle</h3>
-        {open ? (
-          <>
-            <div className="stat">{cycleName(open)}</div>
-            <div className="stat--sub">{cycleLabel(open)}</div>
-          </>
-        ) : (
-          <div className="muted">No open cycle. Set a start date below to begin tracking.</div>
-        )}
-      </div>
+      {!global && (
+        <div className="card">
+          <h3>Current Cycle</h3>
+          {open ? (
+            <>
+              <div className="stat">{cycleName(open)}</div>
+              <div className="stat--sub">{cycleLabel(open)}</div>
+            </>
+          ) : (
+            <div className="muted">No open cycle. Set a start date below to begin tracking.</div>
+          )}
+        </div>
+      )}
 
       <div className="card">
         <h3>Data Safety</h3>
@@ -190,90 +195,94 @@ export default function Settings({ version, onChange }: Props) {
         </div>
       </div>
 
-      <div className="card">
-        <h3>Set Cycle Start Date</h3>
-        <div className="muted" style={{ marginBottom: 12 }}>
-          The cycle is named after the month holding the most days, e.g. a cycle
-          starting 24 Jun becomes <strong>Jul-26</strong>.
-        </div>
-        <div className="inline">
-          <input
-            className="input"
-            type="date"
-            value={dateValue}
-            onChange={(e) => setDateValue(e.target.value)}
-          />
-          <button className="btn" onClick={saveStartDate}>
-            Save
-          </button>
-        </div>
-      </div>
+      {!global && (
+        <>
+          <div className="card">
+            <h3>Set Cycle Start Date</h3>
+            <div className="muted" style={{ marginBottom: 12 }}>
+              The cycle is named after the month holding the most days, e.g. a cycle
+              starting 24 Jun becomes <strong>Jul-26</strong>.
+            </div>
+            <div className="inline">
+              <input
+                className="input"
+                type="date"
+                value={dateValue}
+                onChange={(e) => setDateValue(e.target.value)}
+              />
+              <button className="btn" onClick={saveStartDate}>
+                Save
+              </button>
+            </div>
+          </div>
 
-      <div className="card">
-        <h3>New Cycle</h3>
-        <div className="muted" style={{ marginBottom: 12 }}>
-          Start a fresh cycle from this instant. You can also type{' '}
-          <strong>"start cycle"</strong> in the Add tab.
-        </div>
-        <button className="btn btn--ghost" onClick={startNow}>
-          Start cycle now
-        </button>
-      </div>
+          <div className="card">
+            <h3>New Cycle</h3>
+            <div className="muted" style={{ marginBottom: 12 }}>
+              Start a fresh cycle from this instant. You can also type{' '}
+              <strong>"start cycle"</strong> in the Add tab.
+            </div>
+            <button className="btn btn--ghost" onClick={startNow}>
+              Start cycle now
+            </button>
+          </div>
 
-      <RecurringManager version={version} onChange={onChange} />
+          <RecurringManager version={version} onChange={onChange} />
 
-      <div className="card">
-        <h3>Reels Highlight</h3>
-        <div className="muted" style={{ marginBottom: 12 }}>
-          On the Reels page, any expense at or above this amount gets an
-          attention-grabbing “big spend” look. Leave empty (or 0) to turn off.
-        </div>
-        <div className="inline">
-          <input
-            className="input"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            placeholder="e.g. 2000"
-            value={bigThreshold}
-            onChange={(e) => setBigThreshold(e.target.value)}
-          />
-          <button
-            className="btn"
-            onClick={() => {
-              const n = Math.max(0, parseFloat(bigThreshold) || 0);
-              setPrefs({ bigExpenseThreshold: n });
-              setBigThreshold(String(n || ''));
-              onChange();
-            }}
-          >
-            Save
-          </button>
-        </div>
-      </div>
+          <div className="card">
+            <h3>Reels Highlight</h3>
+            <div className="muted" style={{ marginBottom: 12 }}>
+              On the Reels page, any expense at or above this amount gets an
+              attention-grabbing “big spend” look. Leave empty (or 0) to turn off.
+            </div>
+            <div className="inline">
+              <input
+                className="input"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                placeholder="e.g. 2000"
+                value={bigThreshold}
+                onChange={(e) => setBigThreshold(e.target.value)}
+              />
+              <button
+                className="btn"
+                onClick={() => {
+                  const n = Math.max(0, parseFloat(bigThreshold) || 0);
+                  setPrefs({ bigExpenseThreshold: n });
+                  setBigThreshold(String(n || ''));
+                  onChange();
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
 
-      <div className="card">
-        <h3>Sounds</h3>
-        <div className="muted" style={{ marginBottom: 12 }}>
-          Play a little sound when you add an expense (one cue when it lands in a
-          category, a different one when it doesn’t) or save a note.
-        </div>
-        <div className="row">
-          <span>Sound effects</span>
-          <button
-            className={`btn${soundOn ? '' : ' btn--ghost'}`}
-            onClick={() => {
-              const next = !soundOn;
-              setSoundOn(next);
-              setPrefs({ soundEnabled: next });
-              if (next) playSound('success');
-              onChange();
-            }}
-          >
-            {soundOn ? '🔊 On' : '🔇 Off'}
-          </button>
-        </div>
-      </div>
+          <div className="card">
+            <h3>Sounds</h3>
+            <div className="muted" style={{ marginBottom: 12 }}>
+              Play a little sound when you add an expense (one cue when it lands in a
+              category, a different one when it doesn’t) or save a note.
+            </div>
+            <div className="row">
+              <span>Sound effects</span>
+              <button
+                className={`btn${soundOn ? '' : ' btn--ghost'}`}
+                onClick={() => {
+                  const next = !soundOn;
+                  setSoundOn(next);
+                  setPrefs({ soundEnabled: next });
+                  if (next) playSound('success');
+                  onChange();
+                }}
+              >
+                {soundOn ? '🔊 On' : '🔇 Off'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="card">
         <h3>About</h3>
