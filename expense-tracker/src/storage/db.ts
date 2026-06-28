@@ -7,6 +7,7 @@ import type {
   Expense,
   Merchant,
   PaymentMethod,
+  RecurringExpense,
   SalaryCycle,
   Subcategory,
 } from '../types/models';
@@ -17,7 +18,7 @@ import type {
  * existing data instead of dropping it — this is what keeps iterative
  * development from breaking an existing database.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export class ExpenseDB extends Dexie {
   categories!: Table<Category, string>;
@@ -29,6 +30,7 @@ export class ExpenseDB extends Dexie {
   salaryCycles!: Table<SalaryCycle, string>;
   expenses!: Table<Expense, string>;
   activities!: Table<Activity, string>;
+  recurring!: Table<RecurringExpense, string>;
 
   constructor() {
     super('expense-tracker');
@@ -47,17 +49,21 @@ export class ExpenseDB extends Dexie {
       activities: 'id, type, timestamp',
     });
 
-    // ---- HOW TO ADD A MIGRATION (next week, without breaking data) -------
-    //
-    // this.version(2).stores({
-    //   // repeat existing stores, add new index e.g. expenses: '... , merchantId'
-    //   budgets: 'id, categoryId',
-    // }).upgrade(async (tx) => {
-    //   // backfill / transform existing rows here
-    //   await tx.table('expenses').toCollection().modify((e) => {
-    //     if (e.someNewField === undefined) e.someNewField = defaultValue;
-    //   });
-    // });
+    // ---- Version 2 -------------------------------------------------------
+    // Adds recurring-expense templates. Existing stores are repeated so Dexie
+    // keeps their data; only the new `recurring` table is introduced.
+    this.version(2).stores({
+      categories: 'id, name',
+      subcategories: 'id, categoryId',
+      merchants: 'id, name',
+      contexts: 'id, name',
+      paymentMethods: 'id, name',
+      aliases: 'id, text, subcategoryId, categoryId',
+      salaryCycles: 'id, startDate, endDate',
+      expenses: 'id, salaryCycleId, categoryId, subcategoryId, date',
+      activities: 'id, type, timestamp',
+      recurring: 'id, nextDate, active',
+    });
   }
 }
 

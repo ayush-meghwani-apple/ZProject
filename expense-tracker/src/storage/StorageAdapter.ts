@@ -6,6 +6,7 @@ import type {
   Expense,
   Merchant,
   PaymentMethod,
+  RecurringExpense,
   SalaryCycle,
   Subcategory,
 } from '../types/models';
@@ -37,4 +38,5 @@ export interface StorageAdapter {
   salaryCycles: StorageTable<SalaryCycle>;
   expenses: StorageTable<Expense>;
   activities: StorageTable<Activity>;
+  recurring: StorageTable<RecurringExpense>;
 }

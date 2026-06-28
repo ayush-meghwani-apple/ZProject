@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Chat, { initialChatMessages, type ChatMessage } from './components/Chat';
 import Dashboard from './components/Dashboard';
 import Reports from './components/Reports';
 import Reels from './components/Reels';
 import Categories from './components/Categories';
 import Settings from './components/Settings';
-import { ExpenseRepository } from './repository/expenseRepository';
-import { BackupRepository } from './repository/backupRepository';
+import { RecurringRepository } from './repository/recurringRepository';
 
 type Tab = 'chat' | 'dashboard' | 'reports' | 'reels' | 'categories' | 'settings';
 
@@ -19,23 +18,64 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
+const CHAT_KEY = 'expense:chat';
+
+function loadChat(): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(CHAT_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(parsed) && parsed.length) return parsed as ChatMessage[];
+  } catch {
+    /* ignore corrupt/unavailable storage */
+  }
+  return initialChatMessages;
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('chat');
-  // Chat history lives here so it survives tab switches (until page refresh).
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(initialChatMessages);
-  // Bumped whenever data changes, so other tabs reload when shown.
-  const [version, setVersion] = useState(0);
-  const [expenseCount, setExpenseCount] = useState(0);
-  const onChange = () => setVersion((v) => v + 1);
+  // Chat history persists across app restarts so typed notes/reminders stay.
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(loadChat);
 
   useEffect(() => {
-    ExpenseRepository.getExpenses().then((e) => setExpenseCount(e.length));
-  }, [version]);
+    try {
+      // Cap history so storage can't grow without bound.
+      localStorage.setItem(CHAT_KEY, JSON.stringify(chatMessages.slice(-200)));
+    } catch {
+      /* ignore */
+    }
+  }, [chatMessages]);
+  // Bumped whenever data changes, so other tabs reload when shown.
+  const [version, setVersion] = useState(0);
+  const onChange = () => setVersion((v) => v + 1);
 
-  const days = BackupRepository.daysSinceBackup();
-  const backupStale = days === null || days >= 7;
-  const showBackupReminder = expenseCount > 0 && backupStale;
-  const reminderText = days === null ? 'no backup yet' : `last backup ${days}d ago`;
+  // Generate any due recurring expenses once when the app loads.
+  useEffect(() => {
+    RecurringRepository.runDue().then((created) => {
+      if (created > 0) setVersion((v) => v + 1);
+    });
+  }, []);
+
+  // Horizontal swipe to move between tabs (left = next, right = previous).
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Only treat clearly-horizontal, deliberate swipes as a tab change.
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const idx = TABS.findIndex((x) => x.id === tab);
+    if (dx < 0 && idx < TABS.length - 1) setTab(TABS[idx + 1].id);
+    else if (dx > 0 && idx > 0) setTab(TABS[idx - 1].id);
+  }
 
   return (
     <div className="app">
@@ -44,13 +84,7 @@ export default function App() {
         <span className="pill">{TABS.find((t) => t.id === tab)?.label}</span>
       </header>
 
-      {showBackupReminder && (
-        <button className="banner" onClick={() => setTab('settings')}>
-          ⚠️ Back up your expenses — {reminderText}. Tap to export.
-        </button>
-      )}
-
-      <main className="app__body">
+      <main className="app__body" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {tab === 'chat' && (
           <Chat messages={chatMessages} setMessages={setChatMessages} onChange={onChange} />
         )}

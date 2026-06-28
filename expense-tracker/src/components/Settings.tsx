@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { cycleName, cycleLabel } from '../core/salaryCycle';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import { BackupRepository } from '../repository/backupRepository';
+import { getPrefs, setPrefs } from '../core/preferences';
+import RecurringManager from './RecurringManager';
 import {
   ensurePersistentStorage,
   formatBytes,
@@ -33,6 +35,7 @@ export default function Settings({ version, onChange }: Props) {
   const [persisted, setPersisted] = useState(false);
   const [usage, setUsage] = useState('');
   const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [bigThreshold, setBigThreshold] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -45,14 +48,16 @@ export default function Settings({ version, onChange }: Props) {
     const est = await getStorageEstimate();
     setUsage(est ? `${formatBytes(est.usage)} used` : 'unknown');
     setLastBackup(BackupRepository.getLastBackupAt());
+    setBigThreshold(String(getPrefs().bigExpenseThreshold || ''));
   }
-
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
   const open = cycles.find((c) => !c.endDate);
+  const backupDays = BackupRepository.daysSinceBackup();
+  const backupStale = lastBackup === null || backupDays === null || backupDays >= 7;
 
   async function saveStartDate() {
     if (!dateValue) return;
@@ -140,6 +145,14 @@ export default function Settings({ version, onChange }: Props) {
             {lastBackup ? new Date(lastBackup).toLocaleString('en-IN') : 'never'}
           </span>
         </div>
+        {backupStale && (
+          <div className="row">
+            <span>Reminder</span>
+            <span className="pill pill--warn">
+              {backupDays === null ? 'no backup yet' : `${backupDays}d since backup`}
+            </span>
+          </div>
+        )}
         {!persisted && (
           <button className="btn" style={{ marginTop: 12 }} onClick={makePersistent}>
             Make storage persistent
@@ -204,21 +217,36 @@ export default function Settings({ version, onChange }: Props) {
         </button>
       </div>
 
+      <RecurringManager version={version} onChange={onChange} />
+
       <div className="card">
-        <h3>All Cycles</h3>
-        {cycles.length === 0 ? (
-          <div className="muted">No cycles yet.</div>
-        ) : (
-          cycles.map((c) => (
-            <div className="row" key={c.id}>
-              <div className="row__left">
-                <strong>{cycleName(c)}</strong>
-                {!c.endDate && <span className="pill">current</span>}
-              </div>
-              <span className="muted">{cycleLabel(c)}</span>
-            </div>
-          ))
-        )}
+        <h3>Reels Highlight</h3>
+        <div className="muted" style={{ marginBottom: 12 }}>
+          On the Reels page, any expense at or above this amount gets an
+          attention-grabbing “big spend” look. Leave empty (or 0) to turn off.
+        </div>
+        <div className="inline">
+          <input
+            className="input"
+            type="number"
+            inputMode="decimal"
+            min={0}
+            placeholder="e.g. 2000"
+            value={bigThreshold}
+            onChange={(e) => setBigThreshold(e.target.value)}
+          />
+          <button
+            className="btn"
+            onClick={() => {
+              const n = Math.max(0, parseFloat(bigThreshold) || 0);
+              setPrefs({ bigExpenseThreshold: n });
+              setBigThreshold(String(n || ''));
+              onChange();
+            }}
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       <div className="card">

@@ -32,4 +32,5 @@ export const indexedDbAdapter: StorageAdapter = {
   salaryCycles: wrap(db.salaryCycles),
   expenses: wrap(db.expenses),
   activities: wrap(db.activities),
+  recurring: wrap(db.recurring),
 };

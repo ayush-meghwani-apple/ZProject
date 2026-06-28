@@ -4,8 +4,18 @@ import { ActivityRepository } from './activityRepository';
 import type { Alias, Category, ID, Subcategory } from '../types/models';
 
 export const CategoryRepository = {
-  getCategories(): Promise<Category[]> {
-    return storage.categories.getAll();
+  async getCategories(): Promise<Category[]> {
+    const all = await storage.categories.getAll();
+    // Stable, user-defined order. Categories without an explicit order (older
+    // data) fall back to the end, keeping their original relative order.
+    return all
+      .map((c, i) => ({ c, i }))
+      .sort((a, b) => {
+        const ao = a.c.order ?? Number.MAX_SAFE_INTEGER;
+        const bo = b.c.order ?? Number.MAX_SAFE_INTEGER;
+        return ao === bo ? a.i - b.i : ao - bo;
+      })
+      .map((x) => x.c);
   },
 
   getSubcategories(): Promise<Subcategory[]> {
@@ -40,6 +50,20 @@ export const CategoryRepository = {
     const subs = await this.getSubcategoriesFor(id);
     await Promise.all(subs.map((s) => storage.subcategories.delete(s.id)));
     await ActivityRepository.log('category.deleted', 'category', id);
+  },
+
+  /** Move a category up or down one position and persist the new order. */
+  async moveCategory(id: ID, direction: -1 | 1): Promise<void> {
+    const ordered = await this.getCategories();
+    const idx = ordered.findIndex((c) => c.id === id);
+    if (idx === -1) return;
+    const swapWith = idx + direction;
+    if (swapWith < 0 || swapWith >= ordered.length) return;
+    [ordered[idx], ordered[swapWith]] = [ordered[swapWith], ordered[idx]];
+    // Re-number everyone so order is always contiguous and well-defined.
+    await Promise.all(
+      ordered.map((c, i) => storage.categories.put({ ...c, order: i })),
+    );
   },
 
   async addSubcategory(categoryId: ID, name: string, icon?: string): Promise<Subcategory> {

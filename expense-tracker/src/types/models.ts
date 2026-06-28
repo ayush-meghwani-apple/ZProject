@@ -11,6 +11,7 @@ export interface Category {
   name: string;
   icon: string;
   color: string;
+  order?: number;
   archived?: boolean;
 }
 
@@ -56,6 +57,27 @@ export interface SalaryCycle {
   endDate?: ISODate; // open cycle has no endDate
   salaryReceived: number;
   note?: string;
+}
+
+export type RecurringFrequency = 'daily' | 'weekly' | 'monthly';
+
+/**
+ * A template that auto-creates an expense on a schedule (e.g. rent on the 5th
+ * of every month). Generated separately from the chat to keep entry simple.
+ */
+export interface RecurringExpense {
+  id: ID;
+  amount: number;
+  categoryId?: ID;
+  subcategoryId?: ID;
+  note?: string;
+  frequency: RecurringFrequency;
+  dayOfWeek?: number; // 0-6, used for weekly
+  dayOfMonth?: number; // 1-31, used for monthly
+  nextDate: ISODate; // next local-midnight at which to generate an expense
+  active: boolean;
+  createdAt: ISODate;
+  updatedAt: ISODate;
 }
 
 export interface Expense {
@@ -110,5 +132,6 @@ export interface BackupFile {
     salaryCycles: SalaryCycle[];
     expenses: Expense[];
     activities: Activity[];
+    recurring?: RecurringExpense[];
   };
 }

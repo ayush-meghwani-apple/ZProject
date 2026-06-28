@@ -13,6 +13,7 @@ export type ParsedCommand =
     }
   | { kind: 'startCycle' }
   | { kind: 'help' }
+  | { kind: 'note'; text: string }
   | { kind: 'unknown'; rawText: string; reason: string };
 
 const NUMBER_RE = /(?:₹|rs\.?|inr)?\s*(\d+(?:\.\d{1,2})?)/i;
@@ -170,13 +171,12 @@ export function parseInput(
   }
 
   if (isNaN(amount)) {
-    return {
-      kind: 'unknown',
-      rawText: raw,
-      reason: calcMode
-        ? 'Could not calculate that expression.'
-        : 'Could not find an amount. Try "tea 20".',
-    };
+    if (calcMode) {
+      return { kind: 'unknown', rawText: raw, reason: 'Could not calculate that expression.' };
+    }
+    // No amount and not a command: keep it as a free-form note / reminder that
+    // stays in the chat instead of being rejected.
+    return { kind: 'note', text: raw };
   }
   if (amount <= 0) {
     return { kind: 'unknown', rawText: raw, reason: 'Amount must be greater than zero.' };
@@ -237,23 +237,11 @@ export function parseInput(
     }
   }
 
-  // 2) Subcategory by full name (longest names first for specificity).
-  if (categoryId === undefined) {
-    const subs = [...subcategories].sort(
-      (a, b) => nameTokens(b.name).length - nameTokens(a.name).length,
-    );
-    for (const s of subs) {
-      const at = findRun(nameTokens(s.name));
-      if (at !== -1) {
-        categoryId = s.categoryId;
-        subcategoryId = s.id;
-        markRun(at, nameTokens(s.name).length);
-        break;
-      }
-    }
-  }
-
-  // 3) Category by full name.
+  // 2) Category by full name (longest names first for specificity). We match
+  //    the category *before* any global subcategory match so that when both a
+  //    category and one of its subcategories are typed (e.g. "Home Mobile
+  //    Recharge"), the subcategory binds to the right parent — not a
+  //    same-named subcategory under a different category.
   if (categoryId === undefined) {
     const cats = [...categories].sort(
       (a, b) => nameTokens(b.name).length - nameTokens(a.name).length,
@@ -268,7 +256,7 @@ export function parseInput(
     }
   }
 
-  // 4) Category known but no subcategory yet: match a subcategory *within* it
+  // 3) Category known but no subcategory yet: match a subcategory *within* it
   //    (e.g. "home shopping" -> Home / Shopping; disambiguates shared names).
   if (categoryId !== undefined && subcategoryId === undefined) {
     const subs = subcategories
@@ -277,6 +265,23 @@ export function parseInput(
     for (const s of subs) {
       const at = findRun(nameTokens(s.name));
       if (at !== -1) {
+        subcategoryId = s.id;
+        markRun(at, nameTokens(s.name).length);
+        break;
+      }
+    }
+  }
+
+  // 4) No category matched at all: fall back to a global subcategory match by
+  //    full name (longest first), which also sets the parent category.
+  if (categoryId === undefined) {
+    const subs = [...subcategories].sort(
+      (a, b) => nameTokens(b.name).length - nameTokens(a.name).length,
+    );
+    for (const s of subs) {
+      const at = findRun(nameTokens(s.name));
+      if (at !== -1) {
+        categoryId = s.categoryId;
         subcategoryId = s.id;
         markRun(at, nameTokens(s.name).length);
         break;

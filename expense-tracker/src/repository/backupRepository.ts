@@ -17,6 +17,7 @@ export const BackupRepository = {
       salaryCycles,
       expenses,
       activities,
+      recurring,
     ] = await Promise.all([
       storage.categories.getAll(),
       storage.subcategories.getAll(),
@@ -27,6 +28,7 @@ export const BackupRepository = {
       storage.salaryCycles.getAll(),
       storage.expenses.getAll(),
       storage.activities.getAll(),
+      storage.recurring.getAll(),
     ]);
 
     return {
@@ -43,6 +45,7 @@ export const BackupRepository = {
         salaryCycles,
         expenses,
         activities,
+        recurring,
       },
     };
   },
@@ -71,6 +74,7 @@ export const BackupRepository = {
     await storage.salaryCycles.bulkPut(d.salaryCycles ?? []);
     await storage.expenses.bulkPut(d.expenses ?? []);
     await storage.activities.bulkPut(d.activities ?? []);
+    await storage.recurring.bulkPut(d.recurring ?? []);
 
     await ActivityRepository.log('data.imported', 'backup', newId(), {
       expenses: d.expenses?.length ?? 0,

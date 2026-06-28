@@ -40,7 +40,8 @@ Cycles (this app tracks expenses, not income):
 • "start cycle"  → begins a new cycle from now
 • "salary 50000" → also starts a cycle (income optional)
 
-Unknown words still save as a note — categorize later.`;
+No amount? It's kept as a note/reminder in the chat.
+Unknown words on an expense still save as its note.`;
 
 // Quick-tap keys shown above the input. "#" opens category suggestions; the
 // rest are arithmetic operators understood by the calculator.
@@ -81,6 +82,13 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Continue id generation past any persisted chat history so keys stay unique.
+  useEffect(() => {
+    const maxId = messages.reduce((m, x) => Math.max(m, x.id), 0);
+    if (msgId <= maxId) msgId = maxId + 1;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function pushBot(text: string, error = false) {
     setMessages((m) => [...m, { id: nextId(), role: 'bot', text, error }]);
@@ -242,6 +250,11 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
       return;
     }
 
+    if (cmd.kind === 'note') {
+      pushBot('📝 Saved as a note.');
+      return;
+    }
+
     if (cmd.kind === 'unknown') {
       pushBot(cmd.reason, true);
       return;
@@ -297,6 +310,8 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
               type="button"
               key={s.key}
               className="suggest__chip"
+              // Keep the keyboard open: don't let the tap move focus off the input.
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => applySuggestion(s)}
             >
               {s.label}
@@ -311,6 +326,7 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
             type="button"
             key={s.label}
             className={`symbolbar__key${s.insert === '#' ? ' symbolbar__key--accent' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => insertSymbol(s.insert)}
             tabIndex={-1}
           >

@@ -7,7 +7,23 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
+_(nothing open right now — add a bullet here whenever you think of something)_
+
+
+
 ## Done
+
+- ✅ **(2026-06-28)** Duplicate sub-category went to the wrong parent. Typing `200 mobile` and picking **Home → Mobile Recharge** used to save under **Ayush → Mobile Recharge**. The parser now matches the **category name first**, then resolves the sub-category *inside that category*, so the one you pick is the one that's saved.
+- ✅ **(2026-06-28)** **Swipe between tabs.** You can now swipe left/right anywhere on the screen to move between the bottom tabs, like a normal phone gesture (vertical scrolling still works as before).
+- ✅ **(2026-06-28)** **Recurring (repeat) expenses.** Settings now has a **Recurring** card where you can set up expenses that repeat **daily / weekly / monthly** (e.g. rent on a fixed day). They're added automatically when you open the app; if a date needs changing you can edit that one expense normally. Recurring rules are included in backups. (Kept out of chat on purpose so chat stays simple.)
+- ✅ **(2026-06-28)** **Keyboard no longer jerks.** Tapping a suggestion chip or a maths/`#` key used to make the keyboard close and reopen on every tap. The input now keeps focus, so the keyboard stays put.
+- ✅ **(2026-06-28)** **Multi-word sub-categories fixed.** `200 Ayush Mobile Recharge , extra internet` now saves to **Ayush → Mobile Recharge** with the note **“extra internet”** — the last word of a two-word sub-category no longer leaks into the note.
+- ✅ **(2026-06-28)** **Removed “All Cycles” from Settings** — it wasn't needed.
+- ✅ **(2026-06-28)** **Backup banner moved.** The orange “Back up your expenses” bar no longer sits on top of every tab. Instead, Settings → Data Safety shows a small reminder pill only when a backup is overdue (7+ days / never).
+- ✅ **(2026-06-28)** **Reorder categories.** Each category in the Categories screen now has ⬆️/⬇️ buttons to move it up or down, so you can bring your main ones to the top. (Used buttons instead of drag-and-drop because they're far more reliable on a phone; the chosen order is saved.)
+- ✅ **(2026-06-28)** **Chat notes/reminders.** Send a message with **no amount** and it's kept in the chat as a note/reminder instead of being ignored, and your chat history now **persists across app restarts**. (Unknown words on a real expense still save as that expense's note.)
+- ✅ **(2026-06-28)** **Reels excitement.** Big expenses now stand out on the Reels page with a hot rose/pink gradient background, a glowing amount, and a pulsing **“💸 Big spend!”** badge. The threshold is adjustable in **Settings → Reels Highlight** (set 0 / empty to turn it off).
+
 
 - ✅ **(2026-06-28)** Fixed the whole-app bounce: when you scrolled past the top/bottom the entire screen used to rubber-band up and down. The page/body is now locked and only the inner content area scrolls, with overscroll contained — so reaching the end simply stops.
 - ✅ **(2026-06-28)** Dashboard & Reports reworked so you can see **every** category and its sub-categories (not just the top 5).

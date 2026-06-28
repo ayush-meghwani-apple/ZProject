@@ -4,6 +4,7 @@ import { CategoryRepository } from '../repository/categoryRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import { cycleName } from '../core/salaryCycle';
 import { formatINR, formatDate } from '../core/util';
+import { getPrefs } from '../core/preferences';
 import EditExpenseModal from './EditExpenseModal';
 import type { Category, Expense, SalaryCycle, Subcategory } from '../types/models';
 
@@ -30,6 +31,7 @@ export default function Reels({ version, onChange }: Props) {
   const [cycleId, setCycleId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [active, setActive] = useState(0);
+  const [bigThreshold, setBigThreshold] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
 
@@ -44,6 +46,7 @@ export default function Reels({ version, onChange }: Props) {
     setCategories(c);
     setSubcategories(s);
     setCycles(cy);
+    setBigThreshold(getPrefs().bigExpenseThreshold);
 
     // Default to the current (open) cycle on first load.
     if (!initialized.current && cy.length > 0) {
@@ -145,17 +148,19 @@ export default function Reels({ version, onChange }: Props) {
               const cat = catFor(e);
               const color = cat?.color ?? '#6366f1';
               const sub = subOf(e);
+              const big = bigThreshold > 0 && e.amount >= bigThreshold;
               return (
                 <section
-                  className="reel"
+                  className={`reel${big ? ' reel--big' : ''}`}
                   key={e.id}
                   style={{
-                    background: `radial-gradient(120% 80% at 50% 0%, ${tint(
-                      color,
-                      0.32,
-                    )} 0%, transparent 60%)`,
+                    background: big
+                      ? 'radial-gradient(130% 90% at 50% 0%, rgba(244, 63, 94, 0.45) 0%, rgba(217, 70, 239, 0.18) 45%, transparent 70%)'
+                      : `radial-gradient(120% 80% at 50% 0%, ${tint(color, 0.32)} 0%, transparent 60%)`,
                   }}
                 >
+                  {big && <div className="reel__flame">💸 Big spend!</div>}
+
                   <div className="reel__icon" style={{ background: tint(color, 0.18) }}>
                     {cat?.icon ?? '📦'}
                   </div>

@@ -61,6 +61,12 @@ export default function Categories({ version, onChange }: Props) {
     onChange();
   }
 
+  async function move(id: string, direction: -1 | 1) {
+    await CategoryRepository.moveCategory(id, direction);
+    await load();
+    onChange();
+  }
+
   async function saveCategory() {
     if (!editCat) return;
     const original = categories.find((c) => c.id === editCat.id);
@@ -124,7 +130,7 @@ export default function Categories({ version, onChange }: Props) {
         </div>
       </div>
 
-      {categories.map((cat) => {
+      {categories.map((cat, idx) => {
         const subs = subcategories.filter((s) => s.categoryId === cat.id);
         const isEditing = editCat?.id === cat.id;
         return (
@@ -160,6 +166,22 @@ export default function Categories({ version, onChange }: Props) {
                     </strong>
                   </div>
                   <div className="inline">
+                    <button
+                      className="iconbtn"
+                      onClick={() => move(cat.id, -1)}
+                      disabled={idx === 0}
+                      title="Move up"
+                    >
+                      ⬆️
+                    </button>
+                    <button
+                      className="iconbtn"
+                      onClick={() => move(cat.id, 1)}
+                      disabled={idx === categories.length - 1}
+                      title="Move down"
+                    >
+                      ⬇️
+                    </button>
                     <button
                       className="iconbtn"
                       onClick={() => setEditCat({ id: cat.id, name: cat.name, icon: cat.icon })}
