@@ -63,8 +63,21 @@ export default function App() {
   const dirLock = useRef<'h' | 'v' | null>(null);
   const noSwipe = useRef(false);
   const [swipeX, setSwipeX] = useState(0);
+  // Direction of the last tab change, so the new view slides in from the
+  // correct side for a classy, deliberate transition.
+  const [slideDir, setSlideDir] = useState<'next' | 'prev'>('next');
 
   const tabIdx = TABS.findIndex((x) => x.id === tab);
+
+  // Switch tabs, remembering whether we're moving forward or back so the
+  // incoming view slides in from the matching edge.
+  function goToTab(id: Tab) {
+    const to = TABS.findIndex((x) => x.id === id);
+    if (to === tabIdx || to < 0) return;
+    setSlideDir(to > tabIdx ? 'next' : 'prev');
+    setTab(id);
+  }
+
   // While dragging horizontally, which tab would we land on?
   const swipeTarget =
     swipeX < -20 && tabIdx < TABS.length - 1
@@ -108,8 +121,8 @@ export default function App() {
     noSwipe.current = false;
     setSwipeX(0);
     if (!horizontal || Math.abs(dx) < 60) return;
-    if (dx < 0 && tabIdx < TABS.length - 1) setTab(TABS[tabIdx + 1].id);
-    else if (dx > 0 && tabIdx > 0) setTab(TABS[tabIdx - 1].id);
+    if (dx < 0 && tabIdx < TABS.length - 1) goToTab(TABS[tabIdx + 1].id);
+    else if (dx > 0 && tabIdx > 0) goToTab(TABS[tabIdx - 1].id);
   }
 
   return (
@@ -140,7 +153,7 @@ export default function App() {
         )}
         <div
           key={tab}
-          className="app__view"
+          className={`app__view app__view--${slideDir}`}
           style={
             swipeX !== 0
               ? { transform: `translateX(${swipeX * 0.18}px)`, transition: 'none' }
@@ -163,7 +176,7 @@ export default function App() {
           <button
             key={t.id}
             className={tab === t.id ? 'active' : ''}
-            onClick={() => setTab(t.id)}
+            onClick={() => goToTab(t.id)}
           >
             <span className="icon">{t.icon}</span>
             {t.label}

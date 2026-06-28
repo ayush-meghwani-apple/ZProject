@@ -12,6 +12,11 @@ _(nothing open right now — add a bullet here whenever you think of something)_
 
 ## Done
 
+- ✅ **(2026-06-28)** **You can see which category you moved.** After tapping ⬆️/⬇️ the moved category briefly **glows** and shows a small **"↕ moved"** badge that fades on its own — so even when a short list jumps around, it's clear which one shifted.
+- ✅ **(2026-06-28)** **Classier tab transitions.** Switching tabs (by tap or swipe) now does a smooth directional **slide + fade** — the new tab slides in from the right when going forward, from the left when going back — instead of a plain snap. (Tuned to ~0.5s; a full 1–2s felt sluggish when tapping around, but it now feels deliberate and clean.)
+- ✅ **(2026-06-28)** **Aliases are now editable.** The "N aliases" pill on each sub-category is a button — tap it to see the words that match it in chat (e.g. "chai" → Tea), **remove** any with ✕, or **add** your own. (Aliases are how typed words get matched to a category/sub-category.)
+
+
 - ✅ **(2026-06-28)** **Reordering now follows the moved category.** When you tap ⬆️/⬇️, the screen now scrolls to keep the moved category centered in view, so you can keep tapping to move it across a long list without manually scrolling.
 - ✅ **(2026-06-28)** **Slimmer tab bar.** Trimmed the extra blank space below the 6 bottom tabs (kept just the thin band iOS needs for the home indicator).
 - ✅ **(2026-06-28)** **No more chat auto-scroll jerk.** Opening the chat (by swipe or tap) now lands already scrolled to the latest message instead of visibly jumping; new incoming messages still scroll in smoothly.

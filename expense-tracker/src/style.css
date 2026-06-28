@@ -89,15 +89,42 @@ body {
 .app__view {
   height: 100%;
   transition: transform 0.22s ease;
-  animation: viewIn 0.22s ease;
 }
 
-@keyframes viewIn {
-  from {
-    opacity: 0.35;
-    transform: translateX(0) scale(0.985);
+/* Directional slide+fade when switching tabs (the view remounts via its React
+   key). Forward (higher tab) slides in from the right, back from the left, with
+   a soft easing so it feels deliberate and classy rather than snapping. */
+.app__view--next {
+  animation: viewSlideNext 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.app__view--prev {
+  animation: viewSlidePrev 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes viewSlideNext {
+  0% {
+    opacity: 0;
+    transform: translateX(42px) scale(0.985);
   }
-  to {
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes viewSlidePrev {
+  0% {
+    opacity: 0;
+    transform: translateX(-42px) scale(0.985);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
     opacity: 1;
     transform: translateX(0) scale(1);
   }
@@ -588,6 +615,120 @@ body {
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--muted);
+}
+
+/* Tappable alias-count pill that opens the alias editor. */
+.pill--btn {
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.pill--btn:hover {
+  color: var(--text);
+}
+
+.pill--active {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #c7d2fe;
+}
+
+/* Inline editor for the words that match a subcategory. */
+.alias-editor {
+  padding: 4px 4px 10px;
+  border-top: 1px dashed var(--border);
+  margin-top: 4px;
+}
+
+.alias-editor__hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 8px 0;
+  line-height: 1.4;
+}
+
+.alias-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.alias-empty {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.alias-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.alias-chip__x {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.alias-chip__x:hover {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.15);
+}
+
+/* Brief highlight on a category card right after it's moved up/down, so you
+   can see which one shifted even when the list scrolls. */
+.card--moved {
+  animation: cardMoved 1.8s ease;
+}
+
+@keyframes cardMoved {
+  0% {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.9), 0 0 22px rgba(99, 102, 241, 0.6);
+  }
+  60% {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.6), 0 0 18px rgba(99, 102, 241, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+.moved-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+  animation: movedBadge 1.8s ease forwards;
+}
+
+@keyframes movedBadge {
+  0%,
+  70% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 .section-title {

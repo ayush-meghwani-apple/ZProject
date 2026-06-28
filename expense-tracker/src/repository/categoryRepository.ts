@@ -108,4 +108,8 @@ export const CategoryRepository = {
     await storage.aliases.put(alias);
     return alias;
   },
+
+  async deleteAlias(id: ID): Promise<void> {
+    await storage.aliases.delete(id);
+  },
 };
