@@ -7,6 +7,7 @@ import { parseInput } from '../core/parser';
 import { cycleName } from '../core/salaryCycle';
 import { formatINR, formatDate } from '../core/util';
 import { getPrefs } from '../core/preferences';
+import { playSound } from '../core/sound';
 import EditExpenseModal from './EditExpenseModal';
 import type { Alias, Category, Expense, SalaryCycle, Subcategory } from '../types/models';
 
@@ -117,7 +118,9 @@ export default function Reels({ version, onChange }: Props) {
   }
 
   async function toggleReviewed(e: Expense) {
-    await ExpenseRepository.setReviewed(e.id, !e.reviewed);
+    const next = !e.reviewed;
+    await ExpenseRepository.setReviewed(e.id, next);
+    playSound(next ? 'success' : 'note');
     await load();
     onChange();
   }
@@ -142,6 +145,7 @@ export default function Reels({ version, onChange }: Props) {
       note: cmd.note,
       rawText: note.text,
     });
+    playSound(cmd.categoryId ? 'success' : 'uncategorized');
     NotesRepository.setDone(note.id, true);
     setNoteAmt((m) => ({ ...m, [note.id]: '' }));
     await load();

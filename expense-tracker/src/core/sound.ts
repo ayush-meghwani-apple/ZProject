@@ -13,10 +13,15 @@ interface Tone {
 }
 
 const PATTERNS: Record<SoundKind, Tone[]> = {
-  // Happy rising two-note chime for a clean, categorized expense.
+  // Triumphant rising "ta-daa" fanfare for a clean, categorized expense — a
+  // major arpeggio (C–E–G) that lands on a bright high C, so a successful add
+  // feels like a little win. (Synthesized, so it stays offline and adds no
+  // bundle weight; a real meme clip would mean shipping a copyrighted file.)
   success: [
-    { freq: 659.25, start: 0, dur: 0.12 },
-    { freq: 987.77, start: 0.1, dur: 0.18 },
+    { freq: 523.25, start: 0, dur: 0.1 },
+    { freq: 659.25, start: 0.08, dur: 0.1 },
+    { freq: 783.99, start: 0.16, dur: 0.1 },
+    { freq: 1046.5, start: 0.24, dur: 0.28 },
   ],
   // Soft single blip for a saved note.
   note: [{ freq: 523.25, start: 0, dur: 0.18 }],

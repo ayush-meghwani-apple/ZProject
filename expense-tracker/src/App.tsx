@@ -61,6 +61,7 @@ export default function App() {
   // hint of where the swipe is heading instead of switching with a jolt.
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const dirLock = useRef<'h' | 'v' | null>(null);
+  const noSwipe = useRef(false);
   const [swipeX, setSwipeX] = useState(0);
 
   const tabIdx = TABS.findIndex((x) => x.id === tab);
@@ -76,12 +77,15 @@ export default function App() {
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
     dirLock.current = null;
+    // Don't steal the gesture from horizontally-scrollable areas (e.g. the
+    // category suggestion strip or the symbol bar in chat).
+    noSwipe.current = !!(e.target as HTMLElement).closest?.('[data-noswipe]');
     setSwipeX(0);
   }
 
   function onTouchMove(e: React.TouchEvent) {
     const start = touchStart.current;
-    if (!start) return;
+    if (!start || noSwipe.current) return;
     const t = e.touches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
@@ -97,10 +101,11 @@ export default function App() {
   }
 
   function onTouchEnd() {
-    const horizontal = dirLock.current === 'h';
+    const horizontal = dirLock.current === 'h' && !noSwipe.current;
     const dx = swipeX;
     touchStart.current = null;
     dirLock.current = null;
+    noSwipe.current = false;
     setSwipeX(0);
     if (!horizontal || Math.abs(dx) < 60) return;
     if (dx < 0 && tabIdx < TABS.length - 1) setTab(TABS[tabIdx + 1].id);

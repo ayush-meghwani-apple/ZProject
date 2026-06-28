@@ -7,11 +7,17 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-_(nothing open right now — add a bullet here whenever you think of something)_
-
-
+- **Trending meme success sound (the "faaaaa").** I made the success sound a more exciting, triumphant rising **fanfare** (a little "ta‑daa" when an expense lands cleanly). I deliberately did **not** ship the actual meme clip: it's a copyrighted audio file and bundling it would also break the offline‑only design (right now there are zero audio files — everything is synthesized). If you want that exact sound, drop an `.mp3`/`.wav` into the project and tell me — I'll wire it up to play on success.
 
 ## Done
+
+- ✅ **(2026-06-28)** **Chat input pinned to the bottom.** The typing box + symbol bar now sit just above the tab bar even when there are only a few messages — no more empty gap. (Root cause: the swipe wrapper added last release had no height, which collapsed the chat/reels layout; fixed with a proper flex height chain.)
+- ✅ **(2026-06-28)** **`#` category list scrolls without flipping tabs.** The category/symbol strips now scroll horizontally on their own; a sideways drag there no longer gets read as a tab swipe.
+- ✅ **(2026-06-28)** **Reels are full‑screen again.** One reel fills the screen like Instagram/Shorts, the cycle bar + counter stay pinned, and only the reels scroll (same flex‑height fix as the chat gap).
+- ✅ **(2026-06-28)** **More sound cues.** Converting a note to an expense and reviewing / un‑reviewing a big‑spend reel now play sounds too (not just adding from chat).
+- ✅ **(2026-06-28)** **Drag‑and‑drop reordering, done properly.** Pressing the ⠿ handle now lifts a **floating "ghost"** of the category that follows your finger, the list **auto‑scrolls** when you drag near the top/bottom edge (so you can drop a category beyond the ones currently on screen), a **dashed gap** shows exactly where it'll land, and **left/right tab swiping is disabled while you drag**.
+- ✅ **(2026-06-28)** **Smoother tab swiping.** Swiping no longer fights horizontal scroll areas (the `#` list) or an active drag; while you swipe the current view follows your finger and the next tab fades in instead of snapping.
+
 
 - ✅ **(2026-06-28)** **Cleaner tab swiping.** Diagonal swipes no longer cause a jarring jump: the gesture now locks to either vertical scroll or horizontal swipe on the first movement, so scrolling won't accidentally flip tabs. While you swipe sideways a floating hint shows which tab you're heading to (e.g. `📈 Reports ›`), the content follows your finger a little, and the new tab fades in smoothly instead of snapping.
 - ✅ **(2026-06-28)** **Review a big spend.** On a “big spend” reel you can now tap **✅ Reviewed** to acknowledge it — the card turns calm **green** with a steady “✅ Reviewed” badge (no more pulsing pink) so it stops grabbing your attention. Tap **↩️ Unreview** to flip it back.

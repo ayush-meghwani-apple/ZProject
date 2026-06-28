@@ -19,11 +19,25 @@ export default function Categories({ version, onChange }: Props) {
   const [editSub, setEditSub] = useState<{ id: string; name: string; icon: string } | null>(null);
 
   // Drag-to-reorder state. dragId is the category being dragged; dragOrder is
-  // the live ordering shown while dragging. Card elements are tracked so we can
-  // work out where the finger is.
+  // the live ordering shown while dragging. We mirror both into refs so the
+  // requestAnimationFrame auto-scroll loop always sees current values. A ghost
+  // element follows the finger, and the list auto-scrolls near the edges so you
+  // can drop a category beyond the ones currently on screen.
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOrder, setDragOrder] = useState<string[]>([]);
+  const [ghostY, setGhostY] = useState(0);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const dragIdRef = useRef<string | null>(null);
+  const dragOrderRef = useRef<string[]>([]);
+  const pointerY = useRef(0);
+  const scroller = useRef<HTMLElement | null>(null);
+  const rafId = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (rafId.current !== null) cancelAnimationFrame(rafId.current);
+    };
+  }, []);
 
   async function load() {
     const [c, s, a] = await Promise.all([
@@ -69,31 +83,77 @@ export default function Categories({ version, onChange }: Props) {
   }
 
   function startDrag(e: React.PointerEvent, id: string) {
+    e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const order = categories.map((c) => c.id);
+    dragIdRef.current = id;
+    dragOrderRef.current = order;
+    pointerY.current = e.clientY;
+    scroller.current = (e.currentTarget as HTMLElement).closest('.app__body');
     setDragId(id);
-    setDragOrder(categories.map((c) => c.id));
+    setDragOrder(order);
+    setGhostY(e.clientY);
+    if (rafId.current === null) rafId.current = requestAnimationFrame(autoScroll);
   }
 
-  function onDragMove(e: React.PointerEvent) {
-    if (!dragId) return;
-    const y = e.clientY;
-    // Insertion index = how many other cards have their midpoint above the finger.
+  // Recompute the drop slot from the finger's current Y and update the order.
+  function reorderTo(y: number) {
+    const id = dragIdRef.current;
+    if (!id) return;
     let target = 0;
-    for (const id of dragOrder) {
-      if (id === dragId) continue;
-      const el = cardRefs.current.get(id);
+    for (const cid of dragOrderRef.current) {
+      if (cid === id) continue;
+      const el = cardRefs.current.get(cid);
       if (!el) continue;
       const r = el.getBoundingClientRect();
       if (y > r.top + r.height / 2) target++;
     }
-    const order = dragOrder.filter((id) => id !== dragId);
-    order.splice(target, 0, dragId);
-    if (order.some((id, i) => id !== dragOrder[i])) setDragOrder(order);
+    const order = dragOrderRef.current.filter((cid) => cid !== id);
+    order.splice(target, 0, id);
+    if (order.some((cid, i) => cid !== dragOrderRef.current[i])) {
+      dragOrderRef.current = order;
+      setDragOrder(order);
+    }
+  }
+
+  // Runs every frame while dragging: scrolls the page when the finger is near
+  // the top/bottom edge, then re-evaluates the drop position.
+  function autoScroll() {
+    const sc = scroller.current;
+    if (dragIdRef.current && sc) {
+      const r = sc.getBoundingClientRect();
+      const EDGE = 80;
+      const y = pointerY.current;
+      let moved = false;
+      if (y < r.top + EDGE && sc.scrollTop > 0) {
+        sc.scrollTop -= Math.ceil((r.top + EDGE - y) / 6);
+        moved = true;
+      } else if (y > r.bottom - EDGE) {
+        sc.scrollTop += Math.ceil((y - (r.bottom - EDGE)) / 6);
+        moved = true;
+      }
+      if (moved) reorderTo(y);
+      rafId.current = requestAnimationFrame(autoScroll);
+    } else {
+      rafId.current = null;
+    }
+  }
+
+  function onDragMove(e: React.PointerEvent) {
+    if (!dragIdRef.current) return;
+    pointerY.current = e.clientY;
+    setGhostY(e.clientY);
+    reorderTo(e.clientY);
   }
 
   async function endDrag() {
-    if (!dragId) return;
-    const finalOrder = dragOrder;
+    if (!dragIdRef.current) return;
+    const finalOrder = dragOrderRef.current;
+    dragIdRef.current = null;
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
     setDragId(null);
     await CategoryRepository.setCategoryOrder(finalOrder);
     await load();
@@ -139,8 +199,18 @@ export default function Categories({ version, onChange }: Props) {
     return aliases.filter((a) => a.subcategoryId === subId).length;
   }
 
+  const draggingCat = dragId ? categories.find((c) => c.id === dragId) : null;
+
   return (
     <div className="page">
+      {draggingCat && (
+        <div className="drag-ghost" style={{ top: ghostY }}>
+          <span className="dot" style={{ background: draggingCat.color }} />
+          <strong>
+            {draggingCat.icon} {draggingCat.name}
+          </strong>
+        </div>
+      )}
       <div className="card">
         <h3>New Category</h3>
         <div className="inline" style={{ marginBottom: 10 }}>
@@ -205,6 +275,7 @@ export default function Categories({ version, onChange }: Props) {
                   <div className="row__left">
                     <span
                       className="drag-handle"
+                      data-noswipe
                       onPointerDown={(e) => startDrag(e, cat.id)}
                       onPointerMove={onDragMove}
                       onPointerUp={endDrag}

@@ -310,7 +310,7 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
       </div>
 
       {suggestions.length > 0 && (
-        <div className="suggest">
+        <div className="suggest" data-noswipe>
           {suggestions.map((s) => (
             <button
               type="button"
@@ -326,7 +326,7 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
         </div>
       )}
 
-      <div className="symbolbar">
+      <div className="symbolbar" data-noswipe>
         {SYMBOLS.map((s) => (
           <button
             type="button"
