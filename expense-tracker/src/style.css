@@ -288,6 +288,127 @@ body {
   font-size: 12px;
 }
 
+.goal__block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px dashed var(--border);
+  font-size: 13px;
+}
+
+.goal__block:first-child {
+  border-top: none;
+}
+
+.goal__block-name {
+  font-weight: 600;
+}
+
+.result__row .neg {
+  color: #fbbf24;
+}
+
+/* ---- Goal timeline scrubber ---- */
+.timeline {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.timeline__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.timeline__head strong {
+  font-size: 14px;
+}
+
+.timeline__range {
+  width: 100%;
+  margin: 12px 0 4px;
+  accent-color: var(--accent, #38bdf8);
+  cursor: pointer;
+}
+
+.timeline__read {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.timeline__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ---- Goal savings-plan builder ---- */
+.plan {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.plan__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.plan__head h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.planitem {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  margin: 10px 0;
+  background: var(--surface-2);
+}
+
+.planitem__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.planitem__label {
+  flex: 1;
+  min-width: 0;
+}
+
+.planitem__foot {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.chip {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.chip--recurring {
+  background: rgba(56, 189, 248, 0.18);
+  color: #7dd3fc;
+}
+
+.chip--lumpsum {
+  background: rgba(168, 85, 247, 0.18);
+  color: #c4b5fd;
+}
+
 .app__body {
   flex: 1;
   overflow-x: hidden;

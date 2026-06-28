@@ -13,7 +13,7 @@ interface AppDef {
 
 const APPS: AppDef[] = [
   { id: 'expensify', name: 'Expensify', icon: '🧾', section: 'Money' },
-  { id: 'goals', name: 'Goals', icon: '🎯', section: 'Planning' },
+  { id: 'goals', name: 'Questify', icon: '🧭', section: 'Planning' },
 ];
 
 // Listed in the drawer but not yet built.

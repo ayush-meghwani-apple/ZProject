@@ -99,21 +99,47 @@ export interface Expense {
 }
 
 /**
- * A financial goal you're saving towards. Projects an inflation-adjusted
- * future cost and the corpus a (optionally stepped-up) monthly SIP plus any
- * current savings should grow to, so you can see if you're on track.
+ * One building block of a goal's savings plan. Real plans aren't a single SIP:
+ * some money sits in a 0% bank account, some is locked into an FD started a few
+ * months in for a fixed tenure, some is a stepped-up monthly SIP, etc. A goal
+ * is the sum of however many of these blocks you add, so you can model exactly
+ * how you intend to reach the target.
+ */
+export type PlanItemKind = 'recurring' | 'lumpsum';
+
+export type Compounding = 'simple' | 'monthly' | 'quarterly' | 'yearly';
+
+/** Where money in a plan block actually sits, so the plan can be visualised. */
+export type SavingsVehicle = 'bank' | 'rd' | 'mutual_fund' | 'bonds' | 'fd' | 'other';
+
+export interface GoalPlanItem {
+  id: ID;
+  kind: PlanItemKind; // recurring monthly saving, or a one-time lump sum / FD
+  label: string; // e.g. "Bank savings", "FD 1"
+  amount: number; // recurring: monthly amount · lumpsum: the principal
+  startMonth: number; // months from the goal start when this begins (0 = now)
+  durationMonths: number; // recurring: how many months you keep paying in
+  //                          lumpsum: the FD/deposit tenure
+  annualRatePct: number; // expected annual return, % (0 for a plain bank balance)
+  stepUpPct?: number; // recurring only: yearly step-up applied to the amount, %
+  compounding?: Compounding; // lumpsum only: how the deposit compounds (FD = quarterly)
+  vehicle?: SavingsVehicle; // where the money sits (bank, RD, mutual fund, bonds…)
+}
+
+/**
+ * A financial goal you're saving towards. You set the amount you'll need and
+ * when, then build a plan out of {@link GoalPlanItem} blocks. The projection
+ * grows every block to the goal date and compares the total against the target
+ * so you can see if you're on track.
  */
 export interface Goal {
   id: ID;
   name: string;
   icon?: string;
-  presentCost: number; // what the goal costs today
-  inflationPct: number; // expected annual inflation for this goal, %
-  years: number; // years from now until you need it
-  currentSavings: number; // money already set aside for this goal
-  monthlySaving: number; // monthly SIP you can contribute now
-  stepUpPct: number; // annual step-up applied to the SIP, % (0 = none)
-  expectedReturnPct: number; // expected annual return on investments, %
+  presentCost: number; // amount needed, in today's money
+  inflationPct: number; // annual inflation to grow it to the goal date, % (0 = none)
+  years: number; // years from now until you need it (may be fractional)
+  items: GoalPlanItem[]; // the savings plan: one or more building blocks
   createdAt: ISODate;
   updatedAt: ISODate;
 }

@@ -33,6 +33,33 @@ export function formatDate(iso: ISODate): string {
   });
 }
 
+/** Human duration from a (possibly fractional) number of years, e.g. "1y 4m". */
+export function formatDuration(years: number): string {
+  const totalMonths = Math.max(0, Math.round(years * 12));
+  const y = Math.floor(totalMonths / 12);
+  const m = totalMonths % 12;
+  if (y && m) return `${y}y ${m}m`;
+  if (y) return `${y}y`;
+  return `${m}m`;
+}
+
+/** A new Date `n` months after `date` (does not mutate the input). */
+export function addMonths(date: Date, n: number): Date {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + n);
+  return d;
+}
+
+/** Whole calendar months from `a` to `b` (can be negative). */
+export function monthsBetween(a: Date, b: Date): number {
+  return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+}
+
+/** Short month + year, e.g. "Jul 2026". */
+export function formatMonthYear(date: Date): string {
+  return date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+}
+
 export function isSameDay(a: ISODate, b: ISODate): boolean {
   const da = new Date(a);
   const dbb = new Date(b);
