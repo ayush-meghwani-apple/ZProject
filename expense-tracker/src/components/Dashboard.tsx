@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { totalSpend, getCategorySummary } from '../core/reports';
+import { totalSpend, getCategoryBreakdown } from '../core/reports';
 import { formatINR, formatDate } from '../core/util';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
@@ -20,6 +20,7 @@ export default function Dashboard({ version, onChange }: Props) {
   const [cycles, setCycles] = useState<SalaryCycle[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const initialized = useRef(false);
 
   async function load() {
@@ -50,7 +51,16 @@ export default function Dashboard({ version, onChange }: Props) {
   const scoped = filterByCycles(expenses, cycles, selected);
   const scopeTotal = totalSpend(scoped);
   const allTimeTotal = totalSpend(expenses);
-  const topCategories = getCategorySummary(scoped, categories).slice(0, 5);
+  const breakdown = getCategoryBreakdown(scoped, categories, subcategories);
+
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function labelFor(e: Expense): string {
     const cat = categories.find((c) => c.id === e.categoryId);
@@ -84,20 +94,53 @@ export default function Dashboard({ version, onChange }: Props) {
       </div>
 
       <div className="card">
-        <h3>Top Categories</h3>
-        {topCategories.length === 0 ? (
+        <h3>Spending by Category</h3>
+        {breakdown.length === 0 ? (
           <div className="muted">No expenses yet.</div>
         ) : (
-          topCategories.map((c) => (
-            <div className="row" key={c.categoryId}>
-              <div className="row__left">
-                <span className="dot" style={{ background: c.color }} />
-                <span>{c.name}</span>
-                <span className="pill">{c.count}</span>
+          breakdown.map((c) => {
+            const pct = scopeTotal > 0 ? Math.round((c.total / scopeTotal) * 100) : 0;
+            const open = expanded.has(c.categoryId);
+            return (
+              <div className="barrow" key={c.categoryId}>
+                <button
+                  className="barrow__head"
+                  onClick={() => toggle(c.categoryId)}
+                  disabled={c.subs.length === 0}
+                >
+                  <span className="barrow__chev">
+                    {c.subs.length === 0 ? '' : open ? '▾' : '▸'}
+                  </span>
+                  <span className="barrow__name">
+                    {c.icon} {c.name}
+                  </span>
+                  <span className="barrow__pct">{pct}%</span>
+                  <span className="barrow__amt">{formatINR(c.total)}</span>
+                </button>
+                <div className="barrow__track">
+                  <div
+                    className="barrow__fill"
+                    style={{ width: `${pct}%`, background: c.color }}
+                  />
+                </div>
+                {open && (
+                  <div className="barrow__subs">
+                    {c.subs.map((s) => (
+                      <div className="barrow__sub" key={s.subcategoryId}>
+                        <span>
+                          ↳ {s.icon ? s.icon + ' ' : ''}
+                          {s.name}
+                        </span>
+                        <span className="muted">
+                          {formatINR(s.total)} · {s.count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <span className="amount">{formatINR(c.total)}</span>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

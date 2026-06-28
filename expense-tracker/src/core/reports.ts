@@ -104,6 +104,81 @@ export function getTopExpenses(expenses: Expense[], limit = 5): Expense[] {
   return [...expenses].sort((a, b) => b.amount - a.amount).slice(0, limit);
 }
 
+export interface SubBreakdownRow {
+  subcategoryId: string;
+  name: string;
+  icon?: string;
+  total: number;
+  count: number;
+}
+
+export interface CategoryBreakdownRow {
+  categoryId: string;
+  name: string;
+  icon: string;
+  color: string;
+  total: number;
+  count: number;
+  subs: SubBreakdownRow[];
+}
+
+/**
+ * Full nested breakdown: every category that has spend, each with its
+ * sub-categories. Sorted high-to-low at both levels. Pure function.
+ */
+export function getCategoryBreakdown(
+  expenses: Expense[],
+  categories: Category[],
+  subcategories: Subcategory[],
+): CategoryBreakdownRow[] {
+  const catById = new Map(categories.map((c) => [c.id, c]));
+  const subById = new Map(subcategories.map((s) => [s.id, s]));
+
+  const cats = new Map<
+    string,
+    { total: number; count: number; subs: Map<string, { total: number; count: number }> }
+  >();
+
+  for (const e of expenses) {
+    const cKey = e.categoryId ?? 'uncategorized';
+    const cat = cats.get(cKey) ?? { total: 0, count: 0, subs: new Map() };
+    cat.total += e.amount;
+    cat.count += 1;
+    const sKey = e.subcategoryId ?? 'none';
+    const sub = cat.subs.get(sKey) ?? { total: 0, count: 0 };
+    sub.total += e.amount;
+    sub.count += 1;
+    cat.subs.set(sKey, sub);
+    cats.set(cKey, cat);
+  }
+
+  return Array.from(cats.entries())
+    .map(([categoryId, c]) => {
+      const cat = catById.get(categoryId);
+      return {
+        categoryId,
+        name: cat?.name ?? 'Uncategorized',
+        icon: cat?.icon ?? '📦',
+        color: cat?.color ?? '#94a3b8',
+        total: c.total,
+        count: c.count,
+        subs: Array.from(c.subs.entries())
+          .map(([subcategoryId, s]) => {
+            const sub = subById.get(subcategoryId);
+            return {
+              subcategoryId,
+              name: sub?.name ?? 'Unspecified',
+              icon: sub?.icon,
+              total: s.total,
+              count: s.count,
+            };
+          })
+          .sort((a, b) => b.total - a.total),
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+}
+
 /** Average spend per distinct day that has at least one expense. */
 export function getDailyAverage(expenses: Expense[]): number {
   if (expenses.length === 0) return 0;

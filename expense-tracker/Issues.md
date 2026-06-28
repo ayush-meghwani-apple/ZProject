@@ -7,9 +7,13 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-- 🔴 There is one UI issue - when i scroll up/down and if i reach at the end - then on scrolling whole app goes up and down, like the last end of app itself scrolls up and same for both direction - i mean scrolling should take me to last end and then nothing should happen but it srolls and take whole app up and down.
-
 ## Done
+
+- ✅ **(2026-06-28)** Fixed the whole-app bounce: when you scrolled past the top/bottom the entire screen used to rubber-band up and down. The page/body is now locked and only the inner content area scrolls, with overscroll contained — so reaching the end simply stops.
+- ✅ **(2026-06-28)** Dashboard & Reports reworked so you can see **every** category and its sub-categories (not just the top 5).
+  - **Dashboard** is now an at-a-glance overview: each category shows a **progress bar** (its share of the cycle) and tapping one **expands** to reveal its sub-category amounts. Plus the cycle/all-time totals and recent expenses.
+  - **Reports** is the visual/analytics view: category pie, monthly bar chart, top-5 expenses, cycle average, and a complete **“All Categories & Sub-categories”** tree listing every category with its sub-categories and shares — nothing hidden behind a dropdown anymore.
+
 
 - ✅ **(2026-06-28)** Multi-word suggestions + reliable saving. Typing `mobile re` now keeps matching (e.g. `Mobile Recharge`) instead of switching to `re` words; picking a sub-category inserts `Parent Sub` so it always saves to the exact sub-category you chose; and suggestions are hidden after a comma so note text (e.g. `, papa`) can no longer hijack the category. The parser now strips punctuation on both sides (so `Mobile/Internet` matches) and matches multi-word category/sub-category names.
 - ✅ **(2026-06-28)** Settings now has an **About** card showing the app **version** (`v1.1.0`) and the **build date/time** of the deployed code, so you can confirm on your phone whether the latest update actually went live. Version is bumped per release; the build time stamps automatically.

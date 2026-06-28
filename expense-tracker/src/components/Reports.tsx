@@ -12,10 +12,10 @@ import {
 } from 'recharts';
 import {
   countCycles,
+  getCategoryBreakdown,
   getCategorySummary,
   getCycleAverage,
   getMonthlyTotals,
-  getSubcategorySummary,
   getTopExpenses,
   totalSpend,
 } from '../core/reports';
@@ -32,7 +32,6 @@ export default function Reports({ version }: { version: number }) {
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [cycles, setCycles] = useState<SalaryCycle[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [catId, setCatId] = useState<string>('');
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -56,15 +55,11 @@ export default function Reports({ version }: { version: number }) {
 
   const scoped = filterByCycles(expenses, cycles, selected);
   const categorySummary = getCategorySummary(scoped, categories);
+  const breakdown = getCategoryBreakdown(scoped, categories, subcategories);
   const monthly = getMonthlyTotals(scoped);
   const topExpenses = getTopExpenses(scoped, 5);
   const cycleAvg = getCycleAverage(scoped);
   const nCycles = countCycles(scoped);
-
-  const activeCatId = catId || categorySummary[0]?.categoryId || '';
-  const subSummary = activeCatId
-    ? getSubcategorySummary(scoped, subcategories, activeCatId)
-    : [];
 
   const catName = (id?: string) => categories.find((c) => c.id === id)?.name ?? 'Uncategorized';
 
@@ -112,53 +107,40 @@ export default function Reports({ version }: { version: number }) {
           </div>
 
           <div className="card">
-            <h3>Category Breakdown</h3>
-            <select
-              className="select"
-              value={activeCatId}
-              onChange={(e) => setCatId(e.target.value)}
-              style={{ marginBottom: 12 }}
-            >
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.icon} {c.name}
-                </option>
-              ))}
-            </select>
-            {subSummary.length === 0 ? (
-              <div className="muted">No expenses in this category for the selected cycles.</div>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={subSummary}
-                      dataKey="total"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={85}
-                      label={(d) => d.name}
-                    >
-                      {subSummary.map((s) => (
-                        <Cell key={s.subcategoryId} fill={s.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => formatINR(v)} />
-                  </PieChart>
-                </ResponsiveContainer>
-                {subSummary.map((s) => (
-                  <div className="row" key={s.subcategoryId}>
-                    <div className="row__left">
-                      <span className="dot" style={{ background: s.color }} />
-                      <span>{s.name}</span>
-                      <span className="pill">{s.count}</span>
-                    </div>
-                    <span className="amount">{formatINR(s.total)}</span>
+            <h3>All Categories &amp; Sub-categories</h3>
+            {breakdown.map((c) => {
+              const pct =
+                totalSpend(scoped) > 0 ? Math.round((c.total / totalSpend(scoped)) * 100) : 0;
+              return (
+                <div className="tree" key={c.categoryId}>
+                  <div className="tree__cat">
+                    <span className="dot" style={{ background: c.color }} />
+                    <span className="tree__name">
+                      {c.icon} {c.name}
+                    </span>
+                    <span className="barrow__pct">{pct}%</span>
+                    <span className="amount">{formatINR(c.total)}</span>
                   </div>
-                ))}
-              </>
-            )}
+                  <div className="barrow__track">
+                    <div
+                      className="barrow__fill"
+                      style={{ width: `${pct}%`, background: c.color }}
+                    />
+                  </div>
+                  {c.subs.map((s) => (
+                    <div className="tree__sub" key={s.subcategoryId}>
+                      <span>
+                        ↳ {s.icon ? s.icon + ' ' : ''}
+                        {s.name}
+                      </span>
+                      <span className="muted">
+                        {formatINR(s.total)} · {s.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
 
           <div className="card">

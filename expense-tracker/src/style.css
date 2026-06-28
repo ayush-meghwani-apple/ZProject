@@ -24,6 +24,8 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  /* Stop the whole page from rubber-band / bounce scrolling at the ends. */
+  overscroll-behavior: none;
 }
 
 body {
@@ -32,6 +34,10 @@ body {
     var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  /* The inner .app__body is the only scroll container; lock the body itself. */
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
 }
 
 .app {
@@ -67,6 +73,8 @@ body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Keep scroll momentum contained so it never bubbles to the page/body. */
+  overscroll-behavior-y: contain;
 }
 
 .tabbar {
@@ -301,6 +309,107 @@ body {
   font-size: 13px;
   color: var(--muted);
   font-weight: 500;
+}
+
+/* ---- Category bar rows (Dashboard) ---- */
+.barrow {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.barrow:last-child {
+  border-bottom: none;
+}
+.barrow__head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 2px 0;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+.barrow__head:disabled {
+  cursor: default;
+}
+.barrow__chev {
+  width: 14px;
+  flex: 0 0 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.barrow__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.barrow__pct {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.barrow__amt {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.barrow__track {
+  margin: 6px 0 0 22px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.barrow__fill {
+  height: 100%;
+  border-radius: 999px;
+  min-width: 2px;
+}
+.barrow__subs {
+  margin: 6px 0 2px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.barrow__sub {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+/* ---- Full category tree (Reports) ---- */
+.tree {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tree:last-child {
+  border-bottom: none;
+}
+.tree__cat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tree__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.tree__sub {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  margin: 4px 0 0 18px;
 }
 
 .grid-2 {
