@@ -292,8 +292,8 @@ export default function Categories({ version, onChange }: Props) {
               ) : (
                 <div className="subrow" key={s.id}>
                   <div className="row">
-                    <span>› {s.icon ? `${s.icon} ` : ''}{s.name}</span>
-                    <div className="inline">
+                    <span className="subrow__name">› {s.icon ? `${s.icon} ` : ''}{s.name}</span>
+                    <div className="inline inline--actions">
                       <button
                         className={`pill pill--btn${aliasOpen === s.id ? ' pill--active' : ''}`}
                         onClick={() => setAliasOpen(aliasOpen === s.id ? null : s.id)}

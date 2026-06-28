@@ -12,6 +12,12 @@ _(nothing open right now — add a bullet here whenever you think of something)_
 
 ## Done
 
+- ✅ **(2026-06-28)** **Sub-category rows don't break with long names.** Adding an emoji + a long name (e.g. "💊 Mobile Recharge Premium Plan") no longer squeezes the row — the name now takes the space it needs (wrapping to a second line if truly long) while the "N aliases" pill and edit/delete buttons stay intact on one line.
+- ✅ **(2026-06-28)** **Cleaner tab transition.** Dropped the fade-from-transparent (which looked like the tab was loading) — tabs now do a quick, fully-opaque directional **slide** so it reads as a clean page change, not a reload.
+- ✅ **(2026-06-28)** **Every category gets its own color.** New categories now automatically pick an unused color from an 18-colour palette (no more everything defaulting to grey). Your **existing** categories are also repaired automatically on app open — any that shared a color are re-assigned a unique one, so the reports/charts are easy to read. (No manual colour picker, as requested — it just works.)
+- ✅ **(2026-06-28)** **Dashboard vs Reports "by category" clarified.** They serve different purposes, so each now has a one-line subtitle: **Dashboard** is a quick, collapsible glance for the selected cycle (with your recent expenses below), while **Reports** is the full always-expanded breakdown that pairs with the pie/monthly charts. Kept both — tell me after a week if you'd rather I merge or drop one.
+
+
 - ✅ **(2026-06-28)** **You can see which category you moved.** After tapping ⬆️/⬇️ the moved category briefly **glows** and shows a small **"↕ moved"** badge that fades on its own — so even when a short list jumps around, it's clear which one shifted.
 - ✅ **(2026-06-28)** **Classier tab transitions.** Switching tabs (by tap or swipe) now does a smooth directional **slide + fade** — the new tab slides in from the right when going forward, from the left when going back — instead of a plain snap. (Tuned to ~0.5s; a full 1–2s felt sluggish when tapping around, but it now feels deliberate and clean.)
 - ✅ **(2026-06-28)** **Aliases are now editable.** The "N aliases" pill on each sub-category is a button — tap it to see the words that match it in chat (e.g. "chai" → Tea), **remove** any with ✕, or **add** your own. (Aliases are how typed words get matched to a category/sub-category.)

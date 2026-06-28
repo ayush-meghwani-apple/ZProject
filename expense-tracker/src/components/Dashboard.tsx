@@ -95,6 +95,10 @@ export default function Dashboard({ version, onChange }: Props) {
 
       <div className="card">
         <h3>Spending by Category</h3>
+        <p className="card__subtitle">
+          Quick glance for {selectionLabel(cycles, selected).toLowerCase()} — tap a category to
+          expand its sub-categories.
+        </p>
         {breakdown.length === 0 ? (
           <div className="muted">No expenses yet.</div>
         ) : (

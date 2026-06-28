@@ -91,42 +91,32 @@ body {
   transition: transform 0.22s ease;
 }
 
-/* Directional slide+fade when switching tabs (the view remounts via its React
-   key). Forward (higher tab) slides in from the right, back from the left, with
-   a soft easing so it feels deliberate and classy rather than snapping. */
+/* Directional slide when switching tabs (the view remounts via its React
+   key). The new screen slides in fully opaque from the side it's coming from —
+   no fade-in, so it reads as a clean page slide rather than a loading screen. */
 .app__view--next {
-  animation: viewSlideNext 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation: viewSlideNext 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .app__view--prev {
-  animation: viewSlidePrev 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation: viewSlidePrev 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 @keyframes viewSlideNext {
-  0% {
-    opacity: 0;
-    transform: translateX(42px) scale(0.985);
+  from {
+    transform: translateX(48px);
   }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) scale(1);
+  to {
+    transform: translateX(0);
   }
 }
 
 @keyframes viewSlidePrev {
-  0% {
-    opacity: 0;
-    transform: translateX(-42px) scale(0.985);
+  from {
+    transform: translateX(-48px);
   }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) scale(1);
+  to {
+    transform: translateX(0);
   }
 }
 
@@ -403,6 +393,14 @@ body {
   letter-spacing: 0.05em;
 }
 
+/* Short explainer under a card heading, to clarify a section's purpose. */
+.card__subtitle {
+  margin: -6px 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 .stat {
   font-size: 24px;
   font-weight: 800;
@@ -609,12 +607,27 @@ body {
   align-items: center;
 }
 
+/* Action cluster (pill + edit/delete) that must never be squeezed or wrap,
+   even when the sub-category name beside it is long. */
+.inline--actions {
+  flex-shrink: 0;
+}
+
+/* Sub-category name can wrap to a second line instead of crushing the
+   actions beside it. */
+.subrow__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .pill {
   font-size: 12px;
   padding: 3px 8px;
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--muted);
+  white-space: nowrap;
 }
 
 /* Tappable alias-count pill that opens the alias editor. */

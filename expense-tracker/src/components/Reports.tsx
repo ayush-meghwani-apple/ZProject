@@ -108,6 +108,9 @@ export default function Reports({ version }: { version: number }) {
 
           <div className="card">
             <h3>All Categories &amp; Sub-categories</h3>
+            <p className="card__subtitle">
+              Full breakdown — every category and sub-category with its share, always expanded.
+            </p>
             {breakdown.map((c) => {
               const pct =
                 totalSpend(scoped) > 0 ? Math.round((c.total / totalSpend(scoped)) * 100) : 0;

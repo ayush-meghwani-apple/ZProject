@@ -6,6 +6,7 @@ import Reels from './components/Reels';
 import Categories from './components/Categories';
 import Settings from './components/Settings';
 import { RecurringRepository } from './repository/recurringRepository';
+import { CategoryRepository } from './repository/categoryRepository';
 
 type Tab = 'chat' | 'dashboard' | 'reports' | 'reels' | 'categories' | 'settings';
 
@@ -52,6 +53,10 @@ export default function App() {
   useEffect(() => {
     RecurringRepository.runDue().then((created) => {
       if (created > 0) setVersion((v) => v + 1);
+    });
+    // Make sure every category has a distinct color (repairs older data).
+    CategoryRepository.ensureDistinctColors().then((changed) => {
+      if (changed > 0) setVersion((v) => v + 1);
     });
   }, []);
 
