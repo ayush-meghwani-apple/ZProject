@@ -132,6 +132,7 @@ export const RecurringRepository = {
           note: rec.note,
           rawText: '↻ recurring',
           date: rec.nextDate,
+          recurringId: rec.id,
         });
         rec.nextDate = advance(rec.nextDate, rec.frequency, rec.dayOfMonth);
         created++;

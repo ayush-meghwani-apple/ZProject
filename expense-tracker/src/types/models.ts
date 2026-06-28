@@ -93,6 +93,7 @@ export interface Expense {
   note?: string;
   rawText?: string; // original chat input, for transparency
   reviewed?: boolean; // user acknowledged a “big spend” so it stops drawing attention
+  recurringId?: ID; // set when auto-created from a recurring template
   createdAt: ISODate;
   updatedAt: ISODate;
 }

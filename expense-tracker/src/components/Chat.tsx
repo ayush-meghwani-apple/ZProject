@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { parseInput } from '../core/parser';
 import { formatINR } from '../core/util';
 import { playSound } from '../core/sound';
@@ -70,6 +70,7 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const firstScroll = useRef(true);
 
   useEffect(() => {
     Promise.all([
@@ -81,8 +82,12 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
     });
   }, []);
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // Keep the latest message in view. On the first paint after opening the tab
+  // we jump instantly (before paint) so there's no visible scroll “jerk”; after
+  // that, new messages animate in smoothly.
+  useLayoutEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: firstScroll.current ? 'auto' : 'smooth' });
+    firstScroll.current = false;
   }, [messages]);
 
   // Continue id generation past any persisted chat history so keys stay unique.

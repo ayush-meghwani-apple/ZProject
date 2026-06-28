@@ -9,7 +9,13 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 _(nothing open right now — add a bullet here whenever you think of something)_
 
+
 ## Done
+
+- ✅ **(2026-06-28)** **Reordering now follows the moved category.** When you tap ⬆️/⬇️, the screen now scrolls to keep the moved category centered in view, so you can keep tapping to move it across a long list without manually scrolling.
+- ✅ **(2026-06-28)** **Slimmer tab bar.** Trimmed the extra blank space below the 6 bottom tabs (kept just the thin band iOS needs for the home indicator).
+- ✅ **(2026-06-28)** **No more chat auto-scroll jerk.** Opening the chat (by swipe or tap) now lands already scrolled to the latest message instead of visibly jumping; new incoming messages still scroll in smoothly.
+- ✅ **(2026-06-28)** **Recurring expenses are marked on Reels.** Expenses auto-created from a recurring rule now show a **↻ Recurring** badge on their reel, so you can tell at a glance you didn't add them by hand.
 
 - ✅ **(2026-06-28)** **"Faaah" success sound.** Your `faaah.mp3` now plays on every successful expense add (chat add, note→expense, and reviewing a big spend), precached so it works offline, still behind the **Settings → Sounds** toggle.
 - ✅ **(2026-06-28)** **Reels content is back.** Reels were showing blank cards (only the count was right): the last layout change broke the height chain that the full-screen cards depend on. Restored a definite height so each reel renders its icon, amount, category and actions again.

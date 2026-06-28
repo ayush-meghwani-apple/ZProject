@@ -239,6 +239,7 @@ export default function Reels({ version, onChange }: Props) {
               const isBig = bigThreshold > 0 && e.amount >= bigThreshold;
               const big = isBig && !e.reviewed; // “hot” only until reviewed
               const reviewed = isBig && !!e.reviewed; // acknowledged → calm green
+              const isRecurring = !!e.recurringId; // auto-created from a recurring rule
               const cls = `reel${big ? ' reel--big' : ''}${reviewed ? ' reel--reviewed' : ''}`;
               return (
                 <section
@@ -270,9 +271,15 @@ export default function Reels({ version, onChange }: Props) {
 
                   <div className="reel__date">{formatDate(e.date)}</div>
 
+                  {isRecurring && (
+                    <div className="reel__recurring" title="Created automatically from a recurring rule">
+                      ↻ Recurring
+                    </div>
+                  )}
+
                   {e.note ? (
                     <div className="reel__note">“{e.note}”</div>
-                  ) : e.rawText ? (
+                  ) : !isRecurring && e.rawText ? (
                     <div className="reel__note reel__note--raw">{e.rawText}</div>
                   ) : null}
 

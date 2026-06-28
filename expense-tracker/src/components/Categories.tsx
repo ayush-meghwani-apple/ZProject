@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CategoryRepository } from '../repository/categoryRepository';
 import type { Alias, Category, Subcategory } from '../types/models';
 
@@ -18,6 +18,11 @@ export default function Categories({ version, onChange }: Props) {
   const [editCat, setEditCat] = useState<{ id: string; name: string; icon: string } | null>(null);
   const [editSub, setEditSub] = useState<{ id: string; name: string; icon: string } | null>(null);
 
+  // Card elements + the id to keep in view after a reorder, so the moved
+  // category follows the screen instead of scrolling out of sight.
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const scrollToId = useRef<string | null>(null);
+
   async function load() {
     const [c, s, a] = await Promise.all([
       CategoryRepository.getCategories(),
@@ -33,6 +38,14 @@ export default function Categories({ version, onChange }: Props) {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
+
+  // After a reorder re-renders the list, bring the moved category into view.
+  useEffect(() => {
+    const id = scrollToId.current;
+    if (!id) return;
+    scrollToId.current = null;
+    cardRefs.current.get(id)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [categories]);
 
   async function addCategory() {
     const name = newCat.trim();
@@ -69,6 +82,7 @@ export default function Categories({ version, onChange }: Props) {
     const j = i + dir;
     if (i < 0 || j < 0 || j >= ids.length) return;
     [ids[i], ids[j]] = [ids[j], ids[i]];
+    scrollToId.current = id;
     await CategoryRepository.setCategoryOrder(ids);
     await load();
     onChange();
@@ -141,7 +155,14 @@ export default function Categories({ version, onChange }: Props) {
         const subs = subcategories.filter((s) => s.categoryId === cat.id);
         const isEditing = editCat?.id === cat.id;
         return (
-          <div className="card" key={cat.id}>
+          <div
+            className="card"
+            key={cat.id}
+            ref={(el) => {
+              if (el) cardRefs.current.set(cat.id, el);
+              else cardRefs.current.delete(cat.id);
+            }}
+          >
             <div className="row" style={{ paddingTop: 0 }}>
               {isEditing ? (
                 <div className="inline" style={{ flex: 1 }}>

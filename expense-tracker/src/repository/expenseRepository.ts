@@ -14,6 +14,7 @@ export type NewExpenseInput = {
   note?: string;
   rawText?: string;
   date?: string;
+  recurringId?: ID;
 };
 
 export const ExpenseRepository = {
@@ -47,6 +48,7 @@ export const ExpenseRepository = {
       paymentMethodId: input.paymentMethodId,
       note: input.note,
       rawText: input.rawText,
+      recurringId: input.recurringId,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
