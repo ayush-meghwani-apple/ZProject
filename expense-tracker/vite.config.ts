@@ -8,6 +8,11 @@ const base = process.env.VITE_BASE ?? '/';
 
 export default defineConfig({
   base,
+  define: {
+    // Surfaced in Settings → About so you can confirm a deploy went through.
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     VitePWA({

@@ -17,6 +17,80 @@ export type ParsedCommand =
 
 const NUMBER_RE = /(?:₹|rs\.?|inr)?\s*(\d+(?:\.\d{1,2})?)/i;
 
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Safely evaluates a basic arithmetic expression: + - * / and parentheses,
+ * including unary minus. Returns null on malformed input. Uses a small
+ * shunting-yard implementation (no eval), so it is safe from code injection.
+ */
+export function evalArithmetic(input: string): number | null {
+  const tokens = input.match(/\d+(?:\.\d+)?|[+\-*/()]/g);
+  if (!tokens) return null;
+
+  const output: (number | string)[] = [];
+  const ops: string[] = [];
+  const prec: Record<string, number> = { u: 3, '*': 2, '/': 2, '+': 1, '-': 1 };
+  let prev: 'num' | 'op' | 'open' | null = null;
+
+  for (const t of tokens) {
+    if (/^\d/.test(t)) {
+      output.push(parseFloat(t));
+      prev = 'num';
+    } else if (t === '(') {
+      ops.push(t);
+      prev = 'open';
+    } else if (t === ')') {
+      while (ops.length && ops[ops.length - 1] !== '(') output.push(ops.pop()!);
+      if (!ops.length) return null;
+      ops.pop();
+      prev = 'num';
+    } else {
+      let op = t;
+      if (t === '-' && (prev === null || prev === 'op' || prev === 'open')) op = 'u';
+      while (ops.length) {
+        const top = ops[ops.length - 1];
+        if (top === '(') break;
+        const higher = prec[top] > prec[op] || (prec[top] === prec[op] && op !== 'u');
+        if (!higher) break;
+        output.push(ops.pop()!);
+      }
+      ops.push(op);
+      prev = 'op';
+    }
+  }
+  while (ops.length) {
+    const op = ops.pop()!;
+    if (op === '(') return null;
+    output.push(op);
+  }
+
+  const stack: number[] = [];
+  for (const tk of output) {
+    if (typeof tk === 'number') {
+      stack.push(tk);
+    } else if (tk === 'u') {
+      const a = stack.pop();
+      if (a === undefined) return null;
+      stack.push(-a);
+    } else {
+      const b = stack.pop();
+      const a = stack.pop();
+      if (a === undefined || b === undefined) return null;
+      if (tk === '+') stack.push(a + b);
+      else if (tk === '-') stack.push(a - b);
+      else if (tk === '*') stack.push(a * b);
+      else {
+        if (b === 0) return null;
+        stack.push(a / b);
+      }
+    }
+  }
+  return stack.length === 1 && isFinite(stack[0]) ? stack[0] : null;
+}
+
 /**
  * Turns a line of chat into a structured command. Pure function: all reference
  * data (aliases) is passed in, so it has no dependency on storage or React.
@@ -48,8 +122,44 @@ export function parseInput(
     return { kind: 'startCycle' };
   }
 
-  const amountMatch = raw.match(NUMBER_RE);
-  const amount = amountMatch ? parseFloat(amountMatch[1]) : NaN;
+  // Explicit note after a comma: "1000 mobile, paid for ayush".
+  let explicitNote: string | undefined;
+  let head = raw;
+  const commaIdx = raw.indexOf(',');
+  if (commaIdx !== -1) {
+    explicitNote = raw.slice(commaIdx + 1).trim() || undefined;
+    head = raw.slice(0, commaIdx);
+  }
+
+  // ---- Amount (supports arithmetic, e.g. "=20+20+2*6") ----
+  const normalized = head
+    .replace(/×/g, '*')
+    .replace(/÷/g, '/')
+    .replace(/₹|\brs\.?\b|\binr\b/gi, ' ');
+  const calcMode = normalized.includes('=');
+  const mathSource = normalized.replace(/=/g, ' ');
+
+  let amount = NaN;
+  let amountText: string | undefined;
+  const exprMatch = mathSource.match(/\d[\d.\s+\-*\/()]*[\d)]|\d/);
+  if (exprMatch) {
+    const candidate = exprMatch[0];
+    const hasOperator = /[+\-*\/()]/.test(candidate);
+    if (hasOperator || calcMode) {
+      const value = evalArithmetic(candidate);
+      if (value !== null) {
+        amount = round2(value);
+        amountText = candidate;
+      }
+    }
+    if (isNaN(amount)) {
+      const single = candidate.match(/\d+(?:\.\d{1,2})?/);
+      if (single) {
+        amount = parseFloat(single[0]);
+        amountText = single[0];
+      }
+    }
+  }
 
   // Salary command: "salary 50000" / "got salary 50000"
   if (/\bsalary\b/i.test(lower)) {
@@ -60,61 +170,122 @@ export function parseInput(
   }
 
   if (isNaN(amount)) {
-    return { kind: 'unknown', rawText: raw, reason: 'Could not find an amount. Try "tea 20".' };
+    return {
+      kind: 'unknown',
+      rawText: raw,
+      reason: calcMode
+        ? 'Could not calculate that expression.'
+        : 'Could not find an amount. Try "tea 20".',
+    };
+  }
+  if (amount <= 0) {
+    return { kind: 'unknown', rawText: raw, reason: 'Amount must be greater than zero.' };
   }
 
-  // An explicit note can be given after a comma: "1000 mobile, paid for ayush".
-  let explicitNote: string | undefined;
-  let body = lower;
-  const commaIdx = lower.indexOf(',');
-  if (commaIdx !== -1) {
-    explicitNote = raw.slice(commaIdx + 1).trim() || undefined;
-    body = lower.slice(0, commaIdx);
-  }
+  // ---- Category / subcategory from the remaining words ----
+  let body = head.toLowerCase();
+  body = amountText ? body.replace(amountText.toLowerCase(), ' ') : body.replace(NUMBER_RE, ' ');
 
-  // Tokenize words (ignore the number, currency symbols, and punctuation).
   const words = body
-    .replace(NUMBER_RE, ' ')
-    .replace(/[₹]/g, ' ')
+    .replace(/₹|\brs\.?\b|\binr\b/gi, ' ')
     .split(/\s+/)
     .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((w) => !/^\d+(?:\.\d+)?$/.test(w));
 
+  const used = new Array<boolean>(words.length).fill(false);
   let categoryId: string | undefined;
   let subcategoryId: string | undefined;
-  let matchedWord: string | undefined;
-  for (const word of words) {
-    const hit = aliases.find((a) => a.text === word);
+
+  // Split a name into the same cleaned tokens we produced for the input, so
+  // multi-word and punctuated names (e.g. "Mobile/Internet") compare reliably.
+  const nameTokens = (name: string): string[] =>
+    name
+      .toLowerCase()
+      .split(/\s+/)
+      .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
+      .filter(Boolean);
+
+  // Find a contiguous, unused run of words equal to `tokens`. Returns its start.
+  const findRun = (tokens: string[]): number => {
+    if (tokens.length === 0) return -1;
+    for (let i = 0; i + tokens.length <= words.length; i++) {
+      let ok = true;
+      for (let j = 0; j < tokens.length; j++) {
+        if (used[i + j] || words[i + j] !== tokens[j]) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) return i;
+    }
+    return -1;
+  };
+
+  const markRun = (start: number, len: number) => {
+    for (let j = 0; j < len; j++) used[start + j] = true;
+  };
+
+  // 1) Aliases (single trigger words like "chai") take priority.
+  for (let i = 0; i < words.length; i++) {
+    const hit = aliases.find((a) => a.text === words[i]);
     if (hit) {
       categoryId = hit.categoryId;
       subcategoryId = hit.subcategoryId;
-      matchedWord = word;
+      used[i] = true;
       break;
     }
   }
 
-  // Fallback: match a word directly against a subcategory or category name.
-  // This covers categories added without an explicit alias (and older data).
-  if (!matchedWord) {
-    for (const word of words) {
-      const sub = subcategories.find((s) => s.name.toLowerCase() === word);
-      if (sub) {
-        categoryId = sub.categoryId;
-        subcategoryId = sub.id;
-        matchedWord = word;
+  // 2) Subcategory by full name (longest names first for specificity).
+  if (categoryId === undefined) {
+    const subs = [...subcategories].sort(
+      (a, b) => nameTokens(b.name).length - nameTokens(a.name).length,
+    );
+    for (const s of subs) {
+      const at = findRun(nameTokens(s.name));
+      if (at !== -1) {
+        categoryId = s.categoryId;
+        subcategoryId = s.id;
+        markRun(at, nameTokens(s.name).length);
         break;
       }
-      const cat = categories.find((c) => c.name.toLowerCase() === word);
-      if (cat) {
-        categoryId = cat.id;
-        matchedWord = word;
+    }
+  }
+
+  // 3) Category by full name.
+  if (categoryId === undefined) {
+    const cats = [...categories].sort(
+      (a, b) => nameTokens(b.name).length - nameTokens(a.name).length,
+    );
+    for (const c of cats) {
+      const at = findRun(nameTokens(c.name));
+      if (at !== -1) {
+        categoryId = c.id;
+        markRun(at, nameTokens(c.name).length);
+        break;
+      }
+    }
+  }
+
+  // 4) Category known but no subcategory yet: match a subcategory *within* it
+  //    (e.g. "home shopping" -> Home / Shopping; disambiguates shared names).
+  if (categoryId !== undefined && subcategoryId === undefined) {
+    const subs = subcategories
+      .filter((s) => s.categoryId === categoryId)
+      .sort((a, b) => nameTokens(b.name).length - nameTokens(a.name).length);
+    for (const s of subs) {
+      const at = findRun(nameTokens(s.name));
+      if (at !== -1) {
+        subcategoryId = s.id;
+        markRun(at, nameTokens(s.name).length);
         break;
       }
     }
   }
 
   // Leftover words plus any explicit (post-comma) note.
-  const leftover = words.filter((w) => w !== matchedWord).join(' ').trim();
+  const leftover = words.filter((_, i) => !used[i]).join(' ').trim();
   const note = [leftover, explicitNote].filter(Boolean).join(' ').trim() || undefined;
 
   return {
@@ -122,7 +293,6 @@ export function parseInput(
     amount,
     categoryId,
     subcategoryId,
-    matchedAlias: matchedWord,
     note,
     rawText: raw,
   };

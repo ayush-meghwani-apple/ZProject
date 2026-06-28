@@ -220,6 +220,22 @@ export default function Settings({ version, onChange }: Props) {
           ))
         )}
       </div>
+
+      <div className="card">
+        <h3>About</h3>
+        <div className="row">
+          <span>Version</span>
+          <span className="pill pill--good">v{__APP_VERSION__}</span>
+        </div>
+        <div className="row">
+          <span>Last updated</span>
+          <span className="muted">{new Date(__BUILD_TIME__).toLocaleString('en-IN')}</span>
+        </div>
+        <div className="muted" style={{ marginTop: 12 }}>
+          If this date doesn't match your latest deploy, the app is still cached —
+          fully close it and reopen (twice) to update.
+        </div>
+      </div>
     </div>
   );
 }

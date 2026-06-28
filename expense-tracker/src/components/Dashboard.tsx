@@ -56,7 +56,7 @@ export default function Dashboard({ version, onChange }: Props) {
     const cat = categories.find((c) => c.id === e.categoryId);
     const sub = subcategories.find((s) => s.id === e.subcategoryId);
     const base = cat ? `${cat.icon} ${cat.name}` : '📦 Uncategorized';
-    return sub ? `${base} › ${sub.name}` : base;
+    return sub ? `${base} › ${sub.icon ? sub.icon + ' ' : ''}${sub.name}` : base;
   }
 
   async function handleDelete(id: string) {

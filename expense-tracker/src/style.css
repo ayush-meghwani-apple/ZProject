@@ -190,6 +190,46 @@ body {
   cursor: pointer;
 }
 
+.symbolbar {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px;
+  overflow-x: auto;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  scrollbar-width: none;
+}
+
+.symbolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.symbolbar__key {
+  flex: 0 0 auto;
+  min-width: 40px;
+  padding: 9px 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.symbolbar__key--accent {
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
+  color: #fff;
+  border: none;
+}
+
+.reel__note--raw {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 14px;
+}
+
 .chat__input input {
   flex: 1;
   background: var(--bg);

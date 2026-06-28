@@ -42,8 +42,8 @@ export const CategoryRepository = {
     await ActivityRepository.log('category.deleted', 'category', id);
   },
 
-  async addSubcategory(categoryId: ID, name: string): Promise<Subcategory> {
-    const sub: Subcategory = { id: newId(), categoryId, name };
+  async addSubcategory(categoryId: ID, name: string, icon?: string): Promise<Subcategory> {
+    const sub: Subcategory = { id: newId(), categoryId, name, icon: icon?.trim() || undefined };
     await storage.subcategories.put(sub);
     // Register the name as an alias so the chat parser can match it.
     await this.addAlias(name, categoryId, sub.id);

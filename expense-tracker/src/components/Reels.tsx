@@ -94,9 +94,8 @@ export default function Reels({ version, onChange }: Props) {
   function catFor(e: Expense): Category | undefined {
     return categories.find((c) => c.id === e.categoryId);
   }
-  function subName(e: Expense): string | null {
-    const s = subcategories.find((x) => x.id === e.subcategoryId);
-    return s ? s.name : null;
+  function subOf(e: Expense): Subcategory | undefined {
+    return subcategories.find((x) => x.id === e.subcategoryId);
   }
 
   async function handleDelete(id: string) {
@@ -145,7 +144,7 @@ export default function Reels({ version, onChange }: Props) {
             {reels.map((e) => {
               const cat = catFor(e);
               const color = cat?.color ?? '#6366f1';
-              const sub = subName(e);
+              const sub = subOf(e);
               return (
                 <section
                   className="reel"
@@ -166,13 +165,17 @@ export default function Reels({ version, onChange }: Props) {
                   <div className="reel__cat">{cat?.name ?? 'Uncategorized'}</div>
                   {sub && (
                     <span className="reel__sub" style={{ borderColor: tint(color, 0.5) }}>
-                      {sub}
+                      {sub.icon ? `${sub.icon} ` : ''}{sub.name}
                     </span>
                   )}
 
                   <div className="reel__date">{formatDate(e.date)}</div>
 
-                  {e.note && <div className="reel__note">“{e.note}”</div>}
+                  {e.note ? (
+                    <div className="reel__note">“{e.note}”</div>
+                  ) : e.rawText ? (
+                    <div className="reel__note reel__note--raw">{e.rawText}</div>
+                  ) : null}
 
                   <div className="reel__actions">
                     <button className="btn btn--ghost" onClick={() => handleDelete(e.id)}>

@@ -103,7 +103,7 @@ export default function EditExpenseModal({
               <option value="">—</option>
               {subs.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name}
+                  {s.icon ? `${s.icon} ${s.name}` : s.name}
                 </option>
               ))}
             </select>

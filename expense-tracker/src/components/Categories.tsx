@@ -14,8 +14,9 @@ export default function Categories({ version, onChange }: Props) {
   const [newCat, setNewCat] = useState('');
   const [newIcon, setNewIcon] = useState('📦');
   const [subDraft, setSubDraft] = useState<Record<string, string>>({});
+  const [subIconDraft, setSubIconDraft] = useState<Record<string, string>>({});
   const [editCat, setEditCat] = useState<{ id: string; name: string; icon: string } | null>(null);
-  const [editSub, setEditSub] = useState<{ id: string; name: string } | null>(null);
+  const [editSub, setEditSub] = useState<{ id: string; name: string; icon: string } | null>(null);
 
   async function load() {
     const [c, s, a] = await Promise.all([
@@ -46,8 +47,9 @@ export default function Categories({ version, onChange }: Props) {
   async function addSub(categoryId: string) {
     const name = (subDraft[categoryId] ?? '').trim();
     if (!name) return;
-    await CategoryRepository.addSubcategory(categoryId, name);
+    await CategoryRepository.addSubcategory(categoryId, name, subIconDraft[categoryId]);
     setSubDraft((d) => ({ ...d, [categoryId]: '' }));
+    setSubIconDraft((d) => ({ ...d, [categoryId]: '' }));
     await load();
     onChange();
   }
@@ -87,6 +89,7 @@ export default function Categories({ version, onChange }: Props) {
     await CategoryRepository.updateSubcategory({
       ...original,
       name: editSub.name.trim() || original.name,
+      icon: editSub.icon.trim() || undefined,
     });
     setEditSub(null);
     await load();
@@ -179,11 +182,20 @@ export default function Categories({ version, onChange }: Props) {
             {subs.map((s) =>
               editSub?.id === s.id ? (
                 <div className="row" key={s.id}>
-                  <input
-                    className="input"
-                    value={editSub!.name}
-                    onChange={(e) => setEditSub({ ...editSub!, name: e.target.value })}
-                  />
+                  <div className="inline" style={{ flex: 1 }}>
+                    <input
+                      className="input"
+                      style={{ width: 56, textAlign: 'center' }}
+                      value={editSub!.icon}
+                      onChange={(e) => setEditSub({ ...editSub!, icon: e.target.value })}
+                      aria-label="icon"
+                    />
+                    <input
+                      className="input"
+                      value={editSub!.name}
+                      onChange={(e) => setEditSub({ ...editSub!, name: e.target.value })}
+                    />
+                  </div>
                   <div className="inline">
                     <button className="btn btn--ghost" onClick={saveSub}>
                       Save
@@ -195,12 +207,12 @@ export default function Categories({ version, onChange }: Props) {
                 </div>
               ) : (
                 <div className="row" key={s.id}>
-                  <span>› {s.name}</span>
+                  <span>› {s.icon ? `${s.icon} ` : ''}{s.name}</span>
                   <div className="inline">
                     <span className="pill">{aliasCountFor(s.id)} aliases</span>
                     <button
                       className="iconbtn"
-                      onClick={() => setEditSub({ id: s.id, name: s.name })}
+                      onClick={() => setEditSub({ id: s.id, name: s.name, icon: s.icon ?? '' })}
                       title="Rename"
                     >
                       ✏️
@@ -214,6 +226,14 @@ export default function Categories({ version, onChange }: Props) {
             )}
 
             <div className="inline" style={{ marginTop: 10 }}>
+              <input
+                className="input"
+                style={{ width: 56, textAlign: 'center' }}
+                placeholder="🔖"
+                value={subIconDraft[cat.id] ?? ''}
+                onChange={(e) => setSubIconDraft((d) => ({ ...d, [cat.id]: e.target.value }))}
+                aria-label="subcategory icon"
+              />
               <input
                 className="input"
                 placeholder="Add subcategory"
