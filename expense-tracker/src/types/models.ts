@@ -144,6 +144,27 @@ export interface Goal {
   updatedAt: ISODate;
 }
 
+/** A block inside a rich note in the Notes sub-app. */
+export type NoteBlockType = 'text' | 'bullets' | 'image' | 'link';
+
+export interface NoteBlock {
+  id: ID;
+  type: NoteBlockType;
+  text?: string; // text: paragraph · bullets: one item per line
+  dataUrl?: string; // image: a (downscaled) base64 data URL
+  url?: string; // link: the raw URL
+  title?: string; // link: optional label (raw for now; unfurled later)
+}
+
+/** A rich note in the Notes sub-app: a title plus an ordered list of blocks. */
+export interface NoteDoc {
+  id: ID;
+  title: string;
+  blocks: NoteBlock[];
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
 export type ActivityType =
   | 'expense.added'
   | 'expense.edited'
@@ -182,5 +203,6 @@ export interface BackupFile {
     activities: Activity[];
     recurring?: RecurringExpense[];
     goals?: Goal[];
+    noteDocs?: NoteDoc[];
   };
 }

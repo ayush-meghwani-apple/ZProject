@@ -19,6 +19,7 @@ export const BackupRepository = {
       activities,
       recurring,
       goals,
+      noteDocs,
     ] = await Promise.all([
       storage.categories.getAll(),
       storage.subcategories.getAll(),
@@ -31,6 +32,7 @@ export const BackupRepository = {
       storage.activities.getAll(),
       storage.recurring.getAll(),
       storage.goals.getAll(),
+      storage.noteDocs.getAll(),
     ]);
 
     return {
@@ -49,6 +51,7 @@ export const BackupRepository = {
         activities,
         recurring,
         goals,
+        noteDocs,
       },
     };
   },
@@ -79,6 +82,7 @@ export const BackupRepository = {
     await storage.activities.bulkPut(d.activities ?? []);
     await storage.recurring.bulkPut(d.recurring ?? []);
     await storage.goals.bulkPut(d.goals ?? []);
+    await storage.noteDocs.bulkPut(d.noteDocs ?? []);
 
     await ActivityRepository.log('data.imported', 'backup', newId(), {
       expenses: d.expenses?.length ?? 0,

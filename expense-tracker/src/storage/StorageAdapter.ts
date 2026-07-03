@@ -6,6 +6,7 @@ import type {
   Expense,
   Goal,
   Merchant,
+  NoteDoc,
   PaymentMethod,
   RecurringExpense,
   SalaryCycle,
@@ -41,4 +42,5 @@ export interface StorageAdapter {
   activities: StorageTable<Activity>;
   recurring: StorageTable<RecurringExpense>;
   goals: StorageTable<Goal>;
+  noteDocs: StorageTable<NoteDoc>;
 }

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import ExpensifyApp from './components/ExpensifyApp';
 import GoalsApp from './components/GoalsApp';
+import NotesApp from './components/NotesApp';
 import RemindersInbox from './components/RemindersInbox';
 import { RemindersRepository } from './repository/remindersRepository';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
 
-type AppId = 'expensify' | 'goals';
+type AppId = 'expensify' | 'goals' | 'notes';
 
 interface AppDef {
   id: AppId;
@@ -18,6 +19,7 @@ interface AppDef {
 const APPS: AppDef[] = [
   { id: 'expensify', name: 'Expensify', icon: '🧾', section: 'Money' },
   { id: 'goals', name: 'Questify', icon: '🧭', section: 'Planning' },
+  { id: 'notes', name: 'Notes', icon: '🗒️', section: 'Personal' },
 ];
 
 // Listed in the drawer but not yet built.
@@ -127,8 +129,10 @@ export default function App() {
       <div className="app__swap" key={activeApp}>
         {activeApp === 'expensify' ? (
           <ExpensifyApp refreshNonce={refreshNonce} openReelsNonce={openReelsNonce} />
-        ) : (
+        ) : activeApp === 'goals' ? (
           <GoalsApp />
+        ) : (
+          <NotesApp />
         )}
       </div>
 

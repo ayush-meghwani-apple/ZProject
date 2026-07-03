@@ -1777,3 +1777,110 @@ body {
   animation: hintIn 0.14s ease;
 }
 
+/* ---- Phase C: Notes sub-app ---- */
+.notecard {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+
+.notecard__title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.notecard__preview {
+  color: var(--muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notecard__date {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 8px;
+}
+
+.noteedit__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.noteedit__title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.noteblock {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px;
+  margin: 8px 0;
+  background: var(--surface-2);
+}
+
+.noteblock__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.noteblock__type {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.noteblock__tools {
+  display: flex;
+  gap: 2px;
+}
+
+.noteblock__text {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.noteblock__img {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+}
+
+.noteblock__link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notelink {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-all;
+  text-decoration: none;
+}
+
+.noteedit__add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.noteedit__hint {
+  margin-top: 10px;
+}
+
+

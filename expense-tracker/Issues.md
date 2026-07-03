@@ -7,12 +7,11 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-_Being tackled in phases — Phase A & B are shipped; Phase C (Notes app) is next._
-
-**New app to build — Phase C**
-- A **Notes** sub-app in the hamburger menu: multiple notes, each with bullet points, images (phone gallery / screenshot / copy-paste), and pasted links. (Tables + URL title-unfurling to follow in a later pass.)
+_(nothing open right now — add a bullet here whenever you think of something)_
 
 ## Done
+
+- ✅ **(2026-07-03)** **New "Notes" sub-app.** Added under **Personal** in the ☰ menu (🗒️ Notes). Keep as many notes as you like; each opens a block editor where you can stack **text paragraphs**, **bulleted lists**, **images** (pick from your gallery/photos or **paste** a screenshot — big photos are auto-shrunk so they don't bloat storage), and **links** (type a URL and it becomes a tappable link). Blocks can be **reordered** (⬆️/⬇️) or removed, notes **autosave** as you type, and everything is stored on-device and included in your backups. (Tables and rich URL "unfurled" titles are noted for a later pass.)
 
 - ✅ **(2026-07-03)** **Reminders + 🔔 bell inbox.** Every expense on the **Reels** tab now has an **⏰ Remind** button — pick 1 / 3 / 6 / 11 / 12 months and you'll be nudged to add it again (e.g. a yearly car-insurance premium). A **🔔 bell** in the header shows a badge for anything due; tapping it opens a **Reminders** inbox split into **Due** and **Upcoming**, where you can **Add now** (re-creates the expense in one tap), **Snooze** a week, or **Dismiss**. Best-effort **local notifications** fire for due reminders when you open the app (enable them from the inbox). No server needed, so nothing runs in the background — reminders surface as you use the app.
 - ✅ **(2026-07-03)** **Add an expense straight from Reels.** A floating **＋** button on the Reels tab pops a quick box — type like chat (e.g. `500 groceries`) and it's added and shown as a new reel, so you can log something you spot while reviewing without switching tabs. Plus a **weekly review nudge** that lands in the bell inbox and, when tapped, jumps you straight to Reels to catch anything forgotten.
