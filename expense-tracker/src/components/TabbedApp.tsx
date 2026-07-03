@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 export interface TabDef {
   id: string;
@@ -26,6 +26,13 @@ export default function TabbedApp({ tabs, initialId }: Props) {
   const noSwipe = useRef(false);
   const [swipeX, setSwipeX] = useState(0);
   const [slideDir, setSlideDir] = useState<'next' | 'prev'>('next');
+  // Don't play the directional slide on the very first render — otherwise a
+  // whole sub-app mounting (e.g. switching apps) does a one-sided slide that
+  // reads as a jerk. The slide is only for real tab changes after mount.
+  const animate = useRef(false);
+  useEffect(() => {
+    animate.current = true;
+  }, []);
 
   const tabIdx = Math.max(
     0,
@@ -106,7 +113,7 @@ export default function TabbedApp({ tabs, initialId }: Props) {
         )}
         <div
           key={activeId}
-          className={`app__view app__view--${slideDir}`}
+          className={`app__view ${animate.current ? `app__view--${slideDir}` : ''}`}
           style={
             swipeX !== 0
               ? { transform: `translateX(${swipeX * 0.18}px)`, transition: 'none' }

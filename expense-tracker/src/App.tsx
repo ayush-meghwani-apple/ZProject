@@ -81,7 +81,9 @@ export default function App() {
         ))}
       </aside>
 
-      {activeApp === 'expensify' ? <ExpensifyApp /> : <GoalsApp />}
+      <div className="app__swap" key={activeApp}>
+        {activeApp === 'expensify' ? <ExpensifyApp /> : <GoalsApp />}
+      </div>
     </div>
   );
 }

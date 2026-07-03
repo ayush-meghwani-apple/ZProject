@@ -226,23 +226,12 @@ export function parseInput(
     for (let j = 0; j < len; j++) used[start + j] = true;
   };
 
-  // 1) Aliases (single trigger words like "chai") take priority.
-  for (let i = 0; i < words.length; i++) {
-    const hit = aliases.find((a) => a.text === words[i]);
-    if (hit) {
-      categoryId = hit.categoryId;
-      subcategoryId = hit.subcategoryId;
-      used[i] = true;
-      break;
-    }
-  }
-
-  // 2) Category by full name (longest names first for specificity). We match
-  //    the category *before* any global subcategory match so that when both a
-  //    category and one of its subcategories are typed (e.g. "Home Mobile
-  //    Recharge"), the subcategory binds to the right parent — not a
-  //    same-named subcategory under a different category.
-  if (categoryId === undefined) {
+  // 1) Category by full name first (longest names first for specificity).
+  //    Matching an explicitly-typed category before anything else means a
+  //    single-word alias (e.g. "mobile" -> Ayush) can never override a category
+  //    you named — "Home Mobile Recharge" stays under Home.
+  let categoryFromName = false;
+  {
     const cats = [...categories].sort(
       (a, b) => nameTokens(b.name).length - nameTokens(a.name).length,
     );
@@ -251,13 +240,15 @@ export function parseInput(
       if (at !== -1) {
         categoryId = c.id;
         markRun(at, nameTokens(c.name).length);
+        categoryFromName = true;
         break;
       }
     }
   }
 
-  // 3) Category known but no subcategory yet: match a subcategory *within* it
-  //    (e.g. "home shopping" -> Home / Shopping; disambiguates shared names).
+  // 2) Category known: match a subcategory *within* it by name (e.g.
+  //    "home mobile recharge" -> Home / Mobile Recharge; disambiguates shared
+  //    names like a "Mobile Recharge" that also exists under another category).
   if (categoryId !== undefined && subcategoryId === undefined) {
     const subs = subcategories
       .filter((s) => s.categoryId === categoryId)
@@ -272,8 +263,29 @@ export function parseInput(
     }
   }
 
-  // 4) No category matched at all: fall back to a global subcategory match by
-  //    full name (longest first), which also sets the parent category.
+  // 3) Aliases (single trigger words like "chai"). If a category was named
+  //    explicitly, only honour an alias that belongs to that same category (to
+  //    fill in the subcategory) — never one pointing at a different category.
+  for (let i = 0; i < words.length; i++) {
+    if (used[i]) continue;
+    const hit = aliases.find((a) => a.text === words[i]);
+    if (!hit) continue;
+    if (categoryFromName) {
+      if (hit.categoryId === categoryId && subcategoryId === undefined && hit.subcategoryId) {
+        subcategoryId = hit.subcategoryId;
+        used[i] = true;
+        break;
+      }
+      continue; // ignore aliases that point at a different category
+    }
+    categoryId = hit.categoryId;
+    subcategoryId = hit.subcategoryId;
+    used[i] = true;
+    break;
+  }
+
+  // 4) Nothing matched a category yet: fall back to a global subcategory match
+  //    by full name (longest first), which also sets the parent category.
   if (categoryId === undefined) {
     const subs = [...subcategories].sort(
       (a, b) => nameTokens(b.name).length - nameTokens(a.name).length,

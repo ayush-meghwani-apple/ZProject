@@ -167,29 +167,36 @@ export default function Reels({ version, onChange }: Props) {
 
   return (
     <div className="reels">
-      <div className="reels__bar">
-        <button
-          className="reels__nav"
-          onClick={goOlder}
-          disabled={!hasOlder}
-          aria-label="Older cycle"
-        >
-          ‹
-        </button>
-        <div className="reels__cycle">
-          <span className="reels__cycle-name">{cycleTitle}</span>
-          <span className="reels__cycle-sub">
-            {formatINR(total)} · {reels.length} expense{reels.length === 1 ? '' : 's'}
-          </span>
+      <div className="reels__top">
+        <div className="reels__bar">
+          <button
+            className="reels__nav"
+            onClick={goOlder}
+            disabled={!hasOlder}
+            aria-label="Older cycle"
+          >
+            ‹
+          </button>
+          <div className="reels__cycle">
+            <span className="reels__cycle-name">{cycleTitle}</span>
+            <span className="reels__cycle-sub">
+              {formatINR(total)} · {reels.length} expense{reels.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          <button
+            className="reels__nav"
+            onClick={goNewer}
+            disabled={!hasNewer}
+            aria-label="Newer cycle"
+          >
+            ›
+          </button>
         </div>
-        <button
-          className="reels__nav"
-          onClick={goNewer}
-          disabled={!hasNewer}
-          aria-label="Newer cycle"
-        >
-          ›
-        </button>
+        {notes.length + reels.length > 0 && (
+          <div className="reels__counter">
+            {Math.min(active + 1, notes.length + reels.length)} / {notes.length + reels.length}
+          </div>
+        )}
       </div>
 
       {reels.length === 0 && notes.length === 0 ? (
@@ -299,10 +306,6 @@ export default function Reels({ version, onChange }: Props) {
                 </section>
               );
             })}
-          </div>
-
-          <div className="reels__counter">
-            {Math.min(active + 1, notes.length + reels.length)} / {notes.length + reels.length}
           </div>
         </>
       )}

@@ -7,10 +7,22 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-_(nothing open right now — add a bullet here whenever you think of something)_
+_Being tackled in phases — Phase A (bug/UI fixes) is shipped; see Done below._
 
+**Expensify — Phase B (next)**
+- On the Reels tab, add a **reminder** option per expense to add it again later (e.g. car insurance → remind after 11 months), surfaced via a 🔔 bell inbox (top-right) and best-effort local notifications.
+- A **＋ button on Reels** to add a new expense right from the Reels tab, plus a weekly nudge to review last week's reels for anything forgotten.
+- In the **Spend by category** pie chart, let a tap/second-tap **drill into that category's sub-category breakdown as a pie**.
+
+**New app to build — Phase C**
+- A **Notes** sub-app in the hamburger menu: multiple notes, each with bullet points, images (phone gallery / screenshot / copy-paste), and pasted links. (Tables + URL title-unfurling to follow in a later pass.)
 
 ## Done
+
+- ✅ **(2026-07-03)** **Typed category now wins over a look-alike alias.** Adding `20 Home Mobile Recharge` was landing under **Ayush → Mobile Recharge** because a single-word alias (`mobile` → Ayush) was matched before the category you actually typed. The parser now resolves the **named category first**, then the sub-category **within that category**, and only falls back to aliases when no category is named — so `Home Mobile Recharge` stays under Home, `Ayush Mobile Recharge` stays under Ayush, and a bare `mobile` still uses its alias.
+- ✅ **(2026-07-03)** **Reels cycle bar & counter no longer overlap.** The cycle capsule (centre) and the `1 / 21` position counter now sit in one centred row; a long cycle name truncates inside its pill instead of sliding under the counter.
+- ✅ **(2026-07-03)** **Cleaner app switching.** Going back from Questify to Expensify no longer jerks/bounces — the whole-app swap now plays one consistent transition and the inner tab-slide no longer fires on mount (which was causing the double animation).
+- ✅ **(2026-07-03)** **Removed the empty band under the bottom tabs.** The app now fills the exact visible viewport (fixed a `100dvh` vs fixed-viewport mismatch), so the tab bar sits flush at the bottom of the screen with no dead space beneath it.
 
 - ✅ **(2026-06-28)** **The app is now "Expensify" with sub-apps.** The header shows a **☰ hamburger** on the left that opens a left drawer grouped into **Money → Expensify** and **Planning → Goals** (Investments listed as "soon"). Tapping a sub-app swaps the whole UI. The app always **starts on Expensify**. The bottom **Settings** tab is shared: inside a sub-app it shows only the cross-app cards — **Data Safety, Backup & Sync, About** — since backup is one file for the whole app. (The internal database name and backup file format are unchanged, so all your existing expenses and backups carry over untouched.)
 - ✅ **(2026-06-28)** **Goals sub-app (first version).** Add a goal with its **cost today, years away, inflation %, amount already saved, monthly saving, yearly step-up %** and **expected return %**. Each goal card shows the **inflation-adjusted future cost** (e.g. ₹10L today at 6% → **₹10.60L** in 1 year), what your savings + stepped-up SIP will **actually grow to**, whether you're **on track** or the **shortfall**, the **monthly SIP needed** to hit it, total invested, and a progress bar. There's also a standalone **Step-up SIP calculator** at the top (e.g. ₹10,000/mo with 10% yearly step-up over 2 years) for quick what-ifs. (Rough first cut as you asked — send more ideas and I'll build on it.)
