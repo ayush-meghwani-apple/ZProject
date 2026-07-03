@@ -23,6 +23,17 @@ export default function Categories({ version, onChange }: Props) {
   // The just-moved category id, shown with a brief highlight + badge so you can
   // tell which one moved even when the list scrolls.
   const [justMovedId, setJustMovedId] = useState<string | null>(null);
+  // Which category cards are expanded to show their sub-categories.
+  const [openCats, setOpenCats] = useState<Set<string>>(new Set());
+
+  function toggleCat(id: string) {
+    setOpenCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   // Card elements + the id to keep in view after a reorder, so the moved
   // category follows the screen instead of scrolling out of sight.
@@ -237,10 +248,18 @@ export default function Categories({ version, onChange }: Props) {
                         ⬇️
                       </button>
                     </div>
+                    <button
+                      className="cat__toggle"
+                      onClick={() => toggleCat(cat.id)}
+                      aria-label={openCats.has(cat.id) ? 'Collapse' : 'Expand'}
+                    >
+                      {subs.length === 0 ? '·' : openCats.has(cat.id) ? '▾' : '▸'}
+                    </button>
                     <span className="dot" style={{ background: cat.color }} />
                     <strong>
                       {cat.icon} {cat.name}
                     </strong>
+                    {subs.length > 0 && <span className="cat__count">{subs.length}</span>}
                     {justMovedId === cat.id && <span className="moved-badge">↕ moved</span>}
                   </div>
                   <div className="inline">
@@ -263,12 +282,12 @@ export default function Categories({ version, onChange }: Props) {
               )}
             </div>
 
-            {subs.map((s) =>
+            {openCats.has(cat.id) &&
+              subs.map((s) =>
               editSub?.id === s.id ? (
                 <div className="row" key={s.id}>
                   <div className="inline" style={{ flex: 1 }}>
-                    <input
-                      className="input"
+                    <input                      className="input"
                       style={{ width: 56, textAlign: 'center' }}
                       value={editSub!.icon}
                       onChange={(e) => setEditSub({ ...editSub!, icon: e.target.value })}
@@ -362,25 +381,27 @@ export default function Categories({ version, onChange }: Props) {
               ),
             )}
 
-            <div className="inline" style={{ marginTop: 10 }}>
-              <input
-                className="input"
-                style={{ width: 56, textAlign: 'center' }}
-                placeholder="🔖"
-                value={subIconDraft[cat.id] ?? ''}
-                onChange={(e) => setSubIconDraft((d) => ({ ...d, [cat.id]: e.target.value }))}
-                aria-label="subcategory icon"
-              />
-              <input
-                className="input"
-                placeholder="Add subcategory"
-                value={subDraft[cat.id] ?? ''}
-                onChange={(e) => setSubDraft((d) => ({ ...d, [cat.id]: e.target.value }))}
-              />
-              <button className="btn btn--ghost" onClick={() => addSub(cat.id)}>
-                +
-              </button>
-            </div>
+            {openCats.has(cat.id) && (
+              <div className="inline" style={{ marginTop: 10 }}>
+                <input
+                  className="input"
+                  style={{ width: 56, textAlign: 'center' }}
+                  placeholder="🔖"
+                  value={subIconDraft[cat.id] ?? ''}
+                  onChange={(e) => setSubIconDraft((d) => ({ ...d, [cat.id]: e.target.value }))}
+                  aria-label="subcategory icon"
+                />
+                <input
+                  className="input"
+                  placeholder="Add subcategory"
+                  value={subDraft[cat.id] ?? ''}
+                  onChange={(e) => setSubDraft((d) => ({ ...d, [cat.id]: e.target.value }))}
+                />
+                <button className="btn btn--ghost" onClick={() => addSub(cat.id)}>
+                  +
+                </button>
+              </div>
+            )}
           </div>
         );
       })}

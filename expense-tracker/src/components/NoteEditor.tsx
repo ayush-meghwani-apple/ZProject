@@ -23,6 +23,7 @@ const TABLE_HTML =
  */
 export default function NoteEditor({ doc, onExit }: Props) {
   const bodyRef = useRef<HTMLDivElement>(null);
+  const notebarRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const lastRange = useRef<Range | null>(null);
@@ -34,6 +35,27 @@ export default function NoteEditor({ doc, onExit }: Props) {
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.innerHTML = doc.body ?? blocksToHtml(doc.blocks ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the toolbar pinned above the on-screen keyboard. The keyboard shrinks
+  // the visual viewport without moving fixed/flow elements, so we lift the bar
+  // by however much of the layout viewport the keyboard now covers.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    function update() {
+      const v = window.visualViewport;
+      if (!v || !notebarRef.current) return;
+      const overlap = Math.max(0, window.innerHeight - v.height - v.offsetTop);
+      notebarRef.current.style.transform = overlap > 0 ? `translateY(${-overlap}px)` : '';
+    }
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
   }, []);
 
   // Remember the last selection inside the body, so colour pickers (which steal
@@ -77,6 +99,17 @@ export default function NoteEditor({ doc, onExit }: Props) {
     return null;
   }
 
+  /** Put the caret at the start of a cell and remember it (keeps table controls up). */
+  function placeCaret(cell: HTMLElement) {
+    const range = document.createRange();
+    range.selectNodeContents(cell);
+    range.collapse(true);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    lastRange.current = range.cloneRange();
+  }
+
   function focusBody() {
     bodyRef.current?.focus();
   }
@@ -112,6 +145,25 @@ export default function NoteEditor({ doc, onExit }: Props) {
     } else if (!document.execCommand('hiliteColor', false, value)) {
       document.execCommand('backColor', false, value);
     }
+    afterEdit();
+  }
+
+  function inList(): boolean {
+    const sel = document.getSelection();
+    let n: Node | null = sel && sel.rangeCount ? sel.anchorNode : null;
+    while (n && n !== bodyRef.current) {
+      if (n instanceof HTMLLIElement) return true;
+      n = n.parentNode;
+    }
+    return false;
+  }
+
+  // Tab / Shift+Tab indents & outdents — inside a list that nests a sub-bullet.
+  function onBodyKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    if (inList()) document.execCommand(e.shiftKey ? 'outdent' : 'indent');
+    else document.execCommand('insertText', false, '\t');
     afterEdit();
   }
 
@@ -191,8 +243,19 @@ export default function NoteEditor({ doc, onExit }: Props) {
     if (!cell) return;
     const row = cell.parentElement as HTMLTableRowElement;
     const table = row.closest('table')!;
-    if (table.querySelectorAll('tr').length <= 1) table.remove();
-    else row.remove();
+    const rows = Array.from(table.querySelectorAll('tr'));
+    if (rows.length <= 1) {
+      table.remove();
+      focusBody();
+      afterEdit();
+      return;
+    }
+    const idx = rows.indexOf(row);
+    row.remove();
+    // Keep the caret in the table so the row/col controls stay visible.
+    const nextRow = table.querySelectorAll('tr')[Math.min(idx, rows.length - 2)] as HTMLTableRowElement;
+    const target = nextRow?.children[0] as HTMLElement | undefined;
+    if (target) placeCaret(target);
     afterEdit();
   }
 
@@ -202,11 +265,27 @@ export default function NoteEditor({ doc, onExit }: Props) {
     const idx = Array.from(cell.parentElement!.children).indexOf(cell);
     const table = cell.closest('table')!;
     const rows = Array.from(table.querySelectorAll('tr'));
-    if ((rows[0]?.children.length ?? 0) <= 1) table.remove();
-    else
-      rows.forEach((tr) => {
-        tr.children[idx]?.remove();
-      });
+    const colCount = rows[0]?.children.length ?? 0;
+    if (colCount <= 1) {
+      table.remove();
+      focusBody();
+      afterEdit();
+      return;
+    }
+    rows.forEach((tr) => tr.children[idx]?.remove());
+    // Keep the caret in the table so the row/col controls stay visible.
+    const row = cell.parentElement === null ? rows[0] : (table.querySelectorAll('tr')[0] as HTMLTableRowElement);
+    const target = row?.children[Math.min(idx, colCount - 2)] as HTMLElement | undefined;
+    if (target) placeCaret(target);
+    afterEdit();
+  }
+
+  function deleteTable() {
+    const cell = currentCell();
+    const table = cell?.closest('table');
+    if (!table) return;
+    table.remove();
+    focusBody();
     afterEdit();
   }
 
@@ -258,35 +337,38 @@ export default function NoteEditor({ doc, onExit }: Props) {
         suppressContentEditableWarning
         data-placeholder="Start writing…"
         onInput={afterEdit}
+        onKeyDown={onBodyKeyDown}
         onKeyUp={refreshContext}
         onMouseUp={refreshContext}
         onPaste={onPaste}
       />
 
-      <div className="notebar">
-        <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('bold')} title="Bold">
-          <b>B</b>
-        </button>
-        <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('italic')} title="Italic">
-          <i>I</i>
-        </button>
-        <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('underline')} title="Underline">
-          <u>U</u>
-        </button>
-        <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('strikeThrough')} title="Strikethrough">
-          <s>S</s>
-        </button>
-        <label className="notebar__color" title="Text colour">
-          <span>A</span>
-          <input type="color" defaultValue="#a5b4fc" onInput={(e) => applyColor('fore', e.currentTarget.value)} />
-        </label>
-        <label className="notebar__color" title="Highlight colour">
-          <span>🖍️</span>
-          <input type="color" defaultValue="#fde68a" onInput={(e) => applyColor('back', e.currentTarget.value)} />
-        </label>
+      <div className="notebar" ref={notebarRef}>
+        <div className="notebar__row">
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('bold')} title="Bold">
+            <b>B</b>
+          </button>
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('italic')} title="Italic">
+            <i>I</i>
+          </button>
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('underline')} title="Underline">
+            <u>U</u>
+          </button>
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('strikeThrough')} title="Strikethrough">
+            <s>S</s>
+          </button>
+          <label className="notebar__color" title="Text colour">
+            <span>A</span>
+            <input type="color" defaultValue="#a5b4fc" onInput={(e) => applyColor('fore', e.currentTarget.value)} />
+          </label>
+          <label className="notebar__color" title="Highlight colour">
+            <span>🖍️</span>
+            <input type="color" defaultValue="#fde68a" onInput={(e) => applyColor('back', e.currentTarget.value)} />
+          </label>
+        </div>
 
-        <span className="notebar__group">
-          <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list">
+        <div className="notebar__row">
+          <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list (Tab to indent)">
             • List
           </button>
           <button
@@ -300,24 +382,28 @@ export default function NoteEditor({ doc, onExit }: Props) {
           <button className="notebar__btn" onMouseDown={keepFocus} onClick={insertTable} title="Insert table">
             ▦ Table
           </button>
-        </span>
 
-        {inTable && (
-          <span className="notebar__group">
-            <button className="notebar__btn" onMouseDown={keepFocus} onClick={addRow} title="Add row">
-              ＋Row
-            </button>
-            <button className="notebar__btn" onMouseDown={keepFocus} onClick={addColumn} title="Add column">
-              ＋Col
-            </button>
-            <button className="notebar__btn" onMouseDown={keepFocus} onClick={deleteRow} title="Delete row">
-              －Row
-            </button>
-            <button className="notebar__btn" onMouseDown={keepFocus} onClick={deleteColumn} title="Delete column">
-              －Col
-            </button>
-          </span>
-        )}
+          {inTable && (
+            <>
+              <span className="notebar__sep" />
+              <button className="notebar__btn" onMouseDown={keepFocus} onClick={addRow} title="Add row">
+                ＋Row
+              </button>
+              <button className="notebar__btn" onMouseDown={keepFocus} onClick={addColumn} title="Add column">
+                ＋Col
+              </button>
+              <button className="notebar__btn" onMouseDown={keepFocus} onClick={deleteRow} title="Delete row">
+                －Row
+              </button>
+              <button className="notebar__btn" onMouseDown={keepFocus} onClick={deleteColumn} title="Delete column">
+                －Col
+              </button>
+              <button className="notebar__btn notebar__btn--danger" onMouseDown={keepFocus} onClick={deleteTable} title="Delete table">
+                🗑️ Table
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onPickImage} />

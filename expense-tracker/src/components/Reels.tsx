@@ -40,7 +40,9 @@ export default function Reels({ version, onChange }: Props) {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [active, setActive] = useState(0);
   const [bigThreshold, setBigThreshold] = useState(0);
-  const [remindFor, setRemindFor] = useState<string | null>(null);
+  const [remindExpense, setRemindExpense] = useState<Expense | null>(null);
+  const [customVal, setCustomVal] = useState('');
+  const [customUnit, setCustomUnit] = useState<'months' | 'years'>('months');
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickText, setQuickText] = useState('');
   const [toast, setToast] = useState('');
@@ -180,13 +182,26 @@ export default function Reels({ version, onChange }: Props) {
       dueAt: addMonths(new Date(), months).toISOString(),
       sourceExpenseId: e.id,
     });
-    setRemindFor(null);
-    flashToast(`⏰ Reminder set for ${months} month${months === 1 ? '' : 's'}`);
+    setRemindExpense(null);
+    setCustomVal('');
+    const whenLabel =
+      months % 12 === 0 ? `${months / 12} year${months === 12 ? '' : 's'}` : `${months} months`;
+    flashToast(`⏰ Reminder set for ${whenLabel}`);
     // Best-effort: enable notifications now that there's something to notify about.
     if (!getPrefs().reminderNotifications) {
       const ok = await requestNotificationPermission();
       if (ok) setPrefs({ reminderNotifications: true });
     }
+  }
+
+  function remindCustom() {
+    if (!remindExpense) return;
+    const n = parseInt(customVal, 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      flashToast('Enter a number of months/years');
+      return;
+    }
+    remindIn(remindExpense, customUnit === 'years' ? n * 12 : n);
   }
 
   // Quick-add an expense straight from the Reels tab (parsed like chat).
@@ -361,7 +376,7 @@ export default function Reels({ version, onChange }: Props) {
                     )}
                     <button
                       className="btn btn--ghost"
-                      onClick={() => setRemindFor(remindFor === e.id ? null : e.id)}
+                      onClick={() => setRemindExpense(e)}
                     >
                       ⏰ Remind
                     </button>
@@ -369,30 +384,6 @@ export default function Reels({ version, onChange }: Props) {
                       ✏️ Edit
                     </button>
                   </div>
-
-                  {remindFor === e.id && (
-                    <div className="reel__remind">
-                      <span className="reel__remind-label">Remind me to add this again in:</span>
-                      <div className="reel__remind-opts">
-                        {[1, 3, 6, 11, 12].map((m) => (
-                          <button
-                            key={m}
-                            className="chip chip--recurring"
-                            onClick={() => remindIn(e, m)}
-                          >
-                            {m}m
-                          </button>
-                        ))}
-                        <button
-                          className="chip"
-                          onClick={() => setRemindFor(null)}
-                          aria-label="Cancel reminder"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </section>
               );
             })}
@@ -402,27 +393,7 @@ export default function Reels({ version, onChange }: Props) {
 
       {toast && <div className="reels__toast">{toast}</div>}
 
-      {quickOpen ? (
-        <div className="reels__quick" data-noswipe>
-          <input
-            className="input"
-            autoFocus
-            placeholder='Add an expense, e.g. "500 groceries"'
-            value={quickText}
-            onChange={(e) => setQuickText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') addQuick();
-              if (e.key === 'Escape') setQuickOpen(false);
-            }}
-          />
-          <button className="btn" onClick={addQuick}>
-            Add
-          </button>
-          <button className="iconbtn" onClick={() => setQuickOpen(false)} aria-label="Close">
-            ✕
-          </button>
-        </div>
-      ) : (
+      {!quickOpen && !remindExpense && !editing && (
         <button
           className="reels__fab"
           onClick={() => setQuickOpen(true)}
@@ -430,6 +401,91 @@ export default function Reels({ version, onChange }: Props) {
         >
           ＋
         </button>
+      )}
+
+      {quickOpen && (
+        <div className="modal__backdrop" onClick={() => setQuickOpen(false)}>
+          <div className="modal__card" onClick={(e) => e.stopPropagation()}>
+            <h3>Add expense</h3>
+            <label className="field">
+              <span>Type it like chat</span>
+              <input
+                className="input"
+                autoFocus
+                placeholder='e.g. "500 groceries"'
+                value={quickText}
+                onChange={(e) => setQuickText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addQuick();
+                }}
+              />
+            </label>
+            <div className="modal__footer">
+              <button className="btn btn--ghost" onClick={() => setQuickOpen(false)}>
+                Cancel
+              </button>
+              <button className="btn" onClick={addQuick}>
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {remindExpense && (
+        <div className="modal__backdrop" onClick={() => setRemindExpense(null)}>
+          <div className="modal__card" onClick={(e) => e.stopPropagation()}>
+            <h3>⏰ Remind me to add this again</h3>
+            <p className="card__subtitle">
+              You'll be nudged in the 🔔 inbox (and a phone notification when the app is open).
+            </p>
+            <div className="remind__opts">
+              {[
+                { l: '1 month', m: 1 },
+                { l: '3 months', m: 3 },
+                { l: '6 months', m: 6 },
+                { l: '1 year', m: 12 },
+                { l: '2 years', m: 24 },
+              ].map((o) => (
+                <button
+                  key={o.m}
+                  className="btn btn--ghost remind__opt"
+                  onClick={() => remindIn(remindExpense, o.m)}
+                >
+                  {o.l}
+                </button>
+              ))}
+            </div>
+            <div className="remind__custom">
+              <span className="muted">Custom</span>
+              <input
+                className="input"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                placeholder="e.g. 9"
+                value={customVal}
+                onChange={(e) => setCustomVal(e.target.value)}
+              />
+              <select
+                className="input"
+                value={customUnit}
+                onChange={(e) => setCustomUnit(e.target.value as 'months' | 'years')}
+              >
+                <option value="months">months</option>
+                <option value="years">years</option>
+              </select>
+              <button className="btn" onClick={remindCustom}>
+                Set
+              </button>
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn--ghost" onClick={() => setRemindExpense(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {editing && (

@@ -30,7 +30,12 @@ interface Props {
   onChange: () => void;
 }
 
-/**
+/** Translucent version of a hex colour, for a soft coloured pill background. */
+function tint(hex: string, alpha: number): string {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return `rgba(148, 163, 184, ${alpha})`;
+  return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
+}/**
  * The single "Summary" tab: combines the at-a-glance totals + collapsible
  * category breakdown + recent expenses (formerly Dashboard) with the charts
  * (pie + monthly trend, formerly Reports), so there's one place to understand
@@ -45,7 +50,18 @@ export default function Summary({ version, onChange }: Props) {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [drillId, setDrillId] = useState<string | null>(null);
+  const [picked, setPicked] = useState<{ name: string; total: number; color: string } | null>(null);
+  const lastClick = useRef<{ id: string; t: number }>({ id: '', t: 0 });
   const initialized = useRef(false);
+
+  // Dismiss the picked-slice amount when tapping anywhere that isn't a slice.
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (!(e.target as Element)?.closest?.('.recharts-sector')) setPicked(null);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
 
   async function load() {
     const [e, c, s, cy] = await Promise.all([
@@ -124,7 +140,7 @@ export default function Summary({ version, onChange }: Props) {
       {scoped.length > 0 && (
         <div className="card">
           <div className="pie__head">
-            <h3>{drill ? `${drill.name}` : 'Spend by Category'}</h3>
+            <h3>{drill ? drill.name : 'Spend by Category'}</h3>
             {drill && (
               <button className="btn btn--ghost btn--sm" onClick={() => setDrillId(null)}>
                 ← All categories
@@ -133,9 +149,21 @@ export default function Summary({ version, onChange }: Props) {
           </div>
           <p className="card__subtitle">
             {drill
-              ? 'Sub-category breakdown — tap ← to go back.'
-              : 'Tap a slice to break it down by sub-category.'}
+              ? 'Sub-category breakdown.'
+              : 'Tap a slice for its amount · double-tap to break it down.'}
           </p>
+
+          {picked && (
+            <div
+              className="pie__pick"
+              style={{ background: tint(picked.color, 0.18), borderColor: picked.color }}
+            >
+              <span className="pie__pick-dot" style={{ background: picked.color }} />
+              <span className="pie__pick-name">{picked.name}</span>
+              <strong style={{ color: picked.color }}>{formatINR(picked.total)}</strong>
+            </div>
+          )}
+
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               {drill ? (
@@ -145,11 +173,15 @@ export default function Summary({ version, onChange }: Props) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={90}
+                  outerRadius={88}
                   label={(d) => d.name}
+                  onClick={(_, index) => {
+                    const s = drillData[index];
+                    if (s) setPicked({ name: s.name, total: s.total, color: s.color });
+                  }}
                 >
                   {drillData.map((s) => (
-                    <Cell key={s.subcategoryId} fill={s.color} />
+                    <Cell key={s.subcategoryId} fill={s.color} style={{ cursor: 'pointer' }} />
                   ))}
                 </Pie>
               ) : (
@@ -159,11 +191,21 @@ export default function Summary({ version, onChange }: Props) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={90}
+                  outerRadius={88}
                   label={(d) => d.name}
                   onClick={(_, index) => {
                     const c = categorySummary[index];
-                    if (c && c.categoryId !== 'uncategorized') setDrillId(c.categoryId);
+                    if (!c) return;
+                    const now = Date.now();
+                    const isDouble =
+                      lastClick.current.id === c.categoryId && now - lastClick.current.t < 350;
+                    lastClick.current = { id: c.categoryId, t: now };
+                    if (isDouble && c.categoryId !== 'uncategorized') {
+                      setDrillId(c.categoryId);
+                      setPicked(null);
+                    } else {
+                      setPicked({ name: c.name, total: c.total, color: c.color });
+                    }
                   }}
                 >
                   {categorySummary.map((c) => (
@@ -171,7 +213,6 @@ export default function Summary({ version, onChange }: Props) {
                   ))}
                 </Pie>
               )}
-              <Tooltip formatter={(v: number) => formatINR(v)} />
             </PieChart>
           </ResponsiveContainer>
         </div>

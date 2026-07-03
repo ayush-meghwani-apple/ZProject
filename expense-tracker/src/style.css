@@ -1253,6 +1253,34 @@ body {
   }
 }
 
+/* Remind modal options */
+.remind__opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.remind__opt {
+  flex: 1 1 30%;
+  min-width: 90px;
+}
+
+.remind__custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.remind__custom .input {
+  min-width: 0;
+}
+
+.remind__custom input[type='number'] {
+  flex: 1 1 auto;
+  width: 60px;
+}
+
 /* ---- Expense Reels ---- */
 .reels {
   position: relative;
@@ -1540,7 +1568,55 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.pie__pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  margin: 4px 0 10px;
+  font-size: 14px;
+}
+
+.pie__pick-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.pie__pick-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.cat__toggle {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  width: 20px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cat__count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 1px 8px;
 }
 
 /* Header bell + due badge */
@@ -1871,6 +1947,15 @@ body {
   margin: 6px 0;
 }
 
+.notebody ul ul {
+  list-style-type: circle;
+  margin: 2px 0;
+}
+
+.notebody ul ul ul {
+  list-style-type: square;
+}
+
 .notebody a {
   color: var(--accent);
   word-break: break-word;
@@ -1892,15 +1977,36 @@ body {
 
 .notebar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-top: 1px solid var(--border);
   background: var(--surface);
+  will-change: transform;
+}
+
+.notebar__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.notebar__row::-webkit-scrollbar {
+  display: none;
+}
+
+.notebar__sep {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 1px;
+  background: var(--border);
+  margin: 2px 0;
 }
 
 .notebar__btn {
+  flex: 0 0 auto;
   appearance: none;
   border: 1px solid var(--border);
   background: var(--surface-2);
@@ -1910,21 +2016,20 @@ body {
   padding: 7px 12px;
   border-radius: 999px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .notebar__btn:active {
   transform: scale(0.96);
 }
 
-.notebar__group {
-  display: inline-flex;
-  gap: 8px;
-  padding-left: 10px;
-  border-left: 1px solid var(--border);
+.notebar__btn--danger {
+  color: var(--bad);
+  border-color: rgba(248, 113, 113, 0.45);
 }
 
 .notebar__btn--sq {
-  min-width: 34px;
+  min-width: 36px;
   padding: 7px 9px;
   text-align: center;
 }
