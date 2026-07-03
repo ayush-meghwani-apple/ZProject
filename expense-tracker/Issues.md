@@ -11,6 +11,14 @@ _(nothing open right now — add a bullet here whenever you think of something)_
 
 ## Done
 
+- ✅ **(2026-07-04)** **Notes app renamed to "Papyra" 📜** (under a new **Studio** section instead of "Personal"). Say the word if you want a different name/section.
+- ✅ **(2026-07-04)** **Reels ＋ opens a full editor.** Instead of a plain text box, the **＋** now opens a proper **Add Expense** sheet with amount, category, sub-category, date and note — everything editable in one place.
+- ✅ **(2026-07-04)** **Neater, consistent Reels.** The per-reel **Delete / Reviewed / Remind / Edit** buttons now share one uniform style (Edit no longer looks different), and the **💸 Big spend! / ✅ Reviewed** badge has breathing room below the cycle bar instead of touching it.
+- ✅ **(2026-07-04)** **Pie chart polish.** Tapping a slice a second time no longer draws a stray square box around it; a **double-tap drills straight in** without briefly flashing the amount first; single-tap still shows the amount pill and taps-away dismiss it.
+- ✅ **(2026-07-04)** **Tidier Categories tab.** The expand/collapse control is **bigger and clearer**, the reorder arrows are now **minimal ↑/↓** (no more chunky emoji), and sub-categories start with a subtle **• bullet** instead of a "›" that looked like it could expand.
+- ✅ **(2026-07-04)** **Remind sheet fixed.** The custom number field no longer cuts off its hint, and the empty gap under **Cancel** is gone.
+- ✅ **(2026-07-04)** **Keyboard toolbar, take two.** The Papyra formatting bar now only lifts for a real keyboard (it ignores the small viewport changes from the mobile address bar hiding on scroll), so it stops drifting with the scroll position. _(Note: the on-screen keyboard doesn't appear in the desktop/web preview, so this behaviour can only be fully confirmed on a real phone.)_
+
 - ✅ **(2026-07-04)** **Notes app is now "Techo" 📔.** Renamed from the placeholder "Notes" (Japanese 手帳 — "notebook"). Tell me if you'd prefer a different name.
 - ✅ **(2026-07-04)** **Nested / sub-bullets.** Inside a bullet list, press **Tab** to indent an item into a sub-bullet (and **Shift+Tab** to outdent). Sub-levels get their own markers (◦, ▪).
 - ✅ **(2026-07-04)** **Toolbar stays above the keyboard.** In Techo the formatting bar now lifts to sit just above the on-screen keyboard while you type, instead of hiding behind it.

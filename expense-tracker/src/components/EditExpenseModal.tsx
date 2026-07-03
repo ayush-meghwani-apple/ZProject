@@ -18,7 +18,7 @@ function fromDateInput(value: string, originalIso: string): string {
 }
 
 interface Props {
-  expense: Expense;
+  expense?: Expense;
   categories: Category[];
   subcategories: Subcategory[];
   onClose: () => void;
@@ -32,11 +32,12 @@ export default function EditExpenseModal({
   onClose,
   onSaved,
 }: Props) {
-  const [amount, setAmount] = useState(String(expense.amount));
-  const [categoryId, setCategoryId] = useState(expense.categoryId ?? '');
-  const [subcategoryId, setSubcategoryId] = useState(expense.subcategoryId ?? '');
-  const [note, setNote] = useState(expense.note ?? '');
-  const [date, setDate] = useState(toDateInput(expense.date));
+  const isNew = !expense;
+  const [amount, setAmount] = useState(expense ? String(expense.amount) : '');
+  const [categoryId, setCategoryId] = useState(expense?.categoryId ?? '');
+  const [subcategoryId, setSubcategoryId] = useState(expense?.subcategoryId ?? '');
+  const [note, setNote] = useState(expense?.note ?? '');
+  const [date, setDate] = useState(toDateInput(expense?.date ?? new Date().toISOString()));
 
   const subs = subcategories.filter((s) => s.categoryId === categoryId);
 
@@ -46,21 +47,31 @@ export default function EditExpenseModal({
       alert('Enter a valid amount.');
       return;
     }
-    await ExpenseRepository.updateExpense({
-      ...expense,
-      amount: amt,
-      categoryId: categoryId || undefined,
-      subcategoryId: subcategoryId || undefined,
-      note: note.trim() || undefined,
-      date: fromDateInput(date, expense.date),
-    });
+    if (isNew) {
+      await ExpenseRepository.addExpense({
+        amount: amt,
+        categoryId: categoryId || undefined,
+        subcategoryId: subcategoryId || undefined,
+        note: note.trim() || undefined,
+        date: fromDateInput(date, new Date().toISOString()),
+      });
+    } else {
+      await ExpenseRepository.updateExpense({
+        ...expense!,
+        amount: amt,
+        categoryId: categoryId || undefined,
+        subcategoryId: subcategoryId || undefined,
+        note: note.trim() || undefined,
+        date: fromDateInput(date, expense!.date),
+      });
+    }
     onSaved();
   }
 
   return createPortal(
     <div className="modal__backdrop" onClick={onClose}>
       <div className="modal__card" onClick={(e) => e.stopPropagation()}>
-        <h3>Edit Expense</h3>
+        <h3>{isNew ? 'Add Expense' : 'Edit Expense'}</h3>
 
         <label className="field">
           <span>Amount (₹)</span>

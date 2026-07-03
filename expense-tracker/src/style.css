@@ -733,17 +733,22 @@ body {
 .reorder {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   margin-left: -2px;
 }
 
-.reorder .iconbtn {
+.reorder__btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
   font-size: 13px;
-  padding: 2px 4px;
   line-height: 1;
+  padding: 1px 4px;
+  cursor: pointer;
 }
 
-.reorder .iconbtn:disabled {
+.reorder__btn:disabled {
   opacity: 0.25;
   cursor: default;
 }
@@ -982,6 +987,13 @@ body {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.subrow__bullet {
+  color: var(--muted);
+  font-size: 10px;
+  vertical-align: middle;
+  margin-right: 2px;
 }
 
 .pill {
@@ -1278,7 +1290,16 @@ body {
 
 .remind__custom input[type='number'] {
   flex: 1 1 auto;
-  width: 60px;
+  width: 72px;
+  min-width: 64px;
+}
+
+/* Kill the SVG focus rectangle that some browsers draw around a tapped slice. */
+.recharts-wrapper :focus,
+.recharts-surface:focus,
+.recharts-sector:focus,
+.recharts-layer:focus {
+  outline: none;
 }
 
 /* ---- Expense Reels ---- */
@@ -1382,7 +1403,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  padding: 64px 28px 28px;
+  padding: 96px 24px 28px;
   text-align: center;
   position: relative;
 }
@@ -1394,7 +1415,7 @@ body {
 
 .reel__flame {
   position: absolute;
-  top: 64px;
+  top: 88px;
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.3px;
@@ -1523,8 +1544,28 @@ body {
 
 .reel__actions {
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.reel__act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.reel__act:active {
+  transform: scale(0.96);
 }
 
 .reels__counter {
@@ -1603,11 +1644,21 @@ body {
   appearance: none;
   border: none;
   background: transparent;
-  color: var(--muted);
-  font-size: 14px;
-  width: 20px;
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   padding: 0;
+  border-radius: 8px;
+}
+
+.cat__toggle:active {
+  background: var(--surface-2);
 }
 
 .cat__count {
@@ -1982,6 +2033,9 @@ body {
   padding: 8px 12px;
   border-top: 1px solid var(--border);
   background: var(--surface);
+  position: relative;
+  z-index: 6;
+  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.25);
   will-change: transform;
 }
 

@@ -37,25 +37,23 @@ export default function NoteEditor({ doc, onExit }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the toolbar pinned above the on-screen keyboard. The keyboard shrinks
-  // the visual viewport without moving fixed/flow elements, so we lift the bar
-  // by however much of the layout viewport the keyboard now covers.
+  // Keep the toolbar pinned just above the on-screen keyboard. When the keyboard
+  // opens it shrinks the visual viewport (without moving flow/fixed elements), so
+  // we lift the bar by the covered height. A threshold ignores the smaller
+  // viewport changes from the mobile URL bar hiding/showing on scroll.
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     function update() {
       const v = window.visualViewport;
       if (!v || !notebarRef.current) return;
-      const overlap = Math.max(0, window.innerHeight - v.height - v.offsetTop);
-      notebarRef.current.style.transform = overlap > 0 ? `translateY(${-overlap}px)` : '';
+      const covered = Math.max(0, window.innerHeight - v.height - v.offsetTop);
+      const lift = covered > 120 ? covered : 0; // >120px ≈ a keyboard, not the URL bar
+      notebarRef.current.style.transform = lift ? `translateY(${-lift}px)` : '';
     }
     update();
     vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-    };
+    return () => vv.removeEventListener('resize', update);
   }, []);
 
   // Remember the last selection inside the body, so colour pickers (which steal

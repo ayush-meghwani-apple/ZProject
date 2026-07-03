@@ -52,12 +52,16 @@ export default function Summary({ version, onChange }: Props) {
   const [drillId, setDrillId] = useState<string | null>(null);
   const [picked, setPicked] = useState<{ name: string; total: number; color: string } | null>(null);
   const lastClick = useRef<{ id: string; t: number }>({ id: '', t: 0 });
+  const pickTimer = useRef<number | undefined>(undefined);
   const initialized = useRef(false);
 
   // Dismiss the picked-slice amount when tapping anywhere that isn't a slice.
   useEffect(() => {
     function onDown(e: MouseEvent) {
-      if (!(e.target as Element)?.closest?.('.recharts-sector')) setPicked(null);
+      if (!(e.target as Element)?.closest?.('.recharts-sector')) {
+        window.clearTimeout(pickTimer.current);
+        setPicked(null);
+      }
     }
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
@@ -197,14 +201,23 @@ export default function Summary({ version, onChange }: Props) {
                     const c = categorySummary[index];
                     if (!c) return;
                     const now = Date.now();
-                    const isDouble =
+                    const isSecond =
                       lastClick.current.id === c.categoryId && now - lastClick.current.t < 350;
                     lastClick.current = { id: c.categoryId, t: now };
-                    if (isDouble && c.categoryId !== 'uncategorized') {
-                      setDrillId(c.categoryId);
-                      setPicked(null);
+                    window.clearTimeout(pickTimer.current);
+                    if (isSecond) {
+                      // Double-tap → drill straight in, no amount flash.
+                      if (c.categoryId !== 'uncategorized') {
+                        setDrillId(c.categoryId);
+                        setPicked(null);
+                      }
                     } else {
-                      setPicked({ name: c.name, total: c.total, color: c.color });
+                      // Single-tap → show the amount, but wait in case a second
+                      // tap turns it into a drill.
+                      pickTimer.current = window.setTimeout(
+                        () => setPicked({ name: c.name, total: c.total, color: c.color }),
+                        280,
+                      );
                     }
                   }}
                 >

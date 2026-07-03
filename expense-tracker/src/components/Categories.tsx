@@ -230,22 +230,22 @@ export default function Categories({ version, onChange }: Props) {
                   <div className="row__left">
                     <div className="reorder">
                       <button
-                        className="iconbtn"
+                        className="reorder__btn"
                         onClick={() => move(cat.id, -1)}
                         disabled={idx === 0}
                         title="Move up"
                         aria-label="Move up"
                       >
-                        ⬆️
+                        ↑
                       </button>
                       <button
-                        className="iconbtn"
+                        className="reorder__btn"
                         onClick={() => move(cat.id, 1)}
                         disabled={idx === categories.length - 1}
                         title="Move down"
                         aria-label="Move down"
                       >
-                        ⬇️
+                        ↓
                       </button>
                     </div>
                     <button
@@ -311,7 +311,10 @@ export default function Categories({ version, onChange }: Props) {
               ) : (
                 <div className="subrow" key={s.id}>
                   <div className="row">
-                    <span className="subrow__name">› {s.icon ? `${s.icon} ` : ''}{s.name}</span>
+                    <span className="subrow__name">
+                      <span className="subrow__bullet">•</span> {s.icon ? `${s.icon} ` : ''}
+                      {s.name}
+                    </span>
                     <div className="inline inline--actions">
                       <button
                         className={`pill pill--btn${aliasOpen === s.id ? ' pill--active' : ''}`}

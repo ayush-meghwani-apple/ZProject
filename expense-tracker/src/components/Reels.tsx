@@ -43,8 +43,7 @@ export default function Reels({ version, onChange }: Props) {
   const [remindExpense, setRemindExpense] = useState<Expense | null>(null);
   const [customVal, setCustomVal] = useState('');
   const [customUnit, setCustomUnit] = useState<'months' | 'years'>('months');
-  const [quickOpen, setQuickOpen] = useState(false);
-  const [quickText, setQuickText] = useState('');
+  const [addingNew, setAddingNew] = useState(false);
   const [toast, setToast] = useState('');
   const trackRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
@@ -204,29 +203,6 @@ export default function Reels({ version, onChange }: Props) {
     remindIn(remindExpense, customUnit === 'years' ? n * 12 : n);
   }
 
-  // Quick-add an expense straight from the Reels tab (parsed like chat).
-  async function addQuick() {
-    const text = quickText.trim();
-    if (!text) return;
-    const cmd = parseInput(text, aliases, categories, subcategories);
-    if (cmd.kind !== 'expense') {
-      flashToast('Type an amount, e.g. "500 groceries"');
-      return;
-    }
-    await ExpenseRepository.addExpense({
-      amount: cmd.amount,
-      categoryId: cmd.categoryId,
-      subcategoryId: cmd.subcategoryId,
-      note: cmd.note,
-      rawText: text,
-    });
-    playSound(cmd.categoryId ? 'success' : 'uncategorized');
-    setQuickText('');
-    setQuickOpen(false);
-    await load();
-    onChange();
-  }
-
   function markNoteDone(note: Note) {
     NotesRepository.setDone(note.id, true);
     setNotes(NotesRepository.getActive());
@@ -366,22 +342,19 @@ export default function Reels({ version, onChange }: Props) {
                   ) : null}
 
                   <div className="reel__actions">
-                    <button className="btn btn--ghost" onClick={() => handleDelete(e.id)}>
-                      🗑️ Delete
+                    <button className="reel__act" onClick={() => handleDelete(e.id)}>
+                      🗑️ <span>Delete</span>
                     </button>
                     {isBig && (
-                      <button className="btn btn--ghost" onClick={() => toggleReviewed(e)}>
-                        {e.reviewed ? '↩️ Unreview' : '✅ Reviewed'}
+                      <button className="reel__act" onClick={() => toggleReviewed(e)}>
+                        {e.reviewed ? '↩️' : '✅'} <span>{e.reviewed ? 'Unreview' : 'Reviewed'}</span>
                       </button>
                     )}
-                    <button
-                      className="btn btn--ghost"
-                      onClick={() => setRemindExpense(e)}
-                    >
-                      ⏰ Remind
+                    <button className="reel__act" onClick={() => setRemindExpense(e)}>
+                      ⏰ <span>Remind</span>
                     </button>
-                    <button className="btn" onClick={() => setEditing(e)}>
-                      ✏️ Edit
+                    <button className="reel__act" onClick={() => setEditing(e)}>
+                      ✏️ <span>Edit</span>
                     </button>
                   </div>
                 </section>
@@ -393,43 +366,14 @@ export default function Reels({ version, onChange }: Props) {
 
       {toast && <div className="reels__toast">{toast}</div>}
 
-      {!quickOpen && !remindExpense && !editing && (
+      {!addingNew && !remindExpense && !editing && (
         <button
           className="reels__fab"
-          onClick={() => setQuickOpen(true)}
+          onClick={() => setAddingNew(true)}
           aria-label="Add an expense"
         >
           ＋
         </button>
-      )}
-
-      {quickOpen && (
-        <div className="modal__backdrop" onClick={() => setQuickOpen(false)}>
-          <div className="modal__card" onClick={(e) => e.stopPropagation()}>
-            <h3>Add expense</h3>
-            <label className="field">
-              <span>Type it like chat</span>
-              <input
-                className="input"
-                autoFocus
-                placeholder='e.g. "500 groceries"'
-                value={quickText}
-                onChange={(e) => setQuickText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') addQuick();
-                }}
-              />
-            </label>
-            <div className="modal__footer">
-              <button className="btn btn--ghost" onClick={() => setQuickOpen(false)}>
-                Cancel
-              </button>
-              <button className="btn" onClick={addQuick}>
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {remindExpense && (
@@ -463,7 +407,7 @@ export default function Reels({ version, onChange }: Props) {
                 type="number"
                 inputMode="numeric"
                 min={1}
-                placeholder="e.g. 9"
+                placeholder="9"
                 value={customVal}
                 onChange={(e) => setCustomVal(e.target.value)}
               />
@@ -479,13 +423,29 @@ export default function Reels({ version, onChange }: Props) {
                 Set
               </button>
             </div>
-            <div className="modal__footer">
-              <button className="btn btn--ghost" onClick={() => setRemindExpense(null)}>
-                Cancel
-              </button>
-            </div>
+            <button
+              className="btn btn--ghost"
+              style={{ width: '100%', marginTop: 14 }}
+              onClick={() => setRemindExpense(null)}
+            >
+              Cancel
+            </button>
           </div>
         </div>
+      )}
+
+      {addingNew && (
+        <EditExpenseModal
+          categories={categories}
+          subcategories={subcategories}
+          onClose={() => setAddingNew(false)}
+          onSaved={async () => {
+            setAddingNew(false);
+            playSound('success');
+            await load();
+            onChange();
+          }}
+        />
       )}
 
       {editing && (
