@@ -25,6 +25,7 @@ export default function NoteEditor({ doc, onExit }: Props) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<number | undefined>(undefined);
+  const lastRange = useRef<Range | null>(null);
   const [title, setTitle] = useState(doc.title);
   const [inTable, setInTable] = useState(false);
 
@@ -33,6 +34,19 @@ export default function NoteEditor({ doc, onExit }: Props) {
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.innerHTML = doc.body ?? blocksToHtml(doc.blocks ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Remember the last selection inside the body, so colour pickers (which steal
+  // focus when their native picker opens) can restore it before applying.
+  useEffect(() => {
+    function onSelect() {
+      const sel = document.getSelection();
+      if (sel && sel.rangeCount && bodyRef.current?.contains(sel.anchorNode)) {
+        lastRange.current = sel.getRangeAt(0).cloneRange();
+      }
+    }
+    document.addEventListener('selectionchange', onSelect);
+    return () => document.removeEventListener('selectionchange', onSelect);
   }, []);
 
   function currentHtml(): string {
@@ -72,15 +86,44 @@ export default function NoteEditor({ doc, onExit }: Props) {
     scheduleSave();
   }
 
+  function restoreSelection() {
+    const r = lastRange.current;
+    if (!r) {
+      focusBody();
+      return;
+    }
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(r);
+  }
+
+  // ---- inline text formatting ----
+  function format(command: string) {
+    restoreSelection();
+    document.execCommand(command);
+    afterEdit();
+  }
+
+  function applyColor(kind: 'fore' | 'back', value: string) {
+    restoreSelection();
+    document.execCommand('styleWithCSS', false, 'true');
+    if (kind === 'fore') {
+      document.execCommand('foreColor', false, value);
+    } else if (!document.execCommand('hiliteColor', false, value)) {
+      document.execCommand('backColor', false, value);
+    }
+    afterEdit();
+  }
+
   // ---- toolbar commands (mousedown preventDefault keeps the caret) ----
   function toggleList() {
-    focusBody();
+    restoreSelection();
     document.execCommand('insertUnorderedList');
     afterEdit();
   }
 
   function insertTable() {
-    focusBody();
+    restoreSelection();
     document.execCommand('insertHTML', false, TABLE_HTML);
     afterEdit();
   }
@@ -89,7 +132,7 @@ export default function NoteEditor({ doc, onExit }: Props) {
     const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
     for (const f of list) {
       const dataUrl = await imageToDataUrl(f);
-      focusBody();
+      restoreSelection();
       document.execCommand('insertHTML', false, `<img src="${dataUrl}"><p><br></p>`);
     }
     afterEdit();
@@ -221,20 +264,43 @@ export default function NoteEditor({ doc, onExit }: Props) {
       />
 
       <div className="notebar">
-        <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list">
-          • List
+        <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('bold')} title="Bold">
+          <b>B</b>
         </button>
-        <button
-          className="notebar__btn"
-          onMouseDown={keepFocus}
-          onClick={() => fileRef.current?.click()}
-          title="Insert image"
-        >
-          🖼️ Image
+        <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('italic')} title="Italic">
+          <i>I</i>
         </button>
-        <button className="notebar__btn" onMouseDown={keepFocus} onClick={insertTable} title="Insert table">
-          ▦ Table
+        <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('underline')} title="Underline">
+          <u>U</u>
         </button>
+        <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('strikeThrough')} title="Strikethrough">
+          <s>S</s>
+        </button>
+        <label className="notebar__color" title="Text colour">
+          <span>A</span>
+          <input type="color" defaultValue="#a5b4fc" onInput={(e) => applyColor('fore', e.currentTarget.value)} />
+        </label>
+        <label className="notebar__color" title="Highlight colour">
+          <span>🖍️</span>
+          <input type="color" defaultValue="#fde68a" onInput={(e) => applyColor('back', e.currentTarget.value)} />
+        </label>
+
+        <span className="notebar__group">
+          <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list">
+            • List
+          </button>
+          <button
+            className="notebar__btn"
+            onMouseDown={keepFocus}
+            onClick={() => fileRef.current?.click()}
+            title="Insert image"
+          >
+            🖼️ Image
+          </button>
+          <button className="notebar__btn" onMouseDown={keepFocus} onClick={insertTable} title="Insert table">
+            ▦ Table
+          </button>
+        </span>
 
         {inTable && (
           <span className="notebar__group">
