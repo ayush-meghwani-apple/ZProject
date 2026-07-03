@@ -156,11 +156,12 @@ export interface NoteBlock {
   title?: string; // link: optional label (raw for now; unfurled later)
 }
 
-/** A rich note in the Notes sub-app: a title plus an ordered list of blocks. */
+/** A rich note in the Notes sub-app: a title plus a free-form HTML body. */
 export interface NoteDoc {
   id: ID;
   title: string;
-  blocks: NoteBlock[];
+  body?: string; // free-form HTML (current format)
+  blocks?: NoteBlock[]; // legacy block format (pre-1.6.1); migrated to body on open
   createdAt: ISODate;
   updatedAt: ISODate;
 }

@@ -9,7 +9,12 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 _(nothing open right now — add a bullet here whenever you think of something)_
 
+For Notes App:
+-> I would like to see formatting options which included bold, italic, underline, strike through and color formatting options which include text color and background color
+
 ## Done
+
+- ✅ **(2026-07-03)** **Notes redesigned into a free-form editor.** No more boxes — each note is now just a **fixed title on top and one big writing area** that fills the screen, like a normal notes app. The bottom bar keeps only the useful shortcuts: **• List**, **🖼️ Image**, and **▦ Table** (the separate "text"/"link" blocks and the up/down/delete controls are gone). **Tables** can grow or shrink with **＋Row / ＋Col / －Row / －Col** (shown when your cursor is in a table), and each **cell supports bullet lists and images** too. Old notes are converted to the new format automatically. Also added a **Clear all** button in the 🔔 reminders inbox to dismiss everything at once.
 
 - ✅ **(2026-07-03)** **New "Notes" sub-app.** Added under **Personal** in the ☰ menu (🗒️ Notes). Keep as many notes as you like; each opens a block editor where you can stack **text paragraphs**, **bulleted lists**, **images** (pick from your gallery/photos or **paste** a screenshot — big photos are auto-shrunk so they don't bloat storage), and **links** (type a URL and it becomes a tappable link). Blocks can be **reordered** (⬆️/⬇️) or removed, notes **autosave** as you type, and everything is stored on-device and included in your backups. (Tables and rich URL "unfurled" titles are noted for a later pass.)
 

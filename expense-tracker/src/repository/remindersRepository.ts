@@ -102,6 +102,11 @@ export const RemindersRepository = {
     write(read().map((r) => (r.id === id ? { ...r, notified: true } : r)));
   },
 
+  /** Dismiss every active reminder at once (clears the bell). */
+  clearAll(): void {
+    write(read().map((r) => (r.done ? r : { ...r, done: true })));
+  },
+
   /**
    * Create a weekly "review last week" nudge if enabled and one isn't already
    * pending, at most once every `intervalDays`. Called on app open, so nudges

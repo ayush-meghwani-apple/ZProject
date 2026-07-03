@@ -122,6 +122,11 @@ export default function RemindersInbox({
     setPrefs({ weeklyReview: next });
   }
 
+  function clearAll() {
+    RemindersRepository.clearAll();
+    refresh();
+  }
+
   function renderReminder(r: Reminder, overdue: boolean) {
     return (
       <div className={`reminder ${overdue ? 'reminder--due' : ''}`} key={r.id}>
@@ -167,9 +172,16 @@ export default function RemindersInbox({
       <div className="inbox" role="dialog" aria-label="Reminders">
         <div className="inbox__head">
           <strong>🔔 Reminders</strong>
-          <button className="iconbtn" onClick={onClose} aria-label="Close reminders">
-            ✕
-          </button>
+          <div className="inbox__head-actions">
+            {reminders.length > 0 && (
+              <button className="btn btn--ghost btn--sm" onClick={clearAll}>
+                Clear all
+              </button>
+            )}
+            <button className="iconbtn" onClick={onClose} aria-label="Close reminders">
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="inbox__body">
