@@ -11,6 +11,8 @@ _(nothing open right now — add a bullet here whenever you think of something)_
 
 ## Done
 
+- ✅ **(2026-07-04)** **Keyboard/bottom-bar fix (app-wide).** The app now tells the browser to **shrink the page when the keyboard opens** (`interactive-widget=resizes-content`) instead of letting the keyboard cover things. So the Papyra formatting bar (and the bottom tab bar / chat box in every app) now sit **just above the keyboard**, and the big empty gap that appeared under the tabs when typing is gone. Removed the earlier JavaScript hack that was mistakenly throwing the toolbar to the top of the screen. _(This behaviour only shows with a real keyboard, so it's best confirmed on your phone.)_
+
 - ✅ **(2026-07-04)** **Notes app renamed to "Papyra" 📜** (under a new **Studio** section instead of "Personal"). Say the word if you want a different name/section.
 - ✅ **(2026-07-04)** **Reels ＋ opens a full editor.** Instead of a plain text box, the **＋** now opens a proper **Add Expense** sheet with amount, category, sub-category, date and note — everything editable in one place.
 - ✅ **(2026-07-04)** **Neater, consistent Reels.** The per-reel **Delete / Reviewed / Remind / Edit** buttons now share one uniform style (Edit no longer looks different), and the **💸 Big spend! / ✅ Reviewed** badge has breathing room below the cycle bar instead of touching it.

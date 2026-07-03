@@ -23,7 +23,6 @@ const TABLE_HTML =
  */
 export default function NoteEditor({ doc, onExit }: Props) {
   const bodyRef = useRef<HTMLDivElement>(null);
-  const notebarRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const lastRange = useRef<Range | null>(null);
@@ -35,25 +34,6 @@ export default function NoteEditor({ doc, onExit }: Props) {
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.innerHTML = doc.body ?? blocksToHtml(doc.blocks ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Keep the toolbar pinned just above the on-screen keyboard. When the keyboard
-  // opens it shrinks the visual viewport (without moving flow/fixed elements), so
-  // we lift the bar by the covered height. A threshold ignores the smaller
-  // viewport changes from the mobile URL bar hiding/showing on scroll.
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    function update() {
-      const v = window.visualViewport;
-      if (!v || !notebarRef.current) return;
-      const covered = Math.max(0, window.innerHeight - v.height - v.offsetTop);
-      const lift = covered > 120 ? covered : 0; // >120px ≈ a keyboard, not the URL bar
-      notebarRef.current.style.transform = lift ? `translateY(${-lift}px)` : '';
-    }
-    update();
-    vv.addEventListener('resize', update);
-    return () => vv.removeEventListener('resize', update);
   }, []);
 
   // Remember the last selection inside the body, so colour pickers (which steal
@@ -341,7 +321,7 @@ export default function NoteEditor({ doc, onExit }: Props) {
         onPaste={onPaste}
       />
 
-      <div className="notebar" ref={notebarRef}>
+      <div className="notebar">
         <div className="notebar__row">
           <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('bold')} title="Bold">
             <b>B</b>
