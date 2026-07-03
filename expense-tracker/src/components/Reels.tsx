@@ -3,11 +3,13 @@ import { ExpenseRepository } from '../repository/expenseRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import { NotesRepository, type Note } from '../repository/notesRepository';
+import { RemindersRepository } from '../repository/remindersRepository';
 import { parseInput } from '../core/parser';
 import { cycleName } from '../core/salaryCycle';
-import { formatINR, formatDate } from '../core/util';
-import { getPrefs } from '../core/preferences';
+import { formatINR, formatDate, addMonths } from '../core/util';
+import { getPrefs, setPrefs } from '../core/preferences';
 import { playSound } from '../core/sound';
+import { requestNotificationPermission } from '../core/notify';
 import EditExpenseModal from './EditExpenseModal';
 import type { Alias, Category, Expense, SalaryCycle, Subcategory } from '../types/models';
 
@@ -38,8 +40,17 @@ export default function Reels({ version, onChange }: Props) {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [active, setActive] = useState(0);
   const [bigThreshold, setBigThreshold] = useState(0);
+  const [remindFor, setRemindFor] = useState<string | null>(null);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickText, setQuickText] = useState('');
+  const [toast, setToast] = useState('');
   const trackRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
+
+  function flashToast(msg: string) {
+    setToast(msg);
+    window.setTimeout(() => setToast(''), 2200);
+  }
 
   async function load() {
     const [e, c, s, a, cy] = await Promise.all([
@@ -148,6 +159,55 @@ export default function Reels({ version, onChange }: Props) {
     playSound(cmd.categoryId ? 'success' : 'uncategorized');
     NotesRepository.setDone(note.id, true);
     setNoteAmt((m) => ({ ...m, [note.id]: '' }));
+    await load();
+    onChange();
+  }
+
+  // Create a reminder to add this same expense again after `months` months.
+  async function remindIn(e: Expense, months: number) {
+    const cat = catFor(e);
+    const sub = subOf(e);
+    const parts = [String(e.amount)];
+    if (cat) parts.push(cat.name);
+    if (sub) parts.push(sub.name);
+    const rawText = parts.join(' ');
+    const label = `${cat?.icon ?? '📦'} ${cat?.name ?? 'Expense'}${sub ? ` › ${sub.name}` : ''}`;
+    RemindersRepository.add({
+      kind: 'reexpense',
+      label,
+      rawText,
+      amount: e.amount,
+      dueAt: addMonths(new Date(), months).toISOString(),
+      sourceExpenseId: e.id,
+    });
+    setRemindFor(null);
+    flashToast(`⏰ Reminder set for ${months} month${months === 1 ? '' : 's'}`);
+    // Best-effort: enable notifications now that there's something to notify about.
+    if (!getPrefs().reminderNotifications) {
+      const ok = await requestNotificationPermission();
+      if (ok) setPrefs({ reminderNotifications: true });
+    }
+  }
+
+  // Quick-add an expense straight from the Reels tab (parsed like chat).
+  async function addQuick() {
+    const text = quickText.trim();
+    if (!text) return;
+    const cmd = parseInput(text, aliases, categories, subcategories);
+    if (cmd.kind !== 'expense') {
+      flashToast('Type an amount, e.g. "500 groceries"');
+      return;
+    }
+    await ExpenseRepository.addExpense({
+      amount: cmd.amount,
+      categoryId: cmd.categoryId,
+      subcategoryId: cmd.subcategoryId,
+      note: cmd.note,
+      rawText: text,
+    });
+    playSound(cmd.categoryId ? 'success' : 'uncategorized');
+    setQuickText('');
+    setQuickOpen(false);
     await load();
     onChange();
   }
@@ -299,15 +359,77 @@ export default function Reels({ version, onChange }: Props) {
                         {e.reviewed ? '↩️ Unreview' : '✅ Reviewed'}
                       </button>
                     )}
+                    <button
+                      className="btn btn--ghost"
+                      onClick={() => setRemindFor(remindFor === e.id ? null : e.id)}
+                    >
+                      ⏰ Remind
+                    </button>
                     <button className="btn" onClick={() => setEditing(e)}>
                       ✏️ Edit
                     </button>
                   </div>
+
+                  {remindFor === e.id && (
+                    <div className="reel__remind">
+                      <span className="reel__remind-label">Remind me to add this again in:</span>
+                      <div className="reel__remind-opts">
+                        {[1, 3, 6, 11, 12].map((m) => (
+                          <button
+                            key={m}
+                            className="chip chip--recurring"
+                            onClick={() => remindIn(e, m)}
+                          >
+                            {m}m
+                          </button>
+                        ))}
+                        <button
+                          className="chip"
+                          onClick={() => setRemindFor(null)}
+                          aria-label="Cancel reminder"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </section>
               );
             })}
           </div>
         </>
+      )}
+
+      {toast && <div className="reels__toast">{toast}</div>}
+
+      {quickOpen ? (
+        <div className="reels__quick" data-noswipe>
+          <input
+            className="input"
+            autoFocus
+            placeholder='Add an expense, e.g. "500 groceries"'
+            value={quickText}
+            onChange={(e) => setQuickText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') addQuick();
+              if (e.key === 'Escape') setQuickOpen(false);
+            }}
+          />
+          <button className="btn" onClick={addQuick}>
+            Add
+          </button>
+          <button className="iconbtn" onClick={() => setQuickOpen(false)} aria-label="Close">
+            ✕
+          </button>
+        </div>
+      ) : (
+        <button
+          className="reels__fab"
+          onClick={() => setQuickOpen(true)}
+          aria-label="Add an expense"
+        >
+          ＋
+        </button>
       )}
 
       {editing && (

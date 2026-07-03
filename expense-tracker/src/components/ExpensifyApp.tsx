@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Chat, { initialChatMessages, type ChatMessage } from './Chat';
 import Summary from './Summary';
 import Reels from './Reels';
@@ -21,8 +21,15 @@ function loadChat(): ChatMessage[] {
   return initialChatMessages;
 }
 
+interface Props {
+  /** Incremented by the reminders inbox after it adds an expense, so tabs reload. */
+  refreshNonce?: number;
+  /** Incremented to jump straight to the Reels tab (weekly review nudge). */
+  openReelsNonce?: number;
+}
+
 /** The original expense-tracking app, now one sub-app inside Expensify. */
-export default function ExpensifyApp() {
+export default function ExpensifyApp({ refreshNonce = 0, openReelsNonce = 0 }: Props) {
   // Chat history persists across app restarts so typed notes/reminders stay.
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(loadChat);
 
@@ -37,6 +44,16 @@ export default function ExpensifyApp() {
   // Bumped whenever data changes, so other tabs reload when shown.
   const [version, setVersion] = useState(0);
   const onChange = () => setVersion((v) => v + 1);
+
+  // Reload when the reminders inbox adds an expense from outside this tree.
+  const firstRefresh = useRef(true);
+  useEffect(() => {
+    if (firstRefresh.current) {
+      firstRefresh.current = false;
+      return;
+    }
+    setVersion((v) => v + 1);
+  }, [refreshNonce]);
 
   useEffect(() => {
     RecurringRepository.runDue().then((created) => {
@@ -67,5 +84,10 @@ export default function ExpensifyApp() {
     { id: 'settings', label: 'Settings', icon: '⚙️', render: () => <Settings version={version} onChange={onChange} /> },
   ];
 
-  return <TabbedApp tabs={tabs} />;
+  return (
+    <TabbedApp
+      tabs={tabs}
+      controlledOpen={openReelsNonce ? { id: 'reels', nonce: openReelsNonce } : undefined}
+    />
+  );
 }

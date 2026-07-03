@@ -1528,3 +1528,252 @@ body {
   font-size: 56px;
   margin-bottom: 8px;
 }
+
+/* ---- Phase B: reminders, bell inbox, reels quick-add, pie drill-down ---- */
+
+.btn--sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.pie__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Header bell + due badge */
+.bell {
+  margin-left: auto;
+  position: relative;
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.bell:active {
+  background: var(--surface-2, rgba(255, 255, 255, 0.06));
+}
+
+.bell__badge {
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--bad);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* Reminders inbox panel */
+.inbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 60;
+  animation: fade-in 0.16s ease;
+}
+
+.inbox {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(92vw, 400px);
+  z-index: 61;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: max(env(safe-area-inset-top), 14px) 14px 14px;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.4);
+  animation: inboxIn 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes inboxIn {
+  from {
+    transform: translateX(24px);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.inbox__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inbox__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inbox__section {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.inbox__foot {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.inbox__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.reminder {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+}
+
+.reminder--due {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.reminder__label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.reminder__meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.reminder__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Reels: per-expense remind popover */
+.reel__remind {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.reel__remind-label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.reel__remind-opts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.reel__remind-opts .chip {
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+
+/* Reels: floating quick-add */
+.reels__fab {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 6;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
+  box-shadow: 0 10px 26px rgba(99, 102, 241, 0.45);
+  cursor: pointer;
+}
+
+.reels__fab:active {
+  transform: scale(0.94);
+}
+
+.reels__quick {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 16px;
+  z-index: 6;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+}
+
+.reels__quick .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.reels__toast {
+  position: absolute;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  z-index: 7;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  animation: hintIn 0.14s ease;
+}
+

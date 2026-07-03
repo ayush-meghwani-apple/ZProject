@@ -7,11 +7,19 @@ export interface Prefs {
   bigExpenseThreshold: number;
   /** Play short sound cues when adding expenses/notes. */
   soundEnabled: boolean;
+  /** Fire best-effort local notifications for due reminders. */
+  reminderNotifications: boolean;
+  /** Show a weekly "review last week" nudge in the reminders inbox. */
+  weeklyReview: boolean;
+  /** When the last weekly-review nudge was created (ISO). */
+  lastWeeklyNudgeAt?: string;
 }
 
 const DEFAULTS: Prefs = {
   bigExpenseThreshold: 0,
   soundEnabled: true,
+  reminderNotifications: false,
+  weeklyReview: true,
 };
 
 export function getPrefs(): Prefs {

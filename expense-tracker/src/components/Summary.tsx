@@ -14,6 +14,7 @@ import {
   getCategoryBreakdown,
   getCategorySummary,
   getMonthlyTotals,
+  getSubcategorySummary,
   totalSpend,
 } from '../core/reports';
 import { formatINR, formatDate } from '../core/util';
@@ -43,6 +44,7 @@ export default function Summary({ version, onChange }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [drillId, setDrillId] = useState<string | null>(null);
   const initialized = useRef(false);
 
   async function load() {
@@ -75,6 +77,9 @@ export default function Summary({ version, onChange }: Props) {
   const breakdown = getCategoryBreakdown(scoped, categories, subcategories);
   const categorySummary = getCategorySummary(scoped, categories);
   const monthly = getMonthlyTotals(scoped);
+
+  const drill = drillId ? categorySummary.find((c) => c.categoryId === drillId) : null;
+  const drillData = drill ? getSubcategorySummary(scoped, subcategories, drill.categoryId) : [];
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -118,22 +123,54 @@ export default function Summary({ version, onChange }: Props) {
 
       {scoped.length > 0 && (
         <div className="card">
-          <h3>Spend by Category</h3>
+          <div className="pie__head">
+            <h3>{drill ? `${drill.name}` : 'Spend by Category'}</h3>
+            {drill && (
+              <button className="btn btn--ghost btn--sm" onClick={() => setDrillId(null)}>
+                ← All categories
+              </button>
+            )}
+          </div>
+          <p className="card__subtitle">
+            {drill
+              ? 'Sub-category breakdown — tap ← to go back.'
+              : 'Tap a slice to break it down by sub-category.'}
+          </p>
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
-              <Pie
-                data={categorySummary}
-                dataKey="total"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                label={(d) => d.name}
-              >
-                {categorySummary.map((c) => (
-                  <Cell key={c.categoryId} fill={c.color} />
-                ))}
-              </Pie>
+              {drill ? (
+                <Pie
+                  data={drillData}
+                  dataKey="total"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={(d) => d.name}
+                >
+                  {drillData.map((s) => (
+                    <Cell key={s.subcategoryId} fill={s.color} />
+                  ))}
+                </Pie>
+              ) : (
+                <Pie
+                  data={categorySummary}
+                  dataKey="total"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={(d) => d.name}
+                  onClick={(_, index) => {
+                    const c = categorySummary[index];
+                    if (c && c.categoryId !== 'uncategorized') setDrillId(c.categoryId);
+                  }}
+                >
+                  {categorySummary.map((c) => (
+                    <Cell key={c.categoryId} fill={c.color} style={{ cursor: 'pointer' }} />
+                  ))}
+                </Pie>
+              )}
               <Tooltip formatter={(v: number) => formatINR(v)} />
             </PieChart>
           </ResponsiveContainer>

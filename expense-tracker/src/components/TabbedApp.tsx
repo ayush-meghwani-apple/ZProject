@@ -11,6 +11,8 @@ interface Props {
   tabs: TabDef[];
   /** Optional id to open on first mount; defaults to the first tab. */
   initialId?: string;
+  /** Externally-driven tab open: bump `nonce` to switch to `id`. */
+  controlledOpen?: { id: string; nonce: number };
 }
 
 /**
@@ -18,7 +20,7 @@ interface Props {
  * a swipeable body with a directional slide transition, plus the bottom tab
  * bar. Each sub-app just hands it a list of tabs with render functions.
  */
-export default function TabbedApp({ tabs, initialId }: Props) {
+export default function TabbedApp({ tabs, initialId, controlledOpen }: Props) {
   const [activeId, setActiveId] = useState<string>(initialId ?? tabs[0].id);
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -45,6 +47,13 @@ export default function TabbedApp({ tabs, initialId }: Props) {
     setSlideDir(to > tabIdx ? 'next' : 'prev');
     setActiveId(id);
   }
+
+  // Respond to an externally-driven open request (e.g. the weekly review nudge
+  // jumping to Reels).
+  useEffect(() => {
+    if (controlledOpen && controlledOpen.nonce > 0) goToTab(controlledOpen.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlledOpen?.nonce]);
 
   const swipeTarget =
     swipeX < -20 && tabIdx < tabs.length - 1
