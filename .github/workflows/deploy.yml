@@ -21,7 +21,10 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Don't cancel an in-progress deploy when a new one queues — cancelling a live
+  # Pages deployment can leave the previous run's `deploy-pages` step failing.
+  # Let each deployment finish; the newest push still ends up published last.
+  cancel-in-progress: false
 
 jobs:
   build:
