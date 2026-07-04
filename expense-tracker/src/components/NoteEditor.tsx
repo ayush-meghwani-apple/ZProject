@@ -267,6 +267,33 @@ export default function NoteEditor({ doc, onExit }: Props) {
     afterEdit();
   }
 
+  // Toggle the table's first row between header cells (<th>) and normal (<td>).
+  function toggleHeaderRow() {
+    const cell = currentCell();
+    const table = cell?.closest('table');
+    const firstRow = table?.querySelector('tr');
+    if (!firstRow) return;
+    const isHeader = !!firstRow.querySelector('th');
+    Array.from(firstRow.children).forEach((c) => {
+      const el = document.createElement(isHeader ? 'td' : 'th');
+      el.innerHTML = c.innerHTML || '<br>';
+      c.replaceWith(el);
+    });
+    afterEdit();
+  }
+
+  function undo() {
+    focusBody();
+    document.execCommand('undo');
+    afterEdit();
+  }
+
+  function redo() {
+    focusBody();
+    document.execCommand('redo');
+    afterEdit();
+  }
+
   // ---- navigation ----
   function exit() {
     window.clearTimeout(saveTimer.current);
@@ -343,6 +370,13 @@ export default function NoteEditor({ doc, onExit }: Props) {
             <span>🖍️</span>
             <input type="color" defaultValue="#fde68a" onInput={(e) => applyColor('back', e.currentTarget.value)} />
           </label>
+          <span className="notebar__sep" />
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={undo} title="Undo">
+            ↶
+          </button>
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={redo} title="Redo">
+            ↷
+          </button>
         </div>
 
         <div className="notebar__row">
@@ -375,6 +409,9 @@ export default function NoteEditor({ doc, onExit }: Props) {
               </button>
               <button className="notebar__btn" onMouseDown={keepFocus} onClick={deleteColumn} title="Delete column">
                 －Col
+              </button>
+              <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleHeaderRow} title="Toggle header row">
+                Header
               </button>
               <button className="notebar__btn notebar__btn--danger" onMouseDown={keepFocus} onClick={deleteTable} title="Delete table">
                 🗑️ Table

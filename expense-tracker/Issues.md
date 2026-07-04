@@ -7,9 +7,31 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-_(nothing open right now — add a bullet here whenever you think of something)_
+### Orbit (app-wide)
+
+_(nothing open right now)_
+
+### Expensify
+
+_(nothing open right now)_
+
+### Slate (Notes)
+
+- **Table grabbers / drag-to-reorder (deferred — bigger feature).** When the caret is in a table cell, show **grabbers** on that cell's row & column so you can **drag them to reorder**, and tapping a grabber again offers **add / delete** for that row/column. _(For now the caret-in-table controls already give ＋/－ Row, ＋/－ Col, a **Header** toggle and 🗑️ Table — the drag-to-move grabbers are the remaining part and need a chunk of new drag-interaction work; kept open on purpose.)_
+- **Expandable toolbar with a table menu (partly done).** Make the insert-tools row **expandable** with more options, and when the focus is inside a table surface a small **table menu** there (copy / delete table). _(Partly covered: the second toolbar row already shows the table controls above when the caret is in a table; a dedicated copy option is still to come.)_
+
 
 ## Done
+
+- ✅ **(2026-07-04)** **Keyboard fix that actually works on iPhone (app-wide).** The previous fix relied on `interactive-widget=resizes-content`, which **iOS Safari ignores** — so on your iPhone nothing moved. It's now done in JavaScript: the app measures the **visible area** (`window.visualViewport`) and sizes itself to it, so when the keyboard opens the **whole app shrinks to sit above the keyboard** (formatting bar, tab bar and all) and expands back when it closes. Verified in the browser by **simulating the keyboard** (faking `visualViewport`): with a ~344px keyboard the app went from full height to 500px and the toolbar rose to sit right above it, then restored on close. _(How to test a keyboard in the browser: the on-screen keyboard never really appears in desktop preview, but you can simulate it by shrinking `window.visualViewport` as above; for the **exact** real behaviour, connect your iPhone to a Mac and use **Safari → Develop → [your iPhone] Web Inspector**.)_
+- ✅ **(2026-07-04)** **No more dead band under the tab bar (app-wide).** Because the app now sizes to the real visible viewport, the empty strip that showed under the bottom tabs (image-15) is gone — the tab bar sits flush at the true bottom.
+- ✅ **(2026-07-04)** **Header emoji is clear again (app-wide).** The app-name gradient was bleeding onto the little tab emoji and washing it out (image-17). The emoji is now its **own element**, so it shows in full colour next to the gradient title.
+- ✅ **(2026-07-04)** **App renamed to "Orbit" 🛰️.** It's grown past just expenses, so the whole thing is now **Orbit** (drawer brand + title + install name). Say the word if you'd like a different name.
+- ✅ **(2026-07-04)** **Notes app renamed to "Slate" 📝.** Dropped "Papyra"; **Slate** is short, clean and writing-y. Tell me if you'd prefer another.
+- ✅ **(2026-07-04)** **Summary tabs respond instantly.** Tapping another tab while the pie/bar chart was still animating did nothing until the animation finished. Chart **entry animations are now off**, so tab taps register immediately.
+- ✅ **(2026-07-04)** **Undo / redo in Slate.** Added **↶ / ↷** buttons at the top of the formatting bar (next to the styling tools) so you can undo and redo edits without a keyboard.
+- ✅ **(2026-07-04)** **Mark a table header row in Slate.** With the caret in a table, a new **Header** button turns the first row into styled header cells (and back), so you can label columns.
+
 
 - ✅ **(2026-07-04)** **Keyboard/bottom-bar fix (app-wide).** The app now tells the browser to **shrink the page when the keyboard opens** (`interactive-widget=resizes-content`) instead of letting the keyboard cover things. So the Papyra formatting bar (and the bottom tab bar / chat box in every app) now sit **just above the keyboard**, and the big empty gap that appeared under the tabs when typing is gone. Removed the earlier JavaScript hack that was mistakenly throwing the toolbar to the top of the screen. _(This behaviour only shows with a real keyboard, so it's best confirmed on your phone.)_
 

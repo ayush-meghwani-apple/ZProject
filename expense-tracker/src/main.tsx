@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { seedIfEmpty } from './storage/seed';
 import { ensurePersistentStorage } from './storage/persistence';
+import { initViewport } from './core/viewport';
 import './style.css';
 
 function renderFatal(message: string) {
@@ -21,6 +22,9 @@ function renderFatal(message: string) {
 }
 
 async function bootstrap() {
+  // Keep the app box glued to the visible viewport (above the keyboard).
+  initViewport();
+
   // Ask the browser to keep our storage durable so iOS/Safari won't evict the
   // IndexedDB database after periods of inactivity.
   await ensurePersistentStorage().catch(() => {});

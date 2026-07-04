@@ -43,7 +43,14 @@ body {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* Pinned to the *visual* viewport (set from JS) so the app always fills the
+     visible area and its bottom edge sits just above the on-screen keyboard —
+     iOS Safari won't do this with CSS alone. */
+  position: fixed;
+  top: var(--app-top, 0);
+  left: 0;
+  right: 0;
+  height: var(--app-height, 100dvh);
   max-width: 560px;
   margin: 0 auto;
   overflow-x: hidden;
@@ -80,10 +87,16 @@ body {
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+}
+
+.app__icon {
+  font-size: 19px;
+  line-height: 1;
 }
 
 .app__title {
+  margin-left: -3px;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   -webkit-background-clip: text;
   background-clip: text;
@@ -2024,6 +2037,12 @@ body {
   padding: 6px 8px;
   min-width: 44px;
   vertical-align: top;
+}
+
+.notebody th {
+  background: var(--surface-2);
+  font-weight: 700;
+  text-align: left;
 }
 
 .notebar {

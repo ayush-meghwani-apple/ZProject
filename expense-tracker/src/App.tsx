@@ -19,7 +19,7 @@ interface AppDef {
 const APPS: AppDef[] = [
   { id: 'expensify', name: 'Expensify', icon: '🧾', section: 'Money' },
   { id: 'goals', name: 'Questify', icon: '🧭', section: 'Planning' },
-  { id: 'notes', name: 'Papyra', icon: '📜', section: 'Studio' },
+  { id: 'notes', name: 'Slate', icon: '📝', section: 'Studio' },
 ];
 
 // Listed in the drawer but not yet built.
@@ -81,9 +81,8 @@ export default function App() {
         <button className="hamburger" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
           ☰
         </button>
-        <span className="app__title">
-          {current.icon} {current.name}
-        </span>
+        <span className="app__icon">{current.icon}</span>
+        <span className="app__title">{current.name}</span>
         <button
           className="bell"
           onClick={() => setInboxOpen(true)}
@@ -97,7 +96,7 @@ export default function App() {
       {drawerOpen && <div className="drawer-overlay" onClick={() => setDrawerOpen(false)} />}
       <aside className={`drawer ${drawerOpen ? 'drawer--open' : ''}`}>
         <div className="drawer__head">
-          <span className="drawer__brand">Expensify</span>
+          <span className="drawer__brand">Orbit</span>
           <button className="iconbtn" onClick={() => setDrawerOpen(false)} aria-label="Close menu">
             ✕
           </button>

@@ -178,6 +178,7 @@ export default function Summary({ version, onChange }: Props) {
                   cx="50%"
                   cy="50%"
                   outerRadius={88}
+                  isAnimationActive={false}
                   label={(d) => d.name}
                   onClick={(_, index) => {
                     const s = drillData[index];
@@ -196,6 +197,7 @@ export default function Summary({ version, onChange }: Props) {
                   cx="50%"
                   cy="50%"
                   outerRadius={88}
+                  isAnimationActive={false}
                   label={(d) => d.name}
                   onClick={(_, index) => {
                     const c = categorySummary[index];
@@ -294,7 +296,7 @@ export default function Summary({ version, onChange }: Props) {
                 formatter={(v: number) => formatINR(v)}
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155' }}
               />
-              <Bar dataKey="total" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="total" fill="#38bdf8" radius={[6, 6, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
