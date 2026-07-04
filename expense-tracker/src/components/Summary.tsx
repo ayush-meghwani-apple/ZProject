@@ -67,6 +67,16 @@ export default function Summary({ version, onChange }: Props) {
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
+  // Recharts makes its SVG surface keyboard-focusable (tabindex=0). On iOS,
+  // tapping a slice then focuses that SVG and Safari scrolls it into view,
+  // which shifts the visual viewport and pushes our fixed bottom tab bar
+  // off-screen. Strip the tabindex so a tap never steals focus.
+  useEffect(() => {
+    document
+      .querySelectorAll('.recharts-wrapper [tabindex], .recharts-surface[tabindex]')
+      .forEach((el) => el.setAttribute('tabindex', '-1'));
+  });
+
   async function load() {
     const [e, c, s, cy] = await Promise.all([
       ExpenseRepository.getExpensesSorted(),

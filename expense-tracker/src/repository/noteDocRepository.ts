@@ -33,6 +33,13 @@ export const NoteDocRepository = {
     await storage.noteDocs.put({ ...doc, categoryId, updatedAt: now() });
   },
 
+  /** Pin/unpin a note (pinned notes float to the top of their category). */
+  async setPinned(id: ID, pinned: boolean): Promise<void> {
+    const doc = await storage.noteDocs.get(id);
+    if (!doc) return;
+    await storage.noteDocs.put({ ...doc, pinned, updatedAt: now() });
+  },
+
   async remove(id: ID): Promise<void> {
     await storage.noteDocs.delete(id);
   },

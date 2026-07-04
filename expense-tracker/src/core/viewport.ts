@@ -14,13 +14,18 @@ export function initViewport(): void {
     const vv = window.visualViewport;
     const height = vv ? vv.height : window.innerHeight;
     const top = vv ? vv.offsetTop : 0;
-    root.style.setProperty('--app-height', `${Math.round(height)}px`);
-    root.style.setProperty('--app-top', `${Math.round(top)}px`);
     // When the on-screen keyboard covers a big chunk of the layout viewport,
     // flag it so the UI can hide the bottom tab bar (Apple-Notes style) and let
     // only the editor toolbar sit right above the keyboard.
     const covered = window.innerHeight - height;
-    root.classList.toggle('kb-open', covered > 120);
+    const kbOpen = covered > 120;
+    root.style.setProperty('--app-height', `${Math.round(height)}px`);
+    // Only honour a non-zero offset while the keyboard is actually open. Without
+    // this, iOS transiently scrolls to a focused element (e.g. a tapped chart
+    // SVG) and reports a small offsetTop, which would shift the fixed app down
+    // and push the bottom tab bar off-screen.
+    root.style.setProperty('--app-top', `${kbOpen ? Math.round(top) : 0}px`);
+    root.classList.toggle('kb-open', kbOpen);
   }
 
   apply();

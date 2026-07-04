@@ -163,6 +163,7 @@ export interface NoteDoc {
   body?: string; // free-form HTML (current format)
   blocks?: NoteBlock[]; // legacy block format (pre-1.6.1); migrated to body on open
   categoryId?: ID; // which note category it belongs to (undefined = General)
+  pinned?: boolean; // pinned notes float to the top of their category
   createdAt: ISODate;
   updatedAt: ISODate;
 }

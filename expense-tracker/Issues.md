@@ -7,7 +7,7 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-### Haven (app-wide)
+### Kaizen (app-wide)
 
 _(nothing open right now)_
 
@@ -21,6 +21,15 @@ _(nothing open right now)_
 
 
 ## Done
+
+- ✅ **(2026-07-05)** **Kaizen now has a subtitle.** Under the **🌱 Kaizen** brand in the drawer there's a small italic serif tagline — *continuous improvement* — in a different font for a bit of character.
+- ✅ **(2026-07-05)** **New Expensify icon.** Swapped 🧾 for **💸**.
+- ✅ **(2026-07-05)** **Tapping a pie slice no longer makes the tab bar vanish (Expensify).** The chart's SVG was keyboard-focusable, so on iOS a tap focused it and Safari scrolled it into view — nudging the visual viewport and pushing the fixed tab bar off the bottom. Fixed two ways: the charts are no longer focusable, and the app now ignores tiny viewport offset shifts unless the keyboard is actually open, so it stays pinned.
+- ✅ **(2026-07-05)** **General is always pinned to the top** of the notes list, above your categories.
+- ✅ **(2026-07-05)** **Pin notes within a category (Slate).** Tap the **📌** in a note's top bar (or swipe a note left) to pin it; pinned notes float to the top of their category and show a 📌 on the card.
+- ✅ **(2026-07-05)** **＋ on each category (Slate).** Every category heading (and General) has a **＋** that opens a **new note already filed under that category**.
+- ✅ **(2026-07-05)** **Swipe actions on notes (Slate).** Like a mail app: **swipe a note right → Delete**; **swipe left → Pin/Unpin and Move to another category**. Tap the card to open as usual.
+- ✅ **(2026-07-05)** **To-do checklists (Slate).** A new **☑ To-do** button adds a checklist; tap an item's box to tick it off (it greys out with a line through it). Press Enter to add the next item.
 
 - ✅ **(2026-07-04)** **App renamed to "Kaizen" 🌱.** *Kaizen* (改善) is Japanese for **continuous improvement** — a good fit for a place that helps you steadily better your money, goals and notes. Uses a plain **🌱 seedling** (an old, universally-supported emoji, so it won't show as a broken box on your phone like the lotus did). Other Japanese options if you'd like: **Kura** 蔵 "storehouse", **Sora** 空 "sky", **Michi** 道 "path", **Ikigai** 生き甲斐 "reason for being".
 - ✅ **(2026-07-04)** **Note categories (folders) in Slate.** Notes can now be grouped into **categories** (each with a **name + emoji**):

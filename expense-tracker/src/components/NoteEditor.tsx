@@ -59,6 +59,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   const [categoryId, setCategoryId] = useState<ID | undefined>(doc.categoryId);
   const [catPicker, setCatPicker] = useState(false);
   const [newCat, setNewCat] = useState(false);
+  const [pinned, setPinned] = useState(!!doc.pinned);
 
   // Which inline formats are active at the caret, so the B/I/U/S buttons can
   // show an on/off cue.
@@ -128,8 +129,9 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     window.clearTimeout(saveTimer.current);
     const snapshotTitle = title;
     const snapshotCat = categoryId;
+    const snapshotPin = pinned;
     saveTimer.current = window.setTimeout(() => {
-      NoteDocRepository.update({ ...doc, title: snapshotTitle, body: sanitizeHtml(currentHtml()), categoryId: snapshotCat });
+      NoteDocRepository.update({ ...doc, title: snapshotTitle, body: sanitizeHtml(currentHtml()), categoryId: snapshotCat, pinned: snapshotPin });
     }, 500);
   }
 
@@ -274,6 +276,30 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     restoreSelection();
     document.execCommand('insertUnorderedList');
     afterEdit();
+  }
+
+  // Insert a checklist (to-do) item. Pressing Enter inside continues the list;
+  // tapping a box toggles it via onBodyClick below.
+  function insertTodo() {
+    restoreSelection();
+    document.execCommand(
+      'insertHTML',
+      false,
+      '<ul class="notetodo"><li data-done="false">\u200b</li></ul><p><br></p>',
+    );
+    afterEdit();
+  }
+
+  // Toggle a checklist item when its box (the left gutter) is tapped.
+  function onBodyClick(e: React.MouseEvent) {
+    const li = (e.target as HTMLElement).closest?.('ul.notetodo > li') as HTMLLIElement | null;
+    if (!li) return;
+    const rect = li.getBoundingClientRect();
+    if (e.clientX - rect.left <= 30) {
+      const done = li.getAttribute('data-done') === 'true';
+      li.setAttribute('data-done', done ? 'false' : 'true');
+      afterEdit();
+    }
   }
 
   function insertTable() {
@@ -489,7 +515,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     if (!title.trim() && isHtmlEmpty(body)) {
       NoteDocRepository.remove(doc.id).then(onExit);
     } else {
-      NoteDocRepository.update({ ...doc, title, body, categoryId }).then(onExit);
+      NoteDocRepository.update({ ...doc, title, body, categoryId, pinned }).then(onExit);
     }
   }
 
@@ -525,6 +551,14 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
           ← Notes
         </button>
         <div className="noteedit__actions">
+          <button
+            className={`iconbtn${pinned ? ' iconbtn--on' : ''}`}
+            onMouseDown={keepFocus}
+            onClick={() => setPinned((v) => !v)}
+            title={pinned ? 'Unpin note' : 'Pin note'}
+          >
+            📌
+          </button>
           <button className="iconbtn" onMouseDown={keepFocus} onClick={undo} title="Undo">
             ↶
           </button>
@@ -586,6 +620,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
           onKeyDown={onBodyKeyDown}
           onKeyUp={refreshContext}
           onMouseUp={refreshContext}
+          onClick={onBodyClick}
           onScroll={computeGrab}
           onPaste={onPaste}
         />
@@ -711,6 +746,9 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
           <span className="notebar__sep" />
           <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list (Tab to indent)">
             • List
+          </button>
+          <button className="notebar__btn" onMouseDown={keepFocus} onClick={insertTodo} title="Checklist / to-do">
+            ☑ To-do
           </button>
           <button
             className="notebar__btn"

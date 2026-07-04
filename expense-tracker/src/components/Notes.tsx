@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { NoteDocRepository } from '../repository/noteDocRepository';
 import { NoteCategoryRepository } from '../repository/noteCategoryRepository';
-import { blocksToHtml, htmlToPreview } from '../core/noteHtml';
-import { formatDate } from '../core/util';
 import NoteEditor from './NoteEditor';
 import NoteCategoryModal from './NoteCategoryModal';
+import NoteRow from './NoteRow';
 import type { ID, NoteCategory, NoteDoc } from '../types/models';
 
 interface Props {
@@ -12,10 +11,6 @@ interface Props {
   onChange: () => void;
   openId: ID | null;
   setOpenId: (id: ID | null) => void;
-}
-
-function previewOf(doc: NoteDoc): string {
-  return htmlToPreview(doc.body ?? blocksToHtml(doc.blocks ?? []));
 }
 
 const GENERAL = '__general__';
@@ -56,8 +51,8 @@ export default function Notes({ version, onChange, openId, setOpenId }: Props) {
     };
   }, [openId, version]);
 
-  async function startNew() {
-    const doc = await NoteDocRepository.add({ title: '', body: '' });
+  async function startNew(categoryId?: ID) {
+    const doc = await NoteDocRepository.add({ title: '', body: '', categoryId });
     setOpenId(doc.id);
   }
 
@@ -95,6 +90,23 @@ export default function Notes({ version, onChange, openId, setOpenId }: Props) {
     await load();
   }
 
+  async function deleteNote(id: ID) {
+    if (!confirm('Delete this note?')) return;
+    await NoteDocRepository.remove(id);
+    await load();
+    onChange();
+  }
+
+  async function moveNote(id: ID, categoryId: ID | undefined) {
+    await NoteDocRepository.setCategory(id, categoryId);
+    await load();
+  }
+
+  async function togglePin(doc: NoteDoc) {
+    await NoteDocRepository.setPinned(doc.id, !doc.pinned);
+    await load();
+  }
+
   if (openDoc) {
     return (
       <NoteEditor
@@ -107,7 +119,8 @@ export default function Notes({ version, onChange, openId, setOpenId }: Props) {
     );
   }
 
-  // Bucket notes: each known category (in order), then General for the rest.
+  // Bucket notes: General first (always pinned to the top), then each category
+  // in order. Within a group, pinned notes float above the rest.
   const byCat = new Map<string, NoteDoc[]>();
   const catIds = new Set(cats.map((c) => c.id));
   for (const d of docs) {
@@ -116,23 +129,31 @@ export default function Notes({ version, onChange, openId, setOpenId }: Props) {
     list.push(d);
     byCat.set(key, list);
   }
+  const sortPinned = (list: NoteDoc[]) =>
+    [...list].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
-  const groups = cats.map((c) => ({
-    id: c.id,
-    name: c.name,
-    emoji: c.emoji,
-    notes: byCat.get(c.id) ?? [],
-    real: true,
-  }));
-  const generalNotes = byCat.get(GENERAL) ?? [];
-  if (generalNotes.length > 0 || cats.length === 0) {
-    groups.push({ id: GENERAL, name: 'General', emoji: '🗒️', notes: generalNotes, real: false });
+  interface Group {
+    id: string;
+    name: string;
+    emoji: string;
+    notes: NoteDoc[];
+    catIndex: number; // -1 for General
   }
+  const groups: Group[] = [
+    { id: GENERAL, name: 'General', emoji: '🗒️', notes: sortPinned(byCat.get(GENERAL) ?? []), catIndex: -1 },
+    ...cats.map((c, i) => ({
+      id: c.id,
+      name: c.name,
+      emoji: c.emoji,
+      notes: sortPinned(byCat.get(c.id) ?? []),
+      catIndex: i,
+    })),
+  ];
 
   return (
     <div className="page">
       <div className="notes__actions">
-        <button className="btn notes__new" onClick={startNew}>
+        <button className="btn notes__new" onClick={() => startNew()}>
           ➕ New Note
         </button>
         <button className="btn btn--ghost" onClick={() => setEditCat('new')} title="Add category">
@@ -144,8 +165,9 @@ export default function Notes({ version, onChange, openId, setOpenId }: Props) {
         <div className="empty">No notes yet. Create one to jot things down.</div>
       )}
 
-      {groups.map((g, gi) => {
+      {groups.map((g) => {
         const open = !collapsed.has(g.id);
+        const real = g.catIndex >= 0;
         return (
           <div className="notegroup" key={g.id}>
             <div className="notegroup__head">
@@ -155,33 +177,46 @@ export default function Notes({ version, onChange, openId, setOpenId }: Props) {
                 <span className="notegroup__name">{g.name}</span>
                 <span className="notegroup__count">{g.notes.length}</span>
               </button>
-              {g.real && (
-                <div className="notegroup__ctrls">
-                  <button className="notegroup__ic" disabled={gi === 0} onClick={() => moveCat(g.id, -1)} title="Move up">
-                    ↑
-                  </button>
-                  <button className="notegroup__ic" disabled={gi >= cats.length - 1} onClick={() => moveCat(g.id, 1)} title="Move down">
-                    ↓
-                  </button>
-                  <button className="notegroup__ic" onClick={() => setEditCat(cats.find((c) => c.id === g.id)!)} title="Edit">
-                    ✎
-                  </button>
-                  <button className="notegroup__ic notegroup__ic--danger" onClick={() => deleteCat(cats.find((c) => c.id === g.id)!)} title="Delete">
-                    🗑️
-                  </button>
-                </div>
-              )}
+              <div className="notegroup__ctrls">
+                <button
+                  className="notegroup__ic"
+                  onClick={() => startNew(real ? g.id : undefined)}
+                  title={`New note in ${g.name}`}
+                >
+                  ＋
+                </button>
+                {real && (
+                  <>
+                    <button className="notegroup__ic" disabled={g.catIndex === 0} onClick={() => moveCat(g.id, -1)} title="Move up">
+                      ↑
+                    </button>
+                    <button className="notegroup__ic" disabled={g.catIndex >= cats.length - 1} onClick={() => moveCat(g.id, 1)} title="Move down">
+                      ↓
+                    </button>
+                    <button className="notegroup__ic" onClick={() => setEditCat(cats.find((c) => c.id === g.id)!)} title="Edit">
+                      ✎
+                    </button>
+                    <button className="notegroup__ic notegroup__ic--danger" onClick={() => deleteCat(cats.find((c) => c.id === g.id)!)} title="Delete">
+                      🗑️
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {open && (
               <div className="notegroup__body">
                 {g.notes.length === 0 && <div className="notegroup__empty">No notes here yet.</div>}
                 {g.notes.map((doc) => (
-                  <button className="card notecard" key={doc.id} onClick={() => setOpenId(doc.id)}>
-                    <div className="notecard__title">{doc.title.trim() || 'Untitled note'}</div>
-                    <div className="notecard__preview">{previewOf(doc)}</div>
-                    <div className="notecard__date">{formatDate(doc.updatedAt)}</div>
-                  </button>
+                  <NoteRow
+                    key={doc.id}
+                    doc={doc}
+                    categories={cats}
+                    onOpen={() => setOpenId(doc.id)}
+                    onDelete={() => deleteNote(doc.id)}
+                    onMove={(cid) => moveNote(doc.id, cid)}
+                    onTogglePin={() => togglePin(doc)}
+                  />
                 ))}
               </div>
             )}
