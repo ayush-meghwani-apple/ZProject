@@ -68,7 +68,17 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      # `actions/deploy-pages` intermittently fails on GitHub's side (a transient
+      # API error, not a build problem). Try up to three times so a flaky publish
+      # doesn't strand users on the previous version.
+      - id: deploy_try1
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - id: deploy_try2
+        if: steps.deploy_try1.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - id: deploy_try3
+        if: steps.deploy_try1.outcome == 'failure' && steps.deploy_try2.outcome == 'failure'
         uses: actions/deploy-pages@v4
