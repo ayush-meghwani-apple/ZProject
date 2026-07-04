@@ -1674,15 +1674,35 @@ body {
   gap: 8px;
 }
 
+/* Reserve the pill's space so showing/hiding it never jerks the chart. */
+.pie__pickslot {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .pie__pick {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 8px 14px;
-  margin: 4px 0 10px;
   font-size: 14px;
+  animation: pickIn 0.16s ease;
+}
+
+@keyframes pickIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .pie__pick-dot {
@@ -2657,50 +2677,80 @@ body {
   z-index: 9;
 }
 
+.colorpop__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
 .colorpop__title {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--muted);
-  margin-bottom: 8px;
 }
 
-.colorpop__grid {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 7px;
-}
-
-.colorpop__sw {
-  aspect-ratio: 1;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.colorpop__sw:active {
-  transform: scale(0.9);
-}
-
-.colorpop__custom {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
+.colorpop__done {
+  appearance: none;
+  border: none;
+  background: var(--surface-2);
+  color: var(--accent);
   font-size: 12px;
   font-weight: 700;
-  color: var(--muted);
+  padding: 5px 12px;
+  border-radius: 999px;
   cursor: pointer;
 }
 
-.colorpop__custom input[type='color'] {
-  width: 24px;
+/* Inline colour spectrum (hue + light bars). */
+.spectrum {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spectrum__bar {
+  position: relative;
   height: 24px;
-  padding: 0;
-  border: none;
-  background: none;
+  border-radius: 7px;
   cursor: pointer;
+  touch-action: none;
+}
+
+.spectrum__hue {
+  background: linear-gradient(
+    to right,
+    #ff0000,
+    #ffff00,
+    #00ff00,
+    #00ffff,
+    #0000ff,
+    #ff00ff,
+    #ff0000
+  );
+}
+
+.spectrum__thumb {
+  position: absolute;
+  top: -3px;
+  width: 6px;
+  height: 30px;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.spectrum__preview {
+  text-align: center;
+  padding: 7px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
 

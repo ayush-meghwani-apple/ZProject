@@ -22,6 +22,11 @@ _(nothing open right now)_
 
 ## Done
 
+- ✅ **(2026-07-05)** **Pie tap no longer hides the bottom tabs — for real this time.** The actual cause: tapping a slice put keyboard **focus** on the chart's SVG, and iOS then scrolled it into view, shoving the fixed tab bar off-screen. Now any focus landing on the chart is dropped instantly, so a tap can't move anything. (The category amount pill still shows on single-tap and still dismisses when you tap outside — unchanged.)
+- ✅ **(2026-07-05)** **No more jerk when the category pill appears.** The amount pill's space is now **reserved above the chart**, so it fades in place instead of shoving the pie down.
+- ✅ **(2026-07-05)** **Fixed the stuck empty gap under the keyboard (Add tab).** That intermittent dead space between the field and the keyboard came from iOS reporting an in-between size mid-animation and it sticking. The app now **re-measures a few times right after you focus a field** (and on blur), so it settles to the right height and self-heals instead of needing an app restart.
+- ✅ **(2026-07-05)** **Simpler colour picker — a real spectrum that stays open (Slate).** Tapping **A** / **🖍️** now opens an inline **hue + light spectrum** (no more default-swatch-then-OS-picker). Slide to pick; it **applies live and stays open** so you can fine-tune, and closes only when you tap **Done** or tap elsewhere.
+
 - ✅ **(2026-07-05)** **Kaizen now has a subtitle.** Under the **🌱 Kaizen** brand in the drawer there's a small italic serif tagline — *continuous improvement* — in a different font for a bit of character.
 - ✅ **(2026-07-05)** **New Expensify icon.** Swapped 🧾 for **💸**.
 - ✅ **(2026-07-05)** **Tapping a pie slice no longer makes the tab bar vanish (Expensify).** The chart's SVG was keyboard-focusable, so on iOS a tap focused it and Safari scrolled it into view — nudging the visual viewport and pushing the fixed tab bar off the bottom. Fixed two ways: the charts are no longer focusable, and the app now ignores tiny viewport offset shifts unless the keyboard is actually open, so it stays pinned.

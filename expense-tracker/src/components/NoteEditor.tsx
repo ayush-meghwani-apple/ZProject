@@ -5,6 +5,7 @@ import { imageToDataUrl } from '../core/image';
 import { blocksToHtml, isHtmlEmpty, sanitizeHtml } from '../core/noteHtml';
 import * as T from '../core/noteTable';
 import NoteCategoryModal from './NoteCategoryModal';
+import ColorSpectrum from './ColorSpectrum';
 import type { ID, NoteCategory, NoteDoc } from '../types/models';
 
 interface Props {
@@ -19,13 +20,6 @@ const TABLE_HTML =
   '<tr><td><br></td><td><br></td></tr>' +
   '<tr><td><br></td><td><br></td></tr>' +
   '</tbody></table><p><br></p>';
-
-// Palette shown in the colour popover; picking one keeps the popover open.
-const SWATCHES = [
-  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#14b8a6',
-  '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e',
-  '#ffffff', '#d1d5db', '#9ca3af', '#4b5563', '#1f2937', '#000000',
-];
 
 /** Where the drag/tap grabbers should sit, in coordinates relative to the
  *  body wrapper (recomputed as the caret moves or the body scrolls). */
@@ -695,23 +689,13 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
       <div className="notebar" data-noswipe>
         {pop && (
           <div className="colorpop">
-            <div className="colorpop__title">{pop === 'fore' ? 'Text colour' : 'Highlight'}</div>
-            <div className="colorpop__grid">
-              {SWATCHES.map((c) => (
-                <button
-                  key={c}
-                  className="colorpop__sw"
-                  style={{ background: c }}
-                  onMouseDown={keepFocus}
-                  onClick={() => applyColor(pop, c)}
-                  title={c}
-                />
-              ))}
+            <div className="colorpop__head">
+              <span className="colorpop__title">{pop === 'fore' ? 'Text colour' : 'Highlight'}</span>
+              <button className="colorpop__done" onMouseDown={keepFocus} onClick={() => setPop(null)}>
+                Done
+              </button>
             </div>
-            <label className="colorpop__custom" onMouseDown={keepFocus}>
-              <span>＋ Custom</span>
-              <input type="color" onInput={(e) => applyColor(pop, e.currentTarget.value)} />
-            </label>
+            <ColorSpectrum onPick={(hex) => applyColor(pop, hex)} />
           </div>
         )}
         <div className="notebar__row">

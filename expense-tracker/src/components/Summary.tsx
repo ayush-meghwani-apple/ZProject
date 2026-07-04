@@ -67,15 +67,25 @@ export default function Summary({ version, onChange }: Props) {
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
-  // Recharts makes its SVG surface keyboard-focusable (tabindex=0). On iOS,
-  // tapping a slice then focuses that SVG and Safari scrolls it into view,
-  // which shifts the visual viewport and pushes our fixed bottom tab bar
-  // off-screen. Strip the tabindex so a tap never steals focus.
+  // Recharts makes its SVG surface + sectors keyboard-focusable. On iOS, tapping
+  // a slice focuses that element and Safari scrolls it into view, which nudges
+  // the visual viewport and pushes our fixed bottom tab bar off-screen. Two
+  // guards: (1) keep stripping the tabindex recharts adds, and (2) if a chart
+  // element still manages to grab focus, blur it immediately so nothing scrolls.
   useEffect(() => {
     document
       .querySelectorAll('.recharts-wrapper [tabindex], .recharts-surface[tabindex]')
       .forEach((el) => el.setAttribute('tabindex', '-1'));
   });
+
+  useEffect(() => {
+    function onFocusIn(e: FocusEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('.recharts-wrapper')) t.blur?.();
+    }
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
+  }, []);
 
   async function load() {
     const [e, c, s, cy] = await Promise.all([
@@ -167,16 +177,18 @@ export default function Summary({ version, onChange }: Props) {
               : 'Tap a slice for its amount · double-tap to break it down.'}
           </p>
 
-          {picked && (
-            <div
-              className="pie__pick"
-              style={{ background: tint(picked.color, 0.18), borderColor: picked.color }}
-            >
-              <span className="pie__pick-dot" style={{ background: picked.color }} />
-              <span className="pie__pick-name">{picked.name}</span>
-              <strong style={{ color: picked.color }}>{formatINR(picked.total)}</strong>
-            </div>
-          )}
+          <div className="pie__pickslot">
+            {picked && (
+              <div
+                className="pie__pick"
+                style={{ background: tint(picked.color, 0.18), borderColor: picked.color }}
+              >
+                <span className="pie__pick-dot" style={{ background: picked.color }} />
+                <span className="pie__pick-name">{picked.name}</span>
+                <strong style={{ color: picked.color }}>{formatINR(picked.total)}</strong>
+              </div>
+            )}
+          </div>
 
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
