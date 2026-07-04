@@ -19,8 +19,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'faaah.mp3'],
       manifest: {
-        name: 'Haven',
-        short_name: 'Haven',
+        name: 'Kosha',
+        short_name: 'Kosha',
         description: 'Your personal hub — expenses, goals and notes, offline-first',
         theme_color: '#0f172a',
         background_color: '#0f172a',

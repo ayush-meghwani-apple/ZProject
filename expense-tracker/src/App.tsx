@@ -97,8 +97,8 @@ export default function App() {
       <aside className={`drawer ${drawerOpen ? 'drawer--open' : ''}`}>
         <div className="drawer__head">
           <span className="drawer__brand">
-            <span className="drawer__brand-icon">🌿</span>
-            <span className="drawer__brand-text">Haven</span>
+            <span className="drawer__brand-icon">�</span>
+            <span className="drawer__brand-text">Kosha</span>
           </span>
           <button className="iconbtn" onClick={() => setDrawerOpen(false)} aria-label="Close menu">
             ✕

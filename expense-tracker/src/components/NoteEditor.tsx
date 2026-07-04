@@ -208,12 +208,16 @@ export default function NoteEditor({ doc, onExit }: Props) {
   }
 
   function restoreSelection() {
+    // If the caret is already live inside the body (toolbar buttons keep focus
+    // via mousedown-preventDefault), leave it alone — re-adding a cloned range
+    // resets the browser's pending bold/italic state and breaks toggling off.
+    const sel = document.getSelection();
+    if (sel && sel.rangeCount && bodyRef.current?.contains(sel.anchorNode)) return;
     const r = lastRange.current;
     if (!r) {
       focusBody();
       return;
     }
-    const sel = document.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(r);
   }
@@ -395,6 +399,13 @@ export default function NoteEditor({ doc, onExit }: Props) {
     const wrapRect = wrap.getBoundingClientRect();
     if (d.axis === 'row') {
       const idx = T.rowIndexFromY(d.table, e.clientY);
+      // Dropping at its own slot (from) or right after it (from+1) is a no-op —
+      // don't show a cue on the row being dragged.
+      if (idx === d.from || idx === d.from + 1) {
+        dropIdx.current = null;
+        setDrop(null);
+        return;
+      }
       dropIdx.current = idx;
       const rows = T.tableRows(d.table);
       const y = rows[idx]
@@ -403,6 +414,11 @@ export default function NoteEditor({ doc, onExit }: Props) {
       setDrop({ axis: 'row', pos: y });
     } else {
       const idx = T.colIndexFromX(d.table, e.clientX);
+      if (idx === d.from || idx === d.from + 1) {
+        dropIdx.current = null;
+        setDrop(null);
+        return;
+      }
       dropIdx.current = idx;
       const cells = Array.from(T.tableRows(d.table)[0].children) as HTMLElement[];
       const x = cells[idx]
