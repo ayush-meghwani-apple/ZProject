@@ -320,9 +320,17 @@ export default function NoteEditor({ doc, onExit }: Props) {
         <button className="btn btn--ghost btn--sm" onClick={exit}>
           ← Notes
         </button>
-        <button className="iconbtn" onClick={del} title="Delete note">
-          🗑️
-        </button>
+        <div className="noteedit__actions">
+          <button className="iconbtn" onMouseDown={keepFocus} onClick={undo} title="Undo">
+            ↶
+          </button>
+          <button className="iconbtn" onMouseDown={keepFocus} onClick={redo} title="Redo">
+            ↷
+          </button>
+          <button className="iconbtn" onClick={del} title="Delete note">
+            🗑️
+          </button>
+        </div>
       </div>
 
       <input
@@ -348,7 +356,7 @@ export default function NoteEditor({ doc, onExit }: Props) {
         onPaste={onPaste}
       />
 
-      <div className="notebar">
+      <div className="notebar" data-noswipe>
         <div className="notebar__row">
           <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('bold')} title="Bold">
             <b>B</b>
@@ -371,15 +379,6 @@ export default function NoteEditor({ doc, onExit }: Props) {
             <input type="color" defaultValue="#fde68a" onInput={(e) => applyColor('back', e.currentTarget.value)} />
           </label>
           <span className="notebar__sep" />
-          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={undo} title="Undo">
-            ↶
-          </button>
-          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={redo} title="Redo">
-            ↷
-          </button>
-        </div>
-
-        <div className="notebar__row">
           <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list (Tab to indent)">
             • List
           </button>

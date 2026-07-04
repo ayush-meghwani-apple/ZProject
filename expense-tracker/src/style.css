@@ -170,6 +170,17 @@ body {
 .drawer__brand {
   font-size: 20px;
   font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.drawer__brand-icon {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.drawer__brand-text {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   -webkit-background-clip: text;
   background-clip: text;
@@ -530,8 +541,15 @@ body {
 .tabbar {
   display: flex;
   border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: max(env(safe-area-inset-bottom), 2px);
   background: var(--surface);
+}
+
+/* While the on-screen keyboard is up, drop the tab bar entirely so only the
+   editor toolbar sits above the keyboard (like Apple Notes) — the tabs above a
+   keyboard just waste space and cover nothing useful. */
+.kb-open .tabbar {
+  display: none;
 }
 
 .tabbar button {
@@ -540,7 +558,7 @@ body {
   background: none;
   border: none;
   color: var(--muted);
-  padding: 7px 2px 5px;
+  padding: 5px 2px 3px;
   font-size: 11px;
   white-space: nowrap;
   display: flex;
@@ -1315,6 +1333,13 @@ body {
   outline: none;
 }
 
+/* iOS Safari flashes a translucent grey box (the tap highlight) over a tapped
+   pie slice for a second or so — kill it so tapping a slice stays clean. */
+.recharts-wrapper,
+.recharts-wrapper * {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ---- Expense Reels ---- */
 .reels {
   position: relative;
@@ -1964,6 +1989,16 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px 4px;
+}
+
+.noteedit__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.noteedit__actions .iconbtn {
+  font-size: 18px;
 }
 
 .noteedit__title {

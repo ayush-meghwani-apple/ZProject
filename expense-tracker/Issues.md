@@ -7,7 +7,7 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-### Orbit (app-wide)
+### Haven (app-wide)
 
 _(nothing open right now)_
 
@@ -18,10 +18,18 @@ _(nothing open right now)_
 ### Slate (Notes)
 
 - **Table grabbers / drag-to-reorder (deferred — bigger feature).** When the caret is in a table cell, show **grabbers** on that cell's row & column so you can **drag them to reorder**, and tapping a grabber again offers **add / delete** for that row/column. _(For now the caret-in-table controls already give ＋/－ Row, ＋/－ Col, a **Header** toggle and 🗑️ Table — the drag-to-move grabbers are the remaining part and need a chunk of new drag-interaction work; kept open on purpose.)_
-- **Expandable toolbar with a table menu (partly done).** Make the insert-tools row **expandable** with more options, and when the focus is inside a table surface a small **table menu** there (copy / delete table). _(Partly covered: the second toolbar row already shows the table controls above when the caret is in a table; a dedicated copy option is still to come.)_
+- **Expandable toolbar with a table menu (partly done).** When the focus is inside a table, surface a small **table menu** there with a **copy** option too. _(Partly covered: the toolbar already shows ＋/－ Row/Col, Header and 🗑️ Table when the caret is in a table; a dedicated copy option is still to come.)_
 
 
 ## Done
+
+- ✅ **(2026-07-04)** **Slate toolbar is now one clean scrolling line (like Apple Notes).** The formatting bar was two stacked rows; it's now a **single row you scroll sideways** (B / I / U / S · colours · List / Image / Table · table controls), so it takes less height and matches the Apple-Notes feel. Also fixed: sliding the toolbar sideways no longer **flips you to the Settings tab** — the bar now swallows its own horizontal swipes.
+- ✅ **(2026-07-04)** **Bottom tabs get out of the way while typing (app-wide).** When the keyboard is up, the **Notes / Settings tab bar now hides** so only the formatting toolbar sits above the keyboard (again, like Apple Notes) — no more useless tab strip floating over the keyboard, and the padding you saw under the tab icons (image-19) is gone while typing. The tabs come straight back when the keyboard closes.
+- ✅ **(2026-07-04)** **Undo / redo moved up next to Delete.** The **↶ / ↷** buttons now sit in the top bar beside the 🗑️ delete button (as you asked), instead of taking room in the formatting bar.
+- ✅ **(2026-07-04)** **Pie-slice tap box gone (Expensify).** The faint square that flashed for a second when you tapped a pie slice was iOS Safari's **tap-highlight**; it's now turned off on the chart, so tapping a slice stays clean.
+- ✅ **(2026-07-04)** **Trimmed the tab-bar padding.** The extra space under the tab icons is reduced so the bar sits tighter to the bottom.
+- ✅ **(2026-07-04)** **App renamed to "Haven" 🌿 (with an emoji).** Dropped "Orbit"; the whole app is now **🌿 Haven** in the drawer, title and install name, and the emoji shows in full colour next to it (same fix as the header). Happy to try another name/emoji if you'd like.
+
 
 - ✅ **(2026-07-04)** **Keyboard fix that actually works on iPhone (app-wide).** The previous fix relied on `interactive-widget=resizes-content`, which **iOS Safari ignores** — so on your iPhone nothing moved. It's now done in JavaScript: the app measures the **visible area** (`window.visualViewport`) and sizes itself to it, so when the keyboard opens the **whole app shrinks to sit above the keyboard** (formatting bar, tab bar and all) and expands back when it closes. Verified in the browser by **simulating the keyboard** (faking `visualViewport`): with a ~344px keyboard the app went from full height to 500px and the toolbar rose to sit right above it, then restored on close. _(How to test a keyboard in the browser: the on-screen keyboard never really appears in desktop preview, but you can simulate it by shrinking `window.visualViewport` as above; for the **exact** real behaviour, connect your iPhone to a Mac and use **Safari → Develop → [your iPhone] Web Inspector**.)_
 - ✅ **(2026-07-04)** **No more dead band under the tab bar (app-wide).** Because the app now sizes to the real visible viewport, the empty strip that showed under the bottom tabs (image-15) is gone — the tab bar sits flush at the true bottom.
