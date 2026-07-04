@@ -17,12 +17,15 @@ _(nothing open right now)_
 
 ### Slate (Notes)
 
-- **Table grabbers / drag-to-reorder (deferred — bigger feature).** When the caret is in a table cell, show **grabbers** on that cell's row & column so you can **drag them to reorder**, and tapping a grabber again offers **add / delete** for that row/column. _(For now the caret-in-table controls already give ＋/－ Row, ＋/－ Col, a **Header** toggle and 🗑️ Table — the drag-to-move grabbers are the remaining part and need a chunk of new drag-interaction work; kept open on purpose.)_
-- **Expandable toolbar with a table menu (partly done).** When the focus is inside a table, surface a small **table menu** there with a **copy** option too. _(Partly covered: the toolbar already shows ＋/－ Row/Col, Header and 🗑️ Table when the caret is in a table; a dedicated copy option is still to come.)_
+_(nothing open right now)_
 
 
 ## Done
 
+- ✅ **(2026-07-04)** **Table grabbers — drag to reorder, tap to insert/delete (Slate).** When the caret is in a table, a small **grabber appears on the active row (left) and column (top)**. **Drag** a grabber to **move that row/column** (a blue line shows where it'll land); **tap** it to open a menu — **Insert above / below** (or **left / right**) and **Delete row / column**. This replaces the old ＋/－ Row/Col buttons with the direct, drag-to-move interaction you asked for.
+- ✅ **(2026-07-04)** **Table menu with Copy (Slate).** When the caret is in a table the toolbar now shows a tidy **Header · ⧉ Copy · 🗑️ Table** group; **Copy** puts the whole table on the clipboard (as rich HTML + tab-separated text) so you can paste it elsewhere.
+- ✅ **(2026-07-04)** **Tab bar sticks to the bottom while typing — everywhere.** The "hide the tab bar when the keyboard is up" fix is app-wide (it was already shared code), so **Expensify's Add/typing box** no longer floats the tab strip above the keyboard either — same clean behaviour as Slate.
+- ✅ **(2026-07-04)** **More modular code.** All table editing now lives in one small reusable module (`core/noteTable.ts`) with plain, testable functions (insert/delete/move row & column, header toggle, copy), so the editor component is thinner and the logic isn't duplicated. (The app already shares the tab-bar/tabbed-shell, Settings and data repositories across every sub-app.)
 - ✅ **(2026-07-04)** **Slate toolbar is now one clean scrolling line (like Apple Notes).** The formatting bar was two stacked rows; it's now a **single row you scroll sideways** (B / I / U / S · colours · List / Image / Table · table controls), so it takes less height and matches the Apple-Notes feel. Also fixed: sliding the toolbar sideways no longer **flips you to the Settings tab** — the bar now swallows its own horizontal swipes.
 - ✅ **(2026-07-04)** **Bottom tabs get out of the way while typing (app-wide).** When the keyboard is up, the **Notes / Settings tab bar now hides** so only the formatting toolbar sits above the keyboard (again, like Apple Notes) — no more useless tab strip floating over the keyboard, and the padding you saw under the tab icons (image-19) is gone while typing. The tabs come straight back when the keyboard closes.
 - ✅ **(2026-07-04)** **Undo / redo moved up next to Delete.** The **↶ / ↷** buttons now sit in the top bar beside the 🗑️ delete button (as you asked), instead of taking room in the formatting bar.

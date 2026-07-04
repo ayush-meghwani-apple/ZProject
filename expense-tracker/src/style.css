@@ -2026,6 +2026,113 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Non-scrolling wrapper so the table grabbers can be positioned over the body
+   (they follow the table as the body scrolls, via recompute on scroll). */
+.notebody-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Overlay that holds the drag/tap grabbers; only the grabbers catch pointers. */
+.tgrabs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.tgrab {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 900;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+  touch-action: none;
+  opacity: 0.9;
+}
+
+.tgrab:active {
+  cursor: grabbing;
+  opacity: 1;
+}
+
+.tgrab--row {
+  width: 14px;
+}
+
+.tgrab--col {
+  height: 14px;
+}
+
+/* The blue line showing where a dragged row/column will drop. */
+.tdrop {
+  position: absolute;
+  background: var(--accent-2);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.tdrop--row {
+  height: 2px;
+  right: 8px;
+}
+
+.tdrop--col {
+  width: 2px;
+  bottom: 8px;
+}
+
+/* The insert/delete popup a grabber tap opens. */
+.tmenu {
+  position: absolute;
+  z-index: 8;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 148px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.tmenu button {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  padding: 10px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tmenu button:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+.tmenu button:active {
+  background: var(--surface-2);
+}
+
+.tmenu__danger {
+  color: var(--bad);
+}
+
 .notebody:empty::before {
   content: attr(data-placeholder);
   color: var(--muted);

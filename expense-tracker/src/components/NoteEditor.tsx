@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NoteDocRepository } from '../repository/noteDocRepository';
 import { imageToDataUrl } from '../core/image';
 import { blocksToHtml, isHtmlEmpty, sanitizeHtml } from '../core/noteHtml';
+import * as T from '../core/noteTable';
 import type { NoteDoc } from '../types/models';
 
 interface Props {
@@ -15,19 +16,41 @@ const TABLE_HTML =
   '<tr><td><br></td><td><br></td></tr>' +
   '</tbody></table><p><br></p>';
 
+/** Where the drag/tap grabbers should sit, in coordinates relative to the
+ *  body wrapper (recomputed as the caret moves or the body scrolls). */
+interface GrabGeo {
+  rowIdx: number;
+  colIdx: number;
+  rowTop: number;
+  rowH: number;
+  colLeft: number;
+  colW: number;
+  tableTop: number;
+  tableLeft: number;
+}
+
 /**
  * A free-form rich note editor: a fixed title on top and one big editable body
  * that fills the rest. A bottom bar gives shortcuts for bullet lists, images and
- * tables (with row/column controls when the caret is inside a table). Content is
+ * tables. When the caret is in a table, drag-grabbers appear on the active row
+ * and column to reorder them (tap a grabber for insert/delete). Content is
  * stored as HTML and autosaves as you type.
  */
 export default function NoteEditor({ doc, onExit }: Props) {
   const bodyRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const lastRange = useRef<Range | null>(null);
   const [title, setTitle] = useState(doc.title);
   const [inTable, setInTable] = useState(false);
+
+  // Grabber overlay geometry + the drag/tap-menu state that drives it.
+  const [grab, setGrab] = useState<GrabGeo | null>(null);
+  const [menu, setMenu] = useState<{ axis: 'row' | 'col'; index: number; table: HTMLTableElement; x: number; y: number } | null>(null);
+  const [drop, setDrop] = useState<{ axis: 'row' | 'col'; pos: number } | null>(null);
+  const drag = useRef<{ axis: 'row' | 'col'; from: number; table: HTMLTableElement; startX: number; startY: number; moved: boolean } | null>(null);
+  const dropIdx = useRef<number | null>(null);
 
   // Seed the editable body once; after that it's uncontrolled so the caret is
   // never disturbed by React re-renders.
@@ -49,6 +72,27 @@ export default function NoteEditor({ doc, onExit }: Props) {
     return () => document.removeEventListener('selectionchange', onSelect);
   }, []);
 
+  // Close the row/column tap-menu when tapping anywhere that isn't the menu or a
+  // grabber, and keep the grabbers aligned when the viewport/keyboard resizes.
+  useEffect(() => {
+    function onDown(e: PointerEvent) {
+      const t = e.target as Element;
+      if (!t.closest?.('.tmenu') && !t.closest?.('.tgrab')) setMenu(null);
+    }
+    function onResize() {
+      computeGrab();
+    }
+    document.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('resize', onResize);
+    window.visualViewport?.addEventListener('resize', onResize);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('resize', onResize);
+      window.visualViewport?.removeEventListener('resize', onResize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function currentHtml(): string {
     return bodyRef.current?.innerHTML ?? '';
   }
@@ -65,6 +109,38 @@ export default function NoteEditor({ doc, onExit }: Props) {
   // controls contextually.
   function refreshContext() {
     setInTable(!!currentCell());
+    computeGrab();
+  }
+
+  // Position the drag/tap grabbers over the active row & column. Coordinates are
+  // relative to the (non-scrolling) body wrapper, so they follow the table as
+  // the body scrolls or the caret moves between cells.
+  function computeGrab() {
+    const cell = currentCell();
+    const wrap = wrapRef.current;
+    if (!cell || !wrap) {
+      setGrab(null);
+      return;
+    }
+    const pos = T.cellPosition(cell);
+    if (!pos) {
+      setGrab(null);
+      return;
+    }
+    const wrapRect = wrap.getBoundingClientRect();
+    const rowRect = (cell.parentElement as HTMLElement).getBoundingClientRect();
+    const cellRect = cell.getBoundingClientRect();
+    const tableRect = pos.table.getBoundingClientRect();
+    setGrab({
+      rowIdx: pos.rowIdx,
+      colIdx: pos.colIdx,
+      rowTop: rowRect.top - wrapRect.top,
+      rowH: rowRect.height,
+      colLeft: cellRect.left - wrapRect.left,
+      colW: cellRect.width,
+      tableTop: tableRect.top - wrapRect.top,
+      tableLeft: tableRect.left - wrapRect.left,
+    });
   }
 
   function currentCell(): HTMLTableCellElement | null {
@@ -185,101 +261,150 @@ export default function NoteEditor({ doc, onExit }: Props) {
     // Non-image pastes fall through; sanitizeHtml cleans them on save.
   }
 
-  // ---- table row/column ops ----
-  function addRow() {
-    const cell = currentCell();
-    if (!cell) return;
-    const row = cell.parentElement as HTMLTableRowElement;
-    const cols = row.children.length;
-    const newRow = document.createElement('tr');
-    for (let i = 0; i < cols; i++) {
-      const td = document.createElement('td');
-      td.innerHTML = '<br>';
-      newRow.appendChild(td);
-    }
-    row.after(newRow);
-    afterEdit();
-  }
-
-  function addColumn() {
-    const cell = currentCell();
-    if (!cell) return;
-    const idx = Array.from(cell.parentElement!.children).indexOf(cell);
-    const table = cell.closest('table');
-    table?.querySelectorAll('tr').forEach((tr) => {
-      const td = document.createElement('td');
-      td.innerHTML = '<br>';
-      const ref = tr.children[idx];
-      if (ref) ref.after(td);
-      else tr.appendChild(td);
-    });
-    afterEdit();
-  }
-
-  function deleteRow() {
-    const cell = currentCell();
-    if (!cell) return;
-    const row = cell.parentElement as HTMLTableRowElement;
-    const table = row.closest('table')!;
-    const rows = Array.from(table.querySelectorAll('tr'));
-    if (rows.length <= 1) {
-      table.remove();
+  // ---- table ops (via the pure helpers in core/noteTable) ----
+  /** Run a table mutation, then re-save, refresh context and reposition grabbers. */
+  function afterTableOp(table: HTMLTableElement | null, removed: boolean, caretRow: number, caretCol: number) {
+    setMenu(null);
+    setDrop(null);
+    if (removed || !table || !table.isConnected) {
+      setGrab(null);
       focusBody();
       afterEdit();
       return;
     }
-    const idx = rows.indexOf(row);
-    row.remove();
-    // Keep the caret in the table so the row/col controls stay visible.
-    const nextRow = table.querySelectorAll('tr')[Math.min(idx, rows.length - 2)] as HTMLTableRowElement;
-    const target = nextRow?.children[0] as HTMLElement | undefined;
+    const rows = T.tableRows(table);
+    const row = rows[Math.min(caretRow, rows.length - 1)];
+    const target = row?.children[Math.min(caretCol, row.children.length - 1)] as HTMLElement | undefined;
     if (target) placeCaret(target);
     afterEdit();
+    requestAnimationFrame(computeGrab);
   }
 
-  function deleteColumn() {
-    const cell = currentCell();
-    if (!cell) return;
-    const idx = Array.from(cell.parentElement!.children).indexOf(cell);
-    const table = cell.closest('table')!;
-    const rows = Array.from(table.querySelectorAll('tr'));
-    const colCount = rows[0]?.children.length ?? 0;
-    if (colCount <= 1) {
-      table.remove();
-      focusBody();
-      afterEdit();
-      return;
-    }
-    rows.forEach((tr) => tr.children[idx]?.remove());
-    // Keep the caret in the table so the row/col controls stay visible.
-    const row = cell.parentElement === null ? rows[0] : (table.querySelectorAll('tr')[0] as HTMLTableRowElement);
-    const target = row?.children[Math.min(idx, colCount - 2)] as HTMLElement | undefined;
-    if (target) placeCaret(target);
-    afterEdit();
+  function insertRowAt(table: HTMLTableElement, at: number) {
+    T.insertRow(table, at);
+    afterTableOp(table, false, at, 0);
+  }
+  function insertColAt(table: HTMLTableElement, at: number) {
+    T.insertColumn(table, at);
+    afterTableOp(table, false, 0, at);
+  }
+  function deleteRowAt(table: HTMLTableElement, idx: number) {
+    const removed = T.deleteRow(table, idx);
+    afterTableOp(table, removed, idx, 0);
+  }
+  function deleteColAt(table: HTMLTableElement, idx: number) {
+    const removed = T.deleteColumn(table, idx);
+    afterTableOp(table, removed, 0, idx);
   }
 
   function deleteTable() {
-    const cell = currentCell();
-    const table = cell?.closest('table');
+    const table = currentCell()?.closest('table') ?? null;
     if (!table) return;
     table.remove();
-    focusBody();
+    afterTableOp(table, true, 0, 0);
+  }
+
+  function toggleHeaderRow() {
+    const table = currentCell()?.closest('table');
+    if (!table) return;
+    T.toggleHeaderRow(table);
     afterEdit();
   }
 
-  // Toggle the table's first row between header cells (<th>) and normal (<td>).
-  function toggleHeaderRow() {
+  async function copyTable() {
+    const table = currentCell()?.closest('table');
+    if (!table) return;
+    const html = table.outerHTML;
+    const text = T.tableToText(table);
+    try {
+      if (navigator.clipboard && 'write' in navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([text], { type: 'text/plain' }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch {
+      /* clipboard blocked — nothing else we can do */
+    }
+  }
+
+  // ---- grabber drag + tap ----
+  function onGrabDown(e: React.PointerEvent, axis: 'row' | 'col') {
     const cell = currentCell();
-    const table = cell?.closest('table');
-    const firstRow = table?.querySelector('tr');
-    if (!firstRow) return;
-    const isHeader = !!firstRow.querySelector('th');
-    Array.from(firstRow.children).forEach((c) => {
-      const el = document.createElement(isHeader ? 'td' : 'th');
-      el.innerHTML = c.innerHTML || '<br>';
-      c.replaceWith(el);
-    });
-    afterEdit();
+    const pos = cell && T.cellPosition(cell);
+    if (!pos) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    drag.current = {
+      axis,
+      from: axis === 'row' ? pos.rowIdx : pos.colIdx,
+      table: pos.table,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+    };
+    dropIdx.current = null;
+  }
+
+  function onGrabMove(e: React.PointerEvent) {
+    const d = drag.current;
+    if (!d) return;
+    if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 6) d.moved = true;
+    if (!d.moved) return;
+    const wrap = wrapRef.current!;
+    const wrapRect = wrap.getBoundingClientRect();
+    if (d.axis === 'row') {
+      const idx = T.rowIndexFromY(d.table, e.clientY);
+      dropIdx.current = idx;
+      const rows = T.tableRows(d.table);
+      const y = rows[idx]
+        ? rows[idx].getBoundingClientRect().top - wrapRect.top
+        : rows[rows.length - 1].getBoundingClientRect().bottom - wrapRect.top;
+      setDrop({ axis: 'row', pos: y });
+    } else {
+      const idx = T.colIndexFromX(d.table, e.clientX);
+      dropIdx.current = idx;
+      const cells = Array.from(T.tableRows(d.table)[0].children) as HTMLElement[];
+      const x = cells[idx]
+        ? cells[idx].getBoundingClientRect().left - wrapRect.left
+        : cells[cells.length - 1].getBoundingClientRect().right - wrapRect.left;
+      setDrop({ axis: 'col', pos: x });
+    }
+  }
+
+  function onGrabUp(e: React.PointerEvent, axis: 'row' | 'col') {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    if (!d.moved) {
+      // A tap (not a drag) opens the insert/delete menu next to the grabber.
+      const wrap = wrapRef.current!;
+      const wrapRect = wrap.getBoundingClientRect();
+      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      setMenu({
+        axis,
+        index: d.from,
+        table: d.table,
+        x: axis === 'row' ? r.right - wrapRect.left + 4 : r.left - wrapRect.left,
+        y: axis === 'row' ? r.top - wrapRect.top : r.bottom - wrapRect.top + 4,
+      });
+      return;
+    }
+    const to = dropIdx.current;
+    dropIdx.current = null;
+    setDrop(null);
+    if (to == null) return;
+    if (axis === 'row') {
+      T.moveRow(d.table, d.from, to);
+      afterTableOp(d.table, false, to > d.from ? to - 1 : to, grab?.colIdx ?? 0);
+    } else {
+      T.moveColumn(d.table, d.from, to);
+      afterTableOp(d.table, false, grab?.rowIdx ?? 0, to > d.from ? to - 1 : to);
+    }
   }
 
   function undo() {
@@ -343,18 +468,77 @@ export default function NoteEditor({ doc, onExit }: Props) {
         }}
       />
 
-      <div
-        ref={bodyRef}
-        className="notebody"
-        contentEditable
-        suppressContentEditableWarning
-        data-placeholder="Start writing…"
-        onInput={afterEdit}
-        onKeyDown={onBodyKeyDown}
-        onKeyUp={refreshContext}
-        onMouseUp={refreshContext}
-        onPaste={onPaste}
-      />
+      <div className="notebody-wrap" ref={wrapRef}>
+        <div
+          ref={bodyRef}
+          className="notebody"
+          contentEditable
+          suppressContentEditableWarning
+          data-placeholder="Start writing…"
+          onInput={afterEdit}
+          onKeyDown={onBodyKeyDown}
+          onKeyUp={refreshContext}
+          onMouseUp={refreshContext}
+          onScroll={computeGrab}
+          onPaste={onPaste}
+        />
+
+        {inTable && grab && (
+          <div className="tgrabs">
+            <button
+              className="tgrab tgrab--row"
+              style={{ top: grab.rowTop, height: grab.rowH, left: Math.max(grab.tableLeft - 15, 0) }}
+              onPointerDown={(e) => onGrabDown(e, 'row')}
+              onPointerMove={onGrabMove}
+              onPointerUp={(e) => onGrabUp(e, 'row')}
+              title="Drag to move row · tap for options"
+            >
+              ⋮
+            </button>
+            <button
+              className="tgrab tgrab--col"
+              style={{ left: grab.colLeft, width: grab.colW, top: Math.max(grab.tableTop - 15, 0) }}
+              onPointerDown={(e) => onGrabDown(e, 'col')}
+              onPointerMove={onGrabMove}
+              onPointerUp={(e) => onGrabUp(e, 'col')}
+              title="Drag to move column · tap for options"
+            >
+              ⋯
+            </button>
+            {drop?.axis === 'row' && <div className="tdrop tdrop--row" style={{ top: drop.pos, left: grab.tableLeft }} />}
+            {drop?.axis === 'col' && <div className="tdrop tdrop--col" style={{ left: drop.pos, top: grab.tableTop }} />}
+            {menu && (
+              <div className="tmenu" style={{ left: menu.x, top: menu.y }}>
+                {menu.axis === 'row' ? (
+                  <>
+                    <button onPointerDown={(e) => e.preventDefault()} onClick={() => insertRowAt(menu.table, menu.index)}>
+                      ↑ Insert above
+                    </button>
+                    <button onPointerDown={(e) => e.preventDefault()} onClick={() => insertRowAt(menu.table, menu.index + 1)}>
+                      ↓ Insert below
+                    </button>
+                    <button className="tmenu__danger" onPointerDown={(e) => e.preventDefault()} onClick={() => deleteRowAt(menu.table, menu.index)}>
+                      🗑️ Delete row
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onPointerDown={(e) => e.preventDefault()} onClick={() => insertColAt(menu.table, menu.index)}>
+                      ← Insert left
+                    </button>
+                    <button onPointerDown={(e) => e.preventDefault()} onClick={() => insertColAt(menu.table, menu.index + 1)}>
+                      → Insert right
+                    </button>
+                    <button className="tmenu__danger" onPointerDown={(e) => e.preventDefault()} onClick={() => deleteColAt(menu.table, menu.index)}>
+                      🗑️ Delete column
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="notebar" data-noswipe>
         <div className="notebar__row">
@@ -397,20 +581,11 @@ export default function NoteEditor({ doc, onExit }: Props) {
           {inTable && (
             <>
               <span className="notebar__sep" />
-              <button className="notebar__btn" onMouseDown={keepFocus} onClick={addRow} title="Add row">
-                ＋Row
-              </button>
-              <button className="notebar__btn" onMouseDown={keepFocus} onClick={addColumn} title="Add column">
-                ＋Col
-              </button>
-              <button className="notebar__btn" onMouseDown={keepFocus} onClick={deleteRow} title="Delete row">
-                －Row
-              </button>
-              <button className="notebar__btn" onMouseDown={keepFocus} onClick={deleteColumn} title="Delete column">
-                －Col
-              </button>
               <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleHeaderRow} title="Toggle header row">
                 Header
+              </button>
+              <button className="notebar__btn" onMouseDown={keepFocus} onClick={copyTable} title="Copy table">
+                ⧉ Copy
               </button>
               <button className="notebar__btn notebar__btn--danger" onMouseDown={keepFocus} onClick={deleteTable} title="Delete table">
                 🗑️ Table
