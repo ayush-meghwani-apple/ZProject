@@ -64,7 +64,7 @@ export default function ColorSpectrum({ onPick }: Props) {
   }
 
   return (
-    <div className="spectrum">
+    <div className="spectrum" onMouseDown={(e) => e.preventDefault()}>
       <div className="spectrum__bar spectrum__hue" {...handler('hue')}>
         <span className="spectrum__thumb" style={{ left: `${(hue / 360) * 100}%` }} />
       </div>

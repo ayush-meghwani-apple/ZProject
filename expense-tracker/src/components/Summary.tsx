@@ -35,7 +35,13 @@ function tint(hex: string, alpha: number): string {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!m) return `rgba(148, 163, 184, ${alpha})`;
   return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
-}/**
+}
+
+/** Shorten long slice labels so they don't get clipped at the chart edges. */
+function shortName(s: string): string {
+  return s && s.length > 10 ? `${s.slice(0, 9)}…` : s;
+}
+/**
  * The single "Summary" tab: combines the at-a-glance totals + collapsible
  * category breakdown + recent expenses (formerly Dashboard) with the charts
  * (pie + monthly trend, formerly Reports), so there's one place to understand
@@ -52,14 +58,14 @@ export default function Summary({ version, onChange }: Props) {
   const [drillId, setDrillId] = useState<string | null>(null);
   const [picked, setPicked] = useState<{ name: string; total: number; color: string } | null>(null);
   const lastClick = useRef<{ id: string; t: number }>({ id: '', t: 0 });
-  const pickTimer = useRef<number | undefined>(undefined);
   const initialized = useRef(false);
 
-  // Dismiss the picked-slice amount when tapping anywhere that isn't a slice.
+  // Dismiss the picked-slice amount only when tapping somewhere that is neither a
+  // slice nor the amount pill itself (so tapping the pill keeps it open).
   useEffect(() => {
     function onDown(e: MouseEvent) {
-      if (!(e.target as Element)?.closest?.('.recharts-sector')) {
-        window.clearTimeout(pickTimer.current);
+      const t = e.target as Element;
+      if (!t?.closest?.('.recharts-sector') && !t?.closest?.('.pie__pick')) {
         setPicked(null);
       }
     }
@@ -191,7 +197,7 @@ export default function Summary({ version, onChange }: Props) {
           </div>
 
           <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
+            <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
               {drill ? (
                 <Pie
                   data={drillData}
@@ -199,9 +205,9 @@ export default function Summary({ version, onChange }: Props) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={88}
+                  outerRadius={70}
                   isAnimationActive={false}
-                  label={(d) => d.name}
+                  label={(d) => shortName(d.name)}
                   onClick={(_, index) => {
                     const s = drillData[index];
                     if (s) setPicked({ name: s.name, total: s.total, color: s.color });
@@ -218,9 +224,9 @@ export default function Summary({ version, onChange }: Props) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={88}
+                  outerRadius={70}
                   isAnimationActive={false}
-                  label={(d) => d.name}
+                  label={(d) => shortName(d.name)}
                   onClick={(_, index) => {
                     const c = categorySummary[index];
                     if (!c) return;
@@ -228,20 +234,16 @@ export default function Summary({ version, onChange }: Props) {
                     const isSecond =
                       lastClick.current.id === c.categoryId && now - lastClick.current.t < 350;
                     lastClick.current = { id: c.categoryId, t: now };
-                    window.clearTimeout(pickTimer.current);
                     if (isSecond) {
-                      // Double-tap → drill straight in, no amount flash.
+                      // Double-tap → drill into the sub-category breakdown.
                       if (c.categoryId !== 'uncategorized') {
                         setDrillId(c.categoryId);
                         setPicked(null);
                       }
                     } else {
-                      // Single-tap → show the amount, but wait in case a second
-                      // tap turns it into a drill.
-                      pickTimer.current = window.setTimeout(
-                        () => setPicked({ name: c.name, total: c.total, color: c.color }),
-                        280,
-                      );
+                      // Single-tap → show the amount pill and keep it open (a
+                      // second tap within 350ms turns it into a drill instead).
+                      setPicked({ name: c.name, total: c.total, color: c.color });
                     }
                   }}
                 >

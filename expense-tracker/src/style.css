@@ -1363,6 +1363,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Smaller pie slice labels so long category names don't clip at the edges. */
+.recharts-pie-label-text {
+  font-size: 11px;
+}
+
 /* ---- Expense Reels ---- */
 .reels {
   position: relative;

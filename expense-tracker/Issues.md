@@ -22,6 +22,10 @@ _(nothing open right now)_
 
 ## Done
 
+- ✅ **(2026-07-05)** **Pie labels no longer get cut off.** Long category names (e.g. *Entertainment*, *Transport*) were spilling past the chart edges. The pie is now a touch smaller with slightly smaller, **shortened labels** (e.g. *Entertain…*), so every label fits inside the card. The full names are still in the list below.
+- ✅ **(2026-07-05)** **Tapping a slice keeps its amount open.** A **single tap** now shows the category's amount pill and **keeps it up** (tapping the same slice or the pill itself no longer closes it); a **double tap** opens that category's **sub-category pie**; tapping anywhere outside still dismisses the pill.
+- ✅ **(2026-07-05)** **Colour spectrum no longer closes the keyboard (Slate).** Picking a colour while typing was dropping the keyboard (a jarring jump). The spectrum now holds the note's focus the same way the B/I/U buttons do, so the keyboard **stays open** while you slide through colours.
+
 - ✅ **(2026-07-05)** **Pie tap no longer hides the bottom tabs — for real this time.** The actual cause: tapping a slice put keyboard **focus** on the chart's SVG, and iOS then scrolled it into view, shoving the fixed tab bar off-screen. Now any focus landing on the chart is dropped instantly, so a tap can't move anything. (The category amount pill still shows on single-tap and still dismisses when you tap outside — unchanged.)
 - ✅ **(2026-07-05)** **No more jerk when the category pill appears.** The amount pill's space is now **reserved above the chart**, so it fades in place instead of shoving the pie down.
 - ✅ **(2026-07-05)** **Fixed the stuck empty gap under the keyboard (Add tab).** That intermittent dead space between the field and the keyboard came from iOS reporting an in-between size mid-animation and it sticking. The app now **re-measures a few times right after you focus a field** (and on blur), so it settles to the right height and self-heals instead of needing an app restart.
