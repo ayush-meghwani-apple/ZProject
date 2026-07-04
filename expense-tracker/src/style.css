@@ -541,7 +541,7 @@ body {
 .tabbar {
   display: flex;
   border-top: 1px solid var(--border);
-  padding-bottom: max(env(safe-area-inset-bottom), 2px);
+  padding-bottom: 0;
   background: var(--surface);
 }
 
@@ -2248,22 +2248,87 @@ body {
   text-align: center;
 }
 
+/* Active on/off cue for B / I / U / S and the colour toggles. */
+.notebar__btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .notebar__color {
+  min-width: 36px;
+  padding: 7px 9px;
+  text-align: center;
+}
+
+.notebar__colorA {
+  background: linear-gradient(135deg, #a5b4fc, #f0abfc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900;
+}
+
+.notebar__btn.is-active .notebar__colorA {
+  background: none;
+  -webkit-text-fill-color: #fff;
+  color: #fff;
+}
+
+/* Colour palette popover — stays open until you pick again or tap away. */
+.colorpop {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(100% - 2px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+  padding: 10px 12px;
+  z-index: 9;
+}
+
+.colorpop__title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.colorpop__grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 7px;
+}
+
+.colorpop__sw {
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.colorpop__sw:active {
+  transform: scale(0.9);
+}
+
+.colorpop__custom {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  border-radius: 999px;
-  padding: 4px 9px;
-  font-size: 13px;
-  font-weight: 800;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
   cursor: pointer;
 }
 
-.notebar__color input[type='color'] {
-  width: 20px;
-  height: 20px;
+.colorpop__custom input[type='color'] {
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   background: none;

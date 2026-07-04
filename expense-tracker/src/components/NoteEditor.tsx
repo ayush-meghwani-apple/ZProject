@@ -16,6 +16,13 @@ const TABLE_HTML =
   '<tr><td><br></td><td><br></td></tr>' +
   '</tbody></table><p><br></p>';
 
+// Palette shown in the colour popover; picking one keeps the popover open.
+const SWATCHES = [
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#14b8a6',
+  '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e',
+  '#ffffff', '#d1d5db', '#9ca3af', '#4b5563', '#1f2937', '#000000',
+];
+
 /** Where the drag/tap grabbers should sit, in coordinates relative to the
  *  body wrapper (recomputed as the caret moves or the body scrolls). */
 interface GrabGeo {
@@ -45,10 +52,19 @@ export default function NoteEditor({ doc, onExit }: Props) {
   const [title, setTitle] = useState(doc.title);
   const [inTable, setInTable] = useState(false);
 
+  // Which inline formats are active at the caret, so the B/I/U/S buttons can
+  // show an on/off cue.
+  const [fmt, setFmt] = useState({ bold: false, italic: false, underline: false, strike: false });
+  // Which colour popover (if any) is open. A custom palette keeps it open until
+  // you pick again or tap elsewhere (the native picker closed on every pick).
+  const [pop, setPop] = useState<'fore' | 'back' | null>(null);
+
   // Grabber overlay geometry + the drag/tap-menu state that drives it.
   const [grab, setGrab] = useState<GrabGeo | null>(null);
   const [menu, setMenu] = useState<{ axis: 'row' | 'col'; index: number; table: HTMLTableElement; x: number; y: number } | null>(null);
   const [drop, setDrop] = useState<{ axis: 'row' | 'col'; pos: number } | null>(null);
+  // While dragging a grabber, how far it has followed the pointer (px).
+  const [dragShift, setDragShift] = useState(0);
   const drag = useRef<{ axis: 'row' | 'col'; from: number; table: HTMLTableElement; startX: number; startY: number; moved: boolean } | null>(null);
   const dropIdx = useRef<number | null>(null);
 
@@ -66,6 +82,7 @@ export default function NoteEditor({ doc, onExit }: Props) {
       const sel = document.getSelection();
       if (sel && sel.rangeCount && bodyRef.current?.contains(sel.anchorNode)) {
         lastRange.current = sel.getRangeAt(0).cloneRange();
+        updateFmt();
       }
     }
     document.addEventListener('selectionchange', onSelect);
@@ -78,6 +95,7 @@ export default function NoteEditor({ doc, onExit }: Props) {
     function onDown(e: PointerEvent) {
       const t = e.target as Element;
       if (!t.closest?.('.tmenu') && !t.closest?.('.tgrab')) setMenu(null);
+      if (!t.closest?.('.colorpop') && !t.closest?.('.notebar__color')) setPop(null);
     }
     function onResize() {
       computeGrab();
@@ -110,6 +128,22 @@ export default function NoteEditor({ doc, onExit }: Props) {
   function refreshContext() {
     setInTable(!!currentCell());
     computeGrab();
+    updateFmt();
+  }
+
+  // Read the browser's current formatting state so the toolbar can highlight the
+  // buttons that are "on" at the caret.
+  function updateFmt() {
+    try {
+      setFmt({
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        underline: document.queryCommandState('underline'),
+        strike: document.queryCommandState('strikeThrough'),
+      });
+    } catch {
+      /* queryCommandState can throw if there's no selection yet */
+    }
   }
 
   // Position the drag/tap grabbers over the active row & column. Coordinates are
@@ -355,6 +389,8 @@ export default function NoteEditor({ doc, onExit }: Props) {
     if (!d) return;
     if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 6) d.moved = true;
     if (!d.moved) return;
+    // Let the grabber follow the finger, just like the drop-line cue.
+    setDragShift(d.axis === 'row' ? e.clientY - d.startY : e.clientX - d.startX);
     const wrap = wrapRef.current!;
     const wrapRect = wrap.getBoundingClientRect();
     if (d.axis === 'row') {
@@ -379,6 +415,7 @@ export default function NoteEditor({ doc, onExit }: Props) {
   function onGrabUp(e: React.PointerEvent, axis: 'row' | 'col') {
     const d = drag.current;
     drag.current = null;
+    setDragShift(0);
     if (!d) return;
     if (!d.moved) {
       // A tap (not a drag) opens the insert/delete menu next to the grabber.
@@ -487,7 +524,12 @@ export default function NoteEditor({ doc, onExit }: Props) {
           <div className="tgrabs">
             <button
               className="tgrab tgrab--row"
-              style={{ top: grab.rowTop, height: grab.rowH, left: Math.max(grab.tableLeft - 15, 0) }}
+              style={{
+                top: grab.rowTop,
+                height: grab.rowH,
+                left: Math.max(grab.tableLeft - 15, 0),
+                transform: drag.current?.axis === 'row' ? `translateY(${dragShift}px)` : undefined,
+              }}
               onPointerDown={(e) => onGrabDown(e, 'row')}
               onPointerMove={onGrabMove}
               onPointerUp={(e) => onGrabUp(e, 'row')}
@@ -497,7 +539,12 @@ export default function NoteEditor({ doc, onExit }: Props) {
             </button>
             <button
               className="tgrab tgrab--col"
-              style={{ left: grab.colLeft, width: grab.colW, top: Math.max(grab.tableTop - 15, 0) }}
+              style={{
+                left: grab.colLeft,
+                width: grab.colW,
+                top: Math.max(grab.tableTop - 15, 0),
+                transform: drag.current?.axis === 'col' ? `translateX(${dragShift}px)` : undefined,
+              }}
               onPointerDown={(e) => onGrabDown(e, 'col')}
               onPointerMove={onGrabMove}
               onPointerUp={(e) => onGrabUp(e, 'col')}
@@ -541,27 +588,56 @@ export default function NoteEditor({ doc, onExit }: Props) {
       </div>
 
       <div className="notebar" data-noswipe>
+        {pop && (
+          <div className="colorpop">
+            <div className="colorpop__title">{pop === 'fore' ? 'Text colour' : 'Highlight'}</div>
+            <div className="colorpop__grid">
+              {SWATCHES.map((c) => (
+                <button
+                  key={c}
+                  className="colorpop__sw"
+                  style={{ background: c }}
+                  onMouseDown={keepFocus}
+                  onClick={() => applyColor(pop, c)}
+                  title={c}
+                />
+              ))}
+            </div>
+            <label className="colorpop__custom" onMouseDown={keepFocus}>
+              <span>＋ Custom</span>
+              <input type="color" onInput={(e) => applyColor(pop, e.currentTarget.value)} />
+            </label>
+          </div>
+        )}
         <div className="notebar__row">
-          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('bold')} title="Bold">
+          <button className={`notebar__btn notebar__btn--sq${fmt.bold ? ' is-active' : ''}`} onMouseDown={keepFocus} onClick={() => format('bold')} title="Bold">
             <b>B</b>
           </button>
-          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('italic')} title="Italic">
+          <button className={`notebar__btn notebar__btn--sq${fmt.italic ? ' is-active' : ''}`} onMouseDown={keepFocus} onClick={() => format('italic')} title="Italic">
             <i>I</i>
           </button>
-          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('underline')} title="Underline">
+          <button className={`notebar__btn notebar__btn--sq${fmt.underline ? ' is-active' : ''}`} onMouseDown={keepFocus} onClick={() => format('underline')} title="Underline">
             <u>U</u>
           </button>
-          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => format('strikeThrough')} title="Strikethrough">
+          <button className={`notebar__btn notebar__btn--sq${fmt.strike ? ' is-active' : ''}`} onMouseDown={keepFocus} onClick={() => format('strikeThrough')} title="Strikethrough">
             <s>S</s>
           </button>
-          <label className="notebar__color" title="Text colour">
-            <span>A</span>
-            <input type="color" defaultValue="#a5b4fc" onInput={(e) => applyColor('fore', e.currentTarget.value)} />
-          </label>
-          <label className="notebar__color" title="Highlight colour">
-            <span>🖍️</span>
-            <input type="color" defaultValue="#fde68a" onInput={(e) => applyColor('back', e.currentTarget.value)} />
-          </label>
+          <button
+            className={`notebar__btn notebar__color${pop === 'fore' ? ' is-active' : ''}`}
+            onMouseDown={keepFocus}
+            onClick={() => setPop(pop === 'fore' ? null : 'fore')}
+            title="Text colour"
+          >
+            <span className="notebar__colorA">A</span>
+          </button>
+          <button
+            className={`notebar__btn notebar__color${pop === 'back' ? ' is-active' : ''}`}
+            onMouseDown={keepFocus}
+            onClick={() => setPop(pop === 'back' ? null : 'back')}
+            title="Highlight colour"
+          >
+            🖍️
+          </button>
           <span className="notebar__sep" />
           <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list (Tab to indent)">
             • List
