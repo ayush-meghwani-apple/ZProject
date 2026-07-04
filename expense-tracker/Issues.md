@@ -22,6 +22,16 @@ _(nothing open right now)_
 
 ## Done
 
+- ✅ **(2026-07-04)** **App renamed to "Kaizen" 🌱.** *Kaizen* (改善) is Japanese for **continuous improvement** — a good fit for a place that helps you steadily better your money, goals and notes. Uses a plain **🌱 seedling** (an old, universally-supported emoji, so it won't show as a broken box on your phone like the lotus did). Other Japanese options if you'd like: **Kura** 蔵 "storehouse", **Sora** 空 "sky", **Michi** 道 "path", **Ikigai** 生き甲斐 "reason for being".
+- ✅ **(2026-07-04)** **Note categories (folders) in Slate.** Notes can now be grouped into **categories** (each with a **name + emoji**):
+  - The **notes home page** lists notes under their category headings; each heading is **collapsible** and shows a count. Uncategorised notes sit under **General**.
+  - Add a category from the home page (**🗂️ Category**) or straight from a note.
+  - **Reorder** categories with **↑ / ↓**, **edit** (✎) name/emoji, or **delete** (🗑️) — deleting keeps the notes and moves them to General. The header UI is kept deliberately minimal (lighter than Expensify's).
+  - Inside a note, a small **category chip** under the title lets you **move it to any category, General, or a new one** on the spot.
+  - Categories are included in your **backup/restore**.
+- ✅ **(2026-07-04)** **The Notes tab remembers the note you had open.** If you open a note, swipe to Settings and come back, it now **reopens that same note** instead of dropping you on the notes list.
+- ✅ **(2026-07-04)** **Tab bar hide while typing — made bullet-proof for Expensify.** Added a second trigger: as soon as any text box/editor is focused on a touch device, the bottom tab bar hides (backing up the keyboard-height detection, which can be flaky on iOS). So the Add box in Expensify keeps the tab bar out of the way, matching Slate.
+
 - ✅ **(2026-07-04)** **App renamed to "Kosha" 🪷.** *Kosha* (कोश) is Sanskrit for a **treasury / repository** — and in yoga philosophy the *koshas* are the layers of your being — a fitting name for one place that holds your money, goals and notes. New drawer brand, title and install name, with a lotus mark. (Happy to switch — other Sanskrit options: **Nidhi** निधि "treasure/fund", **Sutra** सूत्र "thread that ties things together", **Sampada** सम्पदा "wealth/assets", **Kendra** केंद्र "centre/hub".)
 - ✅ **(2026-07-04)** **Drop cue no longer shows on the row/column you're dragging.** When you drag a row (or column), the blue "drop here" line now only appears at **valid destinations** — the other rows/columns — not on the one you're holding (dropping it back where it already is did nothing anyway).
 - ✅ **(2026-07-04)** **Fixed the weird bold/italic highlight toggling.** Re-tapping **B** (or I/U/S) now correctly turns the highlight **off**, and toggling one style no longer flips another's highlight. The cause: restoring the saved selection on every tap was resetting the browser's pending bold/italic state — the toolbar now leaves a live caret alone and only restores focus when it was actually lost (e.g. the custom colour picker).

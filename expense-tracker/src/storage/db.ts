@@ -8,6 +8,7 @@ import type {
   Goal,
   GoalPlanItem,
   Merchant,
+  NoteCategory,
   NoteDoc,
   PaymentMethod,
   RecurringExpense,
@@ -21,7 +22,7 @@ import type {
  * existing data instead of dropping it — this is what keeps iterative
  * development from breaking an existing database.
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export class ExpenseDB extends Dexie {
   categories!: Table<Category, string>;
@@ -36,6 +37,7 @@ export class ExpenseDB extends Dexie {
   recurring!: Table<RecurringExpense, string>;
   goals!: Table<Goal, string>;
   noteDocs!: Table<NoteDoc, string>;
+  noteCategories!: Table<NoteCategory, string>;
 
   constructor() {
     super('expense-tracker');
@@ -162,6 +164,26 @@ export class ExpenseDB extends Dexie {
       recurring: 'id, nextDate, active',
       goals: 'id, createdAt',
       noteDocs: 'id, updatedAt',
+    });
+
+    // ---- Version 6 -------------------------------------------------------
+    // Adds note categories (folders) for the Notes sub-app and a `categoryId`
+    // on each note. Existing notes keep their data and simply stay uncategorised
+    // (shown under "General") until moved.
+    this.version(6).stores({
+      categories: 'id, name',
+      subcategories: 'id, categoryId',
+      merchants: 'id, name',
+      contexts: 'id, name',
+      paymentMethods: 'id, name',
+      aliases: 'id, text, subcategoryId, categoryId',
+      salaryCycles: 'id, startDate, endDate',
+      expenses: 'id, salaryCycleId, categoryId, subcategoryId, date',
+      activities: 'id, type, timestamp',
+      recurring: 'id, nextDate, active',
+      goals: 'id, createdAt',
+      noteDocs: 'id, updatedAt, categoryId',
+      noteCategories: 'id, order',
     });
   }
 }

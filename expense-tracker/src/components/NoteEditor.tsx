@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { NoteDocRepository } from '../repository/noteDocRepository';
+import { NoteCategoryRepository } from '../repository/noteCategoryRepository';
 import { imageToDataUrl } from '../core/image';
 import { blocksToHtml, isHtmlEmpty, sanitizeHtml } from '../core/noteHtml';
 import * as T from '../core/noteTable';
-import type { NoteDoc } from '../types/models';
+import NoteCategoryModal from './NoteCategoryModal';
+import type { ID, NoteCategory, NoteDoc } from '../types/models';
 
 interface Props {
   doc: NoteDoc;
+  categories: NoteCategory[];
   onExit: () => void;
+  onCategoriesChanged?: () => void;
 }
 
 const TABLE_HTML =
@@ -43,7 +47,7 @@ interface GrabGeo {
  * and column to reorder them (tap a grabber for insert/delete). Content is
  * stored as HTML and autosaves as you type.
  */
-export default function NoteEditor({ doc, onExit }: Props) {
+export default function NoteEditor({ doc, categories, onExit, onCategoriesChanged }: Props) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -51,6 +55,10 @@ export default function NoteEditor({ doc, onExit }: Props) {
   const lastRange = useRef<Range | null>(null);
   const [title, setTitle] = useState(doc.title);
   const [inTable, setInTable] = useState(false);
+  // Which category this note is in, plus the category picker / new-category sheet.
+  const [categoryId, setCategoryId] = useState<ID | undefined>(doc.categoryId);
+  const [catPicker, setCatPicker] = useState(false);
+  const [newCat, setNewCat] = useState(false);
 
   // Which inline formats are active at the caret, so the B/I/U/S buttons can
   // show an on/off cue.
@@ -96,6 +104,7 @@ export default function NoteEditor({ doc, onExit }: Props) {
       const t = e.target as Element;
       if (!t.closest?.('.tmenu') && !t.closest?.('.tgrab')) setMenu(null);
       if (!t.closest?.('.colorpop') && !t.closest?.('.notebar__color')) setPop(null);
+      if (!t.closest?.('.noteedit__cat')) setCatPicker(false);
     }
     function onResize() {
       computeGrab();
@@ -118,8 +127,9 @@ export default function NoteEditor({ doc, onExit }: Props) {
   function scheduleSave() {
     window.clearTimeout(saveTimer.current);
     const snapshotTitle = title;
+    const snapshotCat = categoryId;
     saveTimer.current = window.setTimeout(() => {
-      NoteDocRepository.update({ ...doc, title: snapshotTitle, body: sanitizeHtml(currentHtml()) });
+      NoteDocRepository.update({ ...doc, title: snapshotTitle, body: sanitizeHtml(currentHtml()), categoryId: snapshotCat });
     }, 500);
   }
 
@@ -479,7 +489,7 @@ export default function NoteEditor({ doc, onExit }: Props) {
     if (!title.trim() && isHtmlEmpty(body)) {
       NoteDocRepository.remove(doc.id).then(onExit);
     } else {
-      NoteDocRepository.update({ ...doc, title, body }).then(onExit);
+      NoteDocRepository.update({ ...doc, title, body, categoryId }).then(onExit);
     }
   }
 
@@ -488,6 +498,22 @@ export default function NoteEditor({ doc, onExit }: Props) {
     window.clearTimeout(saveTimer.current);
     NoteDocRepository.remove(doc.id).then(onExit);
   }
+
+  // ---- category ----
+  async function assignCategory(id: ID | undefined) {
+    setCategoryId(id);
+    setCatPicker(false);
+    await NoteDocRepository.setCategory(doc.id, id);
+  }
+
+  async function createCategory(data: { name: string; emoji: string }) {
+    const cat = await NoteCategoryRepository.add(data);
+    setNewCat(false);
+    await assignCategory(cat.id);
+    onCategoriesChanged?.();
+  }
+
+  const currentCat = categories.find((c) => c.id === categoryId);
 
   // Prevent the toolbar buttons from stealing focus / collapsing the caret.
   const keepFocus = (e: React.MouseEvent) => e.preventDefault();
@@ -520,6 +546,34 @@ export default function NoteEditor({ doc, onExit }: Props) {
           scheduleSave();
         }}
       />
+
+      <div className="noteedit__cat">
+        <button className="catchip" onClick={() => setCatPicker((v) => !v)}>
+          {currentCat ? (
+            <>
+              <span>{currentCat.emoji}</span> {currentCat.name}
+            </>
+          ) : (
+            <>🗂️ Add to category</>
+          )}
+          <span className="catchip__chev">▾</span>
+        </button>
+        {catPicker && (
+          <div className="catmenu">
+            <button className={!categoryId ? 'is-on' : ''} onClick={() => assignCategory(undefined)}>
+              🗒️ General
+            </button>
+            {categories.map((c) => (
+              <button key={c.id} className={c.id === categoryId ? 'is-on' : ''} onClick={() => assignCategory(c.id)}>
+                <span>{c.emoji}</span> {c.name}
+              </button>
+            ))}
+            <button className="catmenu__new" onClick={() => { setCatPicker(false); setNewCat(true); }}>
+              ＋ New category…
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="notebody-wrap" ref={wrapRef}>
         <div
@@ -688,6 +742,8 @@ export default function NoteEditor({ doc, onExit }: Props) {
       </div>
 
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onPickImage} />
+
+      {newCat && <NoteCategoryModal initial={null} onSave={createCategory} onClose={() => setNewCat(false)} />}
     </div>
   );
 }

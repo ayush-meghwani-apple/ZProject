@@ -35,4 +35,5 @@ export const indexedDbAdapter: StorageAdapter = {
   recurring: wrap(db.recurring),
   goals: wrap(db.goals),
   noteDocs: wrap(db.noteDocs),
+  noteCategories: wrap(db.noteCategories),
 };

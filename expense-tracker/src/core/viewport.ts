@@ -32,4 +32,22 @@ export function initViewport(): void {
   }
   window.addEventListener('resize', apply);
   window.addEventListener('orientationchange', apply);
+
+  // Belt-and-suspenders for hiding the bottom tab bar while typing: some setups
+  // (and some iOS timing) don't shrink visualViewport reliably, so also flag
+  // whenever an editable element is focused. CSS hides the tab bar on
+  // `.kb-open` OR `.kb-typing` (the latter gated to touch devices).
+  function isEditable(el: EventTarget | null): boolean {
+    const n = el as HTMLElement | null;
+    if (!n) return false;
+    const tag = n.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || n.isContentEditable;
+  }
+  document.addEventListener('focusin', (e) => {
+    root.classList.toggle('kb-typing', isEditable(e.target));
+  });
+  document.addEventListener('focusout', () => {
+    // Wait a tick so we read the element that actually ends up focused.
+    setTimeout(() => root.classList.toggle('kb-typing', isEditable(document.activeElement)), 0);
+  });
 }

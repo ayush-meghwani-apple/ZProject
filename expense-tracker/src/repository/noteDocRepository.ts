@@ -11,6 +11,10 @@ export const NoteDocRepository = {
     return all.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
   },
 
+  async get(id: ID): Promise<NoteDoc | undefined> {
+    return storage.noteDocs.get(id);
+  },
+
   async add(input: NewNoteDoc): Promise<NoteDoc> {
     const ts = now();
     const doc: NoteDoc = { ...input, id: newId(), createdAt: ts, updatedAt: ts };
@@ -20,6 +24,13 @@ export const NoteDocRepository = {
 
   async update(doc: NoteDoc): Promise<void> {
     await storage.noteDocs.put({ ...doc, updatedAt: now() });
+  },
+
+  /** Move a note to a category (or clear it back to General with undefined). */
+  async setCategory(id: ID, categoryId: ID | undefined): Promise<void> {
+    const doc = await storage.noteDocs.get(id);
+    if (!doc) return;
+    await storage.noteDocs.put({ ...doc, categoryId, updatedAt: now() });
   },
 
   async remove(id: ID): Promise<void> {

@@ -162,8 +162,18 @@ export interface NoteDoc {
   title: string;
   body?: string; // free-form HTML (current format)
   blocks?: NoteBlock[]; // legacy block format (pre-1.6.1); migrated to body on open
+  categoryId?: ID; // which note category it belongs to (undefined = General)
   createdAt: ISODate;
   updatedAt: ISODate;
+}
+
+/** A folder/category grouping notes in the Notes sub-app. */
+export interface NoteCategory {
+  id: ID;
+  name: string;
+  emoji: string;
+  order: number; // manual sort position (lower = higher up)
+  createdAt: ISODate;
 }
 
 export type ActivityType =
@@ -205,5 +215,6 @@ export interface BackupFile {
     recurring?: RecurringExpense[];
     goals?: Goal[];
     noteDocs?: NoteDoc[];
+    noteCategories?: NoteCategory[];
   };
 }
