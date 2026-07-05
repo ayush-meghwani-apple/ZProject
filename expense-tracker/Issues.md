@@ -8,14 +8,10 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 ## Open
 
 _Nothing open right now - all reported items are shipped._
-- I am still seeing this issue in both expensify app where typing box and uggestions uI floats at top, it should be fixated at bootom and when typing box is clicked then it should move to a fixed position such that it comes over top of keyboard but that should be fixed because keyboard is of fix and ame height always
-- Same goes for notes app too there also options menu flowat over keyboard.
-
-earlier these two issues were intermittent but now they happen every 2-3 times out of 5 times app is opened
 
 ## Done
 
-- ✅ **(2026-07-05)** **Expenses now file into the right cycle automatically + one-tap Restore.** Fixed the "expenses only show under *All cycles*, and the current cycle / Reels is empty" problem. Root cause: an expense was tagged to whatever cycle was open *when you typed it* — so expenses added before you set the cycle (or imported from a backup) had **no cycle tag**. Now cycle membership is **derived from each expense's date** (which cycle's date-range it falls in), re-applied on every app open and after any import — so everything lands in the correct cycle. Also added **Settings → Backup & Sync → Restore (replace all)**: it wipes the current data and rebuilds cleanly from a backup (handy to recover from a messy cycle setup **without deleting the app**). _Verified with your backup: 26 expenses, one 26‑Jun cycle, all 26 filed under it, Reels shows them._
+- ✅ **(2026-07-05)** **Fixed the "whole thing scrolls up" when tapping a field in the keyboard's area.** The real culprit was my own earlier fix: while the keyboard was open I'd added a huge `50vh` top padding to form pages and force-scrolled the field to the bottom — which on the actual iPhone made the page lurch way up, leaving the field off-screen with a big empty gap (your Amount screenshot). Ripped that out. Now, when the keyboard opens, the focused field is **only nudged into view if it's actually hidden behind the keyboard** — a small, controlled scroll that lands it ~16px above the keyboard, never a big jump. Verified for a low field (like Recurring → Amount) and confirmed the Notes toolbar still sits right above the keyboard.
 
 - ✅ **(2026-07-05)** **No more dead gap between a form field and the keyboard.** Great catch — on form screens (Categories, Settings, Goals) the focused field sat wherever it was in the page, so when the keyboard opened there was a big empty gap between the field and the keyboard. Now, while the keyboard is up, those pages get scroll room and the focused field is **docked ~20px right above the keyboard** (verified for both top-of-page and lower fields). Chat and the note editor keep their own bottom-pinned layouts. Pairs with the earlier fix that stops the field floating in the middle on open.
 
