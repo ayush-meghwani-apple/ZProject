@@ -32,6 +32,8 @@ interface GrabGeo {
   colW: number;
   tableTop: number;
   tableLeft: number;
+  tableW: number;
+  tableH: number;
 }
 
 /**
@@ -49,7 +51,6 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   const lastRange = useRef<Range | null>(null);
   const [title, setTitle] = useState(doc.title);
   const [inTable, setInTable] = useState(false);
-  const [inListState, setInListState] = useState(false);
   // Which category this note is in, plus the category picker / new-category sheet.
   const [categoryId, setCategoryId] = useState<ID | undefined>(doc.categoryId);
   const [catPicker, setCatPicker] = useState(false);
@@ -72,10 +73,22 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   const drag = useRef<{ axis: 'row' | 'col'; from: number; table: HTMLTableElement; startX: number; startY: number; moved: boolean } | null>(null);
   const dropIdx = useRef<number | null>(null);
 
+  // Custom undo/redo history. contentEditable's native undo can't see the manual
+  // DOM edits we make (insert/delete/move table rows & columns, checklists), so
+  // we keep our own stack of body-HTML snapshots and drive the ↶/↷ buttons from
+  // it. Typing is coalesced; structural edits are recorded as discrete steps.
+  const history = useRef<string[]>([]);
+  const histIdx = useRef(-1);
+  const histTimer = useRef<number | undefined>(undefined);
+
   // Seed the editable body once; after that it's uncontrolled so the caret is
   // never disturbed by React re-renders.
   useEffect(() => {
-    if (bodyRef.current) bodyRef.current.innerHTML = doc.body ?? blocksToHtml(doc.blocks ?? []);
+    if (bodyRef.current) {
+      bodyRef.current.innerHTML = doc.body ?? blocksToHtml(doc.blocks ?? []);
+      history.current = [bodyRef.current.innerHTML];
+      histIdx.current = 0;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -134,7 +147,6 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   // controls contextually.
   function refreshContext() {
     setInTable(!!currentCell());
-    setInListState(inList());
     computeGrab();
     updateFmt();
   }
@@ -182,6 +194,8 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
       colW: cellRect.width,
       tableTop: tableRect.top - wrapRect.top,
       tableLeft: tableRect.left - wrapRect.left,
+      tableW: tableRect.width,
+      tableH: tableRect.height,
     });
   }
 
@@ -213,6 +227,98 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   function afterEdit() {
     refreshContext();
     scheduleSave();
+    snapshot();
+  }
+
+  // Like afterEdit but records the new state as a discrete, immediate undo step
+  // (used after structural DOM edits the native undo stack can't track).
+  function afterStructural() {
+    refreshContext();
+    scheduleSave();
+    snapshot(true);
+  }
+
+  // Push the current body HTML onto the history stack. Debounced by default so
+  // continuous typing collapses into one step; pass immediate=true for edits
+  // that should be their own undo step.
+  function snapshot(immediate = false) {
+    const html = currentHtml();
+    window.clearTimeout(histTimer.current);
+    const commit = () => {
+      if (history.current[histIdx.current] === html) return;
+      history.current = history.current.slice(0, histIdx.current + 1);
+      history.current.push(html);
+      if (history.current.length > 120) history.current.shift();
+      histIdx.current = history.current.length - 1;
+    };
+    if (immediate) commit();
+    else histTimer.current = window.setTimeout(commit, 350);
+  }
+
+  // Restore a snapshot into the body (used by undo/redo) and drop the caret at
+  // the end without recording a new history step.
+  function restoreHistory(html: string) {
+    const body = bodyRef.current;
+    if (!body) return;
+    body.innerHTML = html;
+    focusBody();
+    const range = document.createRange();
+    range.selectNodeContents(body);
+    range.collapse(false);
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    lastRange.current = range.cloneRange();
+    refreshContext();
+    scheduleSave();
+  }
+
+  // The top-level block (direct child of the body) that contains the caret, so
+  // new checklists/tables are inserted as siblings instead of nested inside a
+  // list item (which broke the structure).
+  function currentTopBlock(): HTMLElement | null {
+    const sel = document.getSelection();
+    let n: Node | null = sel && sel.rangeCount ? sel.anchorNode : null;
+    while (n && n.parentNode && n.parentNode !== bodyRef.current) n = n.parentNode;
+    return n && n.parentNode === bodyRef.current ? (n as HTMLElement) : null;
+  }
+
+  // Insert a block-level element (its first element) at the top level of the
+  // body, after the caret's current block, and guarantee an editable paragraph
+  // after it so the user can move below.
+  function insertBlockHtml(html: string): HTMLElement | null {
+    const body = bodyRef.current;
+    if (!body) return null;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const node = tmp.firstElementChild as HTMLElement | null;
+    if (!node) return null;
+    const block = currentTopBlock();
+    if (block && block.parentNode === body) {
+      const empty = block.tagName === 'P' && !block.textContent?.trim();
+      if (empty) block.replaceWith(node);
+      else block.after(node);
+    } else {
+      body.appendChild(node);
+    }
+    if (!node.nextElementSibling) {
+      const p = document.createElement('p');
+      p.innerHTML = '<br>';
+      node.after(p);
+    }
+    return node;
+  }
+
+  // After indenting a to-do list, execCommand creates a plain nested <ul>; re-tag
+  // any lists inside a checklist as notetodo so sub-points stay checkboxes
+  // instead of turning into bullets.
+  function normalizeTodos() {
+    bodyRef.current?.querySelectorAll('ul.notetodo').forEach((root) => {
+      root.querySelectorAll('ul').forEach((u) => u.classList.add('notetodo'));
+      root.querySelectorAll('li').forEach((li) => {
+        if (!li.hasAttribute('data-done')) li.setAttribute('data-done', 'false');
+      });
+    });
   }
 
   function restoreSelection() {
@@ -262,42 +368,42 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   function onBodyKeyDown(e: React.KeyboardEvent) {
     if (e.key !== 'Tab') return;
     e.preventDefault();
+    snapshot(true);
     if (inList()) document.execCommand(e.shiftKey ? 'outdent' : 'indent');
     else document.execCommand('insertText', false, '\t');
-    afterEdit();
+    normalizeTodos();
+    afterStructural();
   }
 
   // ---- toolbar commands (mousedown preventDefault keeps the caret) ----
   function toggleList() {
     restoreSelection();
+    snapshot(true);
     document.execCommand('insertUnorderedList');
-    afterEdit();
+    afterStructural();
   }
 
-  // Indent / outdent the current bullet (make it a sub-point, or lift it back).
+  // Indent / outdent the current line (make it a sub-point, or lift it back).
+  // Always available — it's handy outside lists too.
   function indent(out: boolean) {
     restoreSelection();
+    snapshot(true);
     document.execCommand(out ? 'outdent' : 'indent');
-    afterEdit();
+    normalizeTodos();
+    afterStructural();
   }
 
   // Insert a checklist (to-do) item. Pressing Enter inside continues the list;
   // tapping a box toggles it via onBodyClick below.
   function insertTodo() {
     restoreSelection();
-    document.execCommand(
-      'insertHTML',
-      false,
-      '<ul class="notetodo" data-fresh="1"><li data-done="false"><br></li></ul><p><br></p>',
-    );
-    // Drop the caret into the first item instead of the trailing paragraph.
-    const ul = bodyRef.current?.querySelector('ul.notetodo[data-fresh]');
+    snapshot(true);
+    const ul = insertBlockHtml('<ul class="notetodo"><li data-done="false"><br></li></ul>');
     if (ul) {
-      ul.removeAttribute('data-fresh');
       const li = ul.querySelector('li') as HTMLElement | null;
       if (li) placeCaret(li);
     }
-    afterEdit();
+    afterStructural();
   }
 
   // Toggle a checklist item when its box (the left gutter) is tapped.
@@ -314,25 +420,24 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
 
   function insertTable() {
     restoreSelection();
-    document.execCommand('insertHTML', false, TABLE_HTML.replace('<table', '<table data-fresh="1"'));
-    // Drop the caret into the first cell instead of the trailing paragraph.
-    const table = bodyRef.current?.querySelector('table[data-fresh]') as HTMLTableElement | null;
+    snapshot(true);
+    const table = insertBlockHtml(TABLE_HTML) as HTMLTableElement | null;
     if (table) {
-      table.removeAttribute('data-fresh');
       const cell = table.querySelector('td, th') as HTMLElement | null;
       if (cell) placeCaret(cell);
     }
-    afterEdit();
+    afterStructural();
   }
 
   async function addImageFiles(files: FileList | File[]) {
     const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (list.length) snapshot(true);
     for (const f of list) {
       const dataUrl = await imageToDataUrl(f);
       restoreSelection();
       document.execCommand('insertHTML', false, `<img src="${dataUrl}"><p><br></p>`);
     }
-    afterEdit();
+    afterStructural();
   }
 
   function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -360,30 +465,35 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     if (removed || !table || !table.isConnected) {
       setGrab(null);
       focusBody();
-      afterEdit();
+      afterStructural();
       return;
     }
     const rows = T.tableRows(table);
     const row = rows[Math.min(caretRow, rows.length - 1)];
     const target = row?.children[Math.min(caretCol, row.children.length - 1)] as HTMLElement | undefined;
+    focusBody();
     if (target) placeCaret(target);
-    afterEdit();
+    afterStructural();
     requestAnimationFrame(computeGrab);
   }
 
   function insertRowAt(table: HTMLTableElement, at: number) {
+    snapshot(true);
     T.insertRow(table, at);
     afterTableOp(table, false, at, 0);
   }
   function insertColAt(table: HTMLTableElement, at: number) {
+    snapshot(true);
     T.insertColumn(table, at);
     afterTableOp(table, false, 0, at);
   }
   function deleteRowAt(table: HTMLTableElement, idx: number) {
+    snapshot(true);
     const removed = T.deleteRow(table, idx);
     afterTableOp(table, removed, idx, 0);
   }
   function deleteColAt(table: HTMLTableElement, idx: number) {
+    snapshot(true);
     const removed = T.deleteColumn(table, idx);
     afterTableOp(table, removed, 0, idx);
   }
@@ -391,6 +501,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   function deleteTable() {
     const table = currentCell()?.closest('table') ?? null;
     if (!table) return;
+    snapshot(true);
     table.remove();
     afterTableOp(table, true, 0, 0);
   }
@@ -398,8 +509,9 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   function toggleHeaderRow() {
     const table = currentCell()?.closest('table');
     if (!table) return;
+    snapshot(true);
     T.toggleHeaderRow(table);
-    afterEdit();
+    afterStructural();
   }
 
   async function copyTable() {
@@ -514,24 +626,28 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     setDrop(null);
     if (to == null) return;
     if (axis === 'row') {
+      snapshot(true);
       T.moveRow(d.table, d.from, to);
       afterTableOp(d.table, false, to > d.from ? to - 1 : to, grab?.colIdx ?? 0);
     } else {
+      snapshot(true);
       T.moveColumn(d.table, d.from, to);
       afterTableOp(d.table, false, grab?.rowIdx ?? 0, to > d.from ? to - 1 : to);
     }
   }
 
   function undo() {
-    focusBody();
-    document.execCommand('undo');
-    afterEdit();
+    snapshot(true); // make sure the present state is recorded first
+    if (histIdx.current <= 0) return;
+    histIdx.current--;
+    restoreHistory(history.current[histIdx.current]);
   }
 
   function redo() {
-    focusBody();
-    document.execCommand('redo');
-    afterEdit();
+    window.clearTimeout(histTimer.current);
+    if (histIdx.current >= history.current.length - 1) return;
+    histIdx.current++;
+    restoreHistory(history.current[histIdx.current]);
   }
 
   // ---- navigation ----
@@ -591,6 +707,31 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
           <button className="iconbtn" onMouseDown={keepFocus} onClick={redo} title="Redo">
             ↷
           </button>
+          <div className="noteedit__cat">
+            <button
+              className={`iconbtn${categoryId ? ' iconbtn--on' : ''}`}
+              onMouseDown={keepFocus}
+              onClick={() => setCatPicker((v) => !v)}
+              title="Category"
+            >
+              {currentCat ? currentCat.emoji : '🗂️'}
+            </button>
+            {catPicker && (
+              <div className="catmenu catmenu--right">
+                <button className={!categoryId ? 'is-on' : ''} onClick={() => assignCategory(undefined)}>
+                  🗒️ General
+                </button>
+                {categories.map((c) => (
+                  <button key={c.id} className={c.id === categoryId ? 'is-on' : ''} onClick={() => assignCategory(c.id)}>
+                    <span>{c.emoji}</span> {c.name}
+                  </button>
+                ))}
+                <button className="catmenu__new" onClick={() => { setCatPicker(false); setNewCat(true); }}>
+                  ＋ New category…
+                </button>
+              </div>
+            )}
+          </div>
           <button className="iconbtn" onClick={del} title="Delete note">
             🗑️
           </button>
@@ -606,34 +747,6 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
           scheduleSave();
         }}
       />
-
-      <div className="noteedit__cat">
-        <button className="catchip" onClick={() => setCatPicker((v) => !v)}>
-          {currentCat ? (
-            <>
-              <span>{currentCat.emoji}</span> {currentCat.name}
-            </>
-          ) : (
-            <>🗂️ Add to category</>
-          )}
-          <span className="catchip__chev">▾</span>
-        </button>
-        {catPicker && (
-          <div className="catmenu">
-            <button className={!categoryId ? 'is-on' : ''} onClick={() => assignCategory(undefined)}>
-              🗒️ General
-            </button>
-            {categories.map((c) => (
-              <button key={c.id} className={c.id === categoryId ? 'is-on' : ''} onClick={() => assignCategory(c.id)}>
-                <span>{c.emoji}</span> {c.name}
-              </button>
-            ))}
-            <button className="catmenu__new" onClick={() => { setCatPicker(false); setNewCat(true); }}>
-              ＋ New category…
-            </button>
-          </div>
-        )}
-      </div>
 
       <div className="notebody-wrap" ref={wrapRef}>
         <div
@@ -653,8 +766,21 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
 
         {inTable && grab && (
           <div className="tgrabs">
+            {/* When a grabber's menu is open, outline the whole row/column it acts on. */}
+            {menu?.axis === 'row' && (
+              <div
+                className="tsel tsel--row"
+                style={{ top: grab.rowTop, height: grab.rowH, left: grab.tableLeft, width: grab.tableW }}
+              />
+            )}
+            {menu?.axis === 'col' && (
+              <div
+                className="tsel tsel--col"
+                style={{ left: grab.colLeft, width: grab.colW, top: grab.tableTop, height: grab.tableH }}
+              />
+            )}
             <button
-              className="tgrab tgrab--row"
+              className={`tgrab tgrab--row${menu?.axis === 'row' ? ' tgrab--on' : ''}`}
               style={{
                 top: grab.rowTop,
                 height: grab.rowH,
@@ -669,7 +795,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
               ⋮
             </button>
             <button
-              className="tgrab tgrab--col"
+              className={`tgrab tgrab--col${menu?.axis === 'col' ? ' tgrab--on' : ''}`}
               style={{
                 left: grab.colLeft,
                 width: grab.colW,
@@ -760,45 +886,41 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
             🖍️
           </button>
           <span className="notebar__sep" />
-          <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list">
-            • List
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list">
+            ☰
           </button>
-          <button className="notebar__btn" onMouseDown={keepFocus} onClick={insertTodo} title="Checklist / to-do">
-            ☑ To-do
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={insertTodo} title="Checklist / to-do">
+            ☑
           </button>
-          {inListState && (
-            <>
-              <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => indent(true)} title="Outdent">
-                ⇤
-              </button>
-              <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => indent(false)} title="Indent (sub-point)">
-                ⇥
-              </button>
-            </>
-          )}
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => indent(true)} title="Outdent">
+            ⇤
+          </button>
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => indent(false)} title="Indent (sub-point)">
+            ⇥
+          </button>
           <button
-            className="notebar__btn"
+            className="notebar__btn notebar__btn--sq"
             onMouseDown={keepFocus}
             onClick={() => fileRef.current?.click()}
             title="Insert image"
           >
-            🖼️ Image
+            🖼️
           </button>
-          <button className="notebar__btn" onMouseDown={keepFocus} onClick={insertTable} title="Insert table">
-            ▦ Table
+          <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={insertTable} title="Insert table">
+            ▦
           </button>
 
           {inTable && (
             <>
               <span className="notebar__sep" />
-              <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleHeaderRow} title="Toggle header row">
-                Header
+              <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={toggleHeaderRow} title="Toggle header row">
+                ⊤
               </button>
-              <button className="notebar__btn" onMouseDown={keepFocus} onClick={copyTable} title="Copy table">
-                ⧉ Copy
+              <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={copyTable} title="Copy table">
+                ⧉
               </button>
-              <button className="notebar__btn notebar__btn--danger" onMouseDown={keepFocus} onClick={deleteTable} title="Delete table">
-                🗑️ Table
+              <button className="notebar__btn notebar__btn--sq notebar__btn--danger" onMouseDown={keepFocus} onClick={deleteTable} title="Delete table">
+                🗑️
               </button>
             </>
           )}

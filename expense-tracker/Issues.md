@@ -11,8 +11,22 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 - Choice of icon us not great in whole app we are using emojis for icons we should use some icon package because each icon loooks different from each other, _(Bigger job — this is a whole-app visual overhaul: I want to pick a consistent icon set and swap every nav/toolbar/action icon in one careful pass so it doesn't end up half emoji, half icons. Keeping it here to do next as a dedicated change; category icons will stay emoji since you pick those.)_
 
+### Slate:
+
+- Image: if the keyboard is open and I tap the image button, the keyboard should stay open (the sudden open/close is jarring). _(Being honest: opening the phone's photo/file picker itself dismisses the iOS keyboard, and there's no web API to prevent that. Leaving this open while I look for an alternative — e.g. an in-app image flow that doesn't trigger the native picker.)_
 
 ## Done
+
+- ✅ **(2026-07-05)** **Category names are back on the pie — never clipped (Expensify).** Every slice is labelled again, but long names are shortened with an ellipsis (e.g. *Entertai…*, *Uncatego…*) so nothing spills off the card. Full names stay in the list below and on tap.
+- ✅ **(2026-07-05)** **The space above the pie isn't blankly empty anymore.** Before you tap a slice, that reserved strip now shows a soft "Tap a slice to see its amount" hint instead of looking dead — and still shows the coloured amount pill once you tap.
+- ✅ **(2026-07-05)** **Nicer monthly-bar highlight + tooltip (Expensify).** Tapping a bar now gives it a **darker outline** (instead of just a faint fill), and the amount popover is a **clean rounded card** (month + amount) rather than the plain square box.
+- ✅ **(2026-07-05)** **List → to-do no longer breaks (Slate).** Adding a checklist while your caret was in a bullet list used to mangle the structure. New checklists/tables now insert as their **own block** next to the current one, so nothing nests or breaks.
+- ✅ **(2026-07-05)** **Indent/outdent is always available (Slate).** The **⇤ / ⇥** buttons now show all the time (handy outside lists too), and indenting a **to-do keeps it a to-do** (a sub-checkbox) instead of turning it into a plain bullet.
+- ✅ **(2026-07-05)** **Insert row/column keeps the app focused (Slate).** After inserting a row or column from a grabber, the caret lands in the new cell **and** the editor keeps focus (the keyboard/caret no longer stays behind where it was).
+- ✅ **(2026-07-05)** **Undo overhauled — table edits come back (Slate).** Undo/redo now use the note's own history, so **deleting a table and undoing brings it back**, and undo covers inserting/deleting/moving rows & columns, checklists and tables (not just typing). Redo works throughout.
+- ✅ **(2026-07-05)** **Subtle table grabbers that light up on tap (Slate).** The row/column grabbers now sit **quietly (faint dots)** by default; **tapping one turns it purple and outlines the whole row/column** so it's clear what you're about to change, then the insert/delete menu opens.
+- ✅ **(2026-07-05)** **Category moved into the top bar (Slate).** "Add to category" is no longer a separate row eating canvas — it's now a **🗂️ button up top, right before Delete**, opening the same category picker. More room for your note.
+- ✅ **(2026-07-05)** **Slimmer, icon-only toolbar (Slate).** The formatting bar now uses **icons instead of words** (list, to-do, image, table, header, copy, delete) and is **shorter**, so it takes less vertical space and shows more of your note.
 
 - ✅ **(2026-07-05)** **Steadier UI — no more sideways jerk.** The swipe-between-tabs gesture was triggering on slight diagonal movement during ordinary scrolling/tapping, nudging the whole screen left/right. It now only engages on a **clearly horizontal, deliberate swipe** (with a small dead-zone), so the UI stays put otherwise.
 - ✅ **(2026-07-05)** **Bigger pie chart (Expensify).** Since the category names already appear in the coloured list right below (and on tap), the pie no longer draws cramped edge labels — so it's **noticeably larger** and never clips a long name.

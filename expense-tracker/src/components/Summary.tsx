@@ -35,6 +35,41 @@ function tint(hex: string, alpha: number): string {
   if (!m) return `rgba(148, 163, 184, ${alpha})`;
   return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
 }
+
+const RAD = Math.PI / 180;
+
+/** Outside pie label that keeps the category name but truncates long ones so
+ *  they never spill past the card edge. */
+function pieLabel({ cx, cy, midAngle, outerRadius, name }: any) {
+  const r = outerRadius + 12;
+  const x = cx + r * Math.cos(-midAngle * RAD);
+  const y = cy + r * Math.sin(-midAngle * RAD);
+  const short = name.length > 9 ? name.slice(0, 8) + '…' : name;
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#cbd5e1"
+      fontSize={10}
+      fontWeight={600}
+      textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="central"
+    >
+      {short}
+    </text>
+  );
+}
+
+/** A tidy rounded tooltip for the monthly bar chart (replaces the default box). */
+function BarTip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="charttip">
+      <span className="charttip__label">{label}</span>
+      <strong className="charttip__val">{formatINR(payload[0].value)}</strong>
+    </div>
+  );
+}
 /**
  * The single "Summary" tab: combines the at-a-glance totals + collapsible
  * category breakdown + recent expenses (formerly Dashboard) with the charts
@@ -163,7 +198,7 @@ export default function Summary({ version }: Props) {
           </p>
 
           <div className="pie__pickslot">
-            {picked && (
+            {picked ? (
               <div
                 className="pie__pick"
                 style={{ background: tint(picked.color, 0.18), borderColor: picked.color }}
@@ -172,6 +207,8 @@ export default function Summary({ version }: Props) {
                 <span className="pie__pick-name">{picked.name}</span>
                 <strong style={{ color: picked.color }}>{formatINR(picked.total)}</strong>
               </div>
+            ) : (
+              <span className="pie__hint">Tap a slice to see its amount</span>
             )}
           </div>
 
@@ -184,7 +221,9 @@ export default function Summary({ version }: Props) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={95}
+                  outerRadius={72}
+                  label={pieLabel}
+                  labelLine={false}
                   isAnimationActive={false}
                   onClick={(_, index) => {
                     const s = drillData[index];
@@ -202,7 +241,9 @@ export default function Summary({ version }: Props) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={95}
+                  outerRadius={72}
+                  label={pieLabel}
+                  labelLine={false}
                   isAnimationActive={false}
                   onClick={(_, index) => {
                     const c = categorySummary[index];
@@ -294,10 +335,16 @@ export default function Summary({ version }: Props) {
               <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
               <YAxis stroke="#94a3b8" fontSize={11} width={40} />
               <Tooltip
-                formatter={(v: number) => formatINR(v)}
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155' }}
+                content={<BarTip />}
+                cursor={{ fill: 'rgba(56, 189, 248, 0.1)' }}
               />
-              <Bar dataKey="total" fill="#38bdf8" radius={[6, 6, 0, 0]} isAnimationActive={false} />
+              <Bar
+                dataKey="total"
+                fill="#38bdf8"
+                radius={[6, 6, 0, 0]}
+                isAnimationActive={false}
+                activeBar={{ stroke: '#0369a1', strokeWidth: 2.5 }}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>

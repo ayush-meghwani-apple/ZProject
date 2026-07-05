@@ -1368,6 +1368,28 @@ body {
   font-size: 11px;
 }
 
+/* Rounded tooltip for the monthly bar chart (replaces recharts' square box). */
+.charttip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+}
+
+.charttip__label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.charttip__val {
+  font-size: 14px;
+  color: #38bdf8;
+}
+
 /* ---- Expense Reels ---- */
 .reels {
   position: relative;
@@ -1724,6 +1746,13 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+
+/* Subtle prompt shown in the pick slot before a slice is tapped, so the
+   reserved space doesn't look blankly empty. */
+.pie__hint {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .cat__toggle {
@@ -2168,6 +2197,13 @@ body {
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
 }
 
+/* Category menu opened from the top action bar: hang it off the button's right
+   edge so it doesn't spill off-screen. */
+.catmenu--right {
+  left: auto;
+  right: 0;
+}
+
 .catmenu button {
   appearance: none;
   border: none;
@@ -2458,20 +2494,39 @@ body {
   justify-content: center;
   border: none;
   border-radius: 5px;
-  background: var(--accent);
-  color: #fff;
+  background: rgba(148, 163, 184, 0.4);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 12px;
   line-height: 1;
   font-weight: 900;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   cursor: grab;
   touch-action: none;
-  opacity: 0.9;
+  opacity: 0.55;
+  transition: background 0.12s ease, opacity 0.12s ease;
 }
 
 .tgrab:active {
   cursor: grabbing;
   opacity: 1;
+}
+
+/* When its menu is open, the grabber turns solid accent to show it's active. */
+.tgrab--on {
+  background: var(--accent);
+  color: #fff;
+  opacity: 1;
+}
+
+/* Outline drawn around the whole row/column whose grabber menu is open. */
+.tsel {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+  box-sizing: border-box;
+  background: rgba(129, 140, 248, 0.1);
+  z-index: 3;
 }
 
 .tgrab--row {
@@ -2601,8 +2656,8 @@ body {
 .notebar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 5px 10px;
   border-top: 1px solid var(--border);
   background: var(--surface);
   position: relative;
@@ -2613,7 +2668,7 @@ body {
 .notebar__row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -2638,7 +2693,7 @@ body {
   color: var(--text);
   font-size: 13px;
   font-weight: 600;
-  padding: 7px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
@@ -2654,8 +2709,9 @@ body {
 }
 
 .notebar__btn--sq {
-  min-width: 36px;
-  padding: 7px 9px;
+  min-width: 34px;
+  padding: 6px 8px;
+  font-size: 15px;
   text-align: center;
 }
 
