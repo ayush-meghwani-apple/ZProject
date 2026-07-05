@@ -7,17 +7,10 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-- I will show ypu exact scenario in which there is that abrupt ui broken experience, I was trying to add a recurring expense so i cliced on AMount(See screenshot below):
-![alt text](image-31.png)
-then this is how the keyboard opens, the whole thing scrolls-up:
-![alt text](image-32.png)
-
-Now this issue happens everytime when i click on some text box which is in the space of keyboard position area.
-FOr ex - mobile is of 10 cm and bottom 3 cm is taken by keyboard when it opens, so when i opens anything between 6/7-10cmm this issue will always occur
-
-  - 🟡 **(v1.12.3, awaiting your on-device confirmation)** Reworked the keyboard handling from a different angle, since the earlier scroll-math fixes worked in my simulator but not on your phone — which told me the real problem is likely that my simulator can't mimic real iOS. Three changes: (1) **keyboard detection now survives iOS quirks** — it measures the keyboard against the tallest height it has seen, so it still detects the keyboard even on iOS versions where the reported window height *also* shrinks (which would previously make the app think no keyboard was open); (2) it now uses the **browser's own native scroll-into-view** (which iOS does reliably) plus CSS `scroll-padding` to land the field ~24px above the keyboard, instead of my own scroll math fighting iOS; (3) trimmed the page padding so nothing grows. **If it's still off on 1.12.3**, please open the app once with this URL so I can see the real numbers from your phone: add `?kbdebug=1` to the address (e.g. `…github.io/expense-tracker/?kbdebug=1`) — a small green readout appears at the top-left; tap the Amount field to trigger the bug and **screenshot that readout**. That will tell me exactly what your device reports so I can fix it precisely.
-
 ## Done
+
+- ✅ **(2026-07-05)** **Fixed the keyboard "whole thing scrolls up / blank area" for good (v1.12.3).** When you tapped a field low on the screen (like Recurring → Amount), the keyboard opening threw the page up and left a big empty gap. The earlier attempts (v1.12.1/1.12.2) worked perfectly in my simulator but did nothing on your phone — which was the real clue: my simulator can't mimic real iOS, so the true problem was elsewhere. Three fixes: (1) **keyboard detection now survives iOS quirks** — it measures the keyboard against the tallest viewport height it has seen, so it still detects the keyboard even on iOS versions where the reported window height *also* shrinks (which was previously making the app think no keyboard was open, so none of the keyboard layout ran); (2) it now uses the **browser's own native scroll-into-view** (which iOS does reliably) plus CSS `scroll-padding` to land the field ~24px above the keyboard, instead of my own scroll math fighting iOS; (3) trimmed the page padding so nothing grows. Confirmed working on-device. _(A hidden `?kbdebug=1` viewport readout was added along the way for diagnosing this kind of thing on a real phone.)_
+
 
 - ✅ **(2026-07-05)** **No more dead gap between a form field and the keyboard.** Great catch — on form screens (Categories, Settings, Goals) the focused field sat wherever it was in the page, so when the keyboard opened there was a big empty gap between the field and the keyboard. Now, while the keyboard is up, those pages get scroll room and the focused field is **docked ~20px right above the keyboard** (verified for both top-of-page and lower fields). Chat and the note editor keep their own bottom-pinned layouts. Pairs with the earlier fix that stops the field floating in the middle on open.
 
