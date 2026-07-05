@@ -3,6 +3,7 @@ import ExpensifyApp from './components/ExpensifyApp';
 import GoalsApp from './components/GoalsApp';
 import NotesApp from './components/NotesApp';
 import RemindersInbox from './components/RemindersInbox';
+import BackupReminder from './components/BackupReminder';
 import AppIcon, { type IconName } from './components/AppIcon';
 import { RemindersRepository } from './repository/remindersRepository';
 import { getPrefs } from './core/preferences';
@@ -158,6 +159,8 @@ export default function App() {
           onCountsChanged={refreshCounts}
         />
       )}
+
+      <BackupReminder />
     </div>
   );
 }

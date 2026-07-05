@@ -2937,3 +2937,44 @@ svg.lucide {
   align-items: center;
   gap: 6px;
 }
+
+/* ===== Automatic backup reminder modal ===== */
+.backupremind {
+  text-align: center;
+  max-width: 360px;
+}
+.backupremind__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 6px;
+  border-radius: 50%;
+  background: rgba(129, 140, 248, 0.16);
+  color: var(--accent);
+}
+.backupremind__body {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 4px 0 10px;
+}
+.backupremind__meta {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin: 0 0 10px;
+}
+.backupremind__hint {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 11px;
+  margin: 0 0 14px;
+}
+.backupremind .modal__footer {
+  justify-content: center;
+}

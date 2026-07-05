@@ -13,6 +13,8 @@ export interface Prefs {
   weeklyReview: boolean;
   /** When the last weekly-review nudge was created (ISO). */
   lastWeeklyNudgeAt?: string;
+  /** How often (in days) to auto-prompt for a data backup on app open. */
+  backupReminderDays: number;
 }
 
 const DEFAULTS: Prefs = {
@@ -20,6 +22,7 @@ const DEFAULTS: Prefs = {
   soundEnabled: true,
   reminderNotifications: false,
   weeklyReview: true,
+  backupReminderDays: 1,
 };
 
 export function getPrefs(): Prefs {

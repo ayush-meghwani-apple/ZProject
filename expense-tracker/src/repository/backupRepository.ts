@@ -110,6 +110,16 @@ export const BackupRepository = {
     }
   },
 
+  /** True if there's anything worth backing up yet (so we don't nag empty apps). */
+  async hasAnyData(): Promise<boolean> {
+    const [expenses, noteDocs, goals] = await Promise.all([
+      storage.expenses.getAll(),
+      storage.noteDocs.getAll(),
+      storage.goals.getAll(),
+    ]);
+    return expenses.length + noteDocs.length + goals.length > 0;
+  },
+
   /** Whole days since the last export, or null if never backed up. */
   daysSinceBackup(): number | null {
     const last = this.getLastBackupAt();

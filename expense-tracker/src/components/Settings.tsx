@@ -3,6 +3,7 @@ import { cycleName, cycleLabel } from '../core/salaryCycle';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import { BackupRepository } from '../repository/backupRepository';
 import { getPrefs, setPrefs } from '../core/preferences';
+import { saveBackupFile } from '../core/backupFile';
 import { playSound } from '../core/sound';
 import RecurringManager from './RecurringManager';
 import {
@@ -41,6 +42,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [bigThreshold, setBigThreshold] = useState('');
   const [soundOn, setSoundOn] = useState(true);
+  const [reminderDays, setReminderDays] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -55,6 +57,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
     setLastBackup(BackupRepository.getLastBackupAt());
     setBigThreshold(String(getPrefs().bigExpenseThreshold || ''));
     setSoundOn(getPrefs().soundEnabled);
+    setReminderDays(getPrefs().backupReminderDays ?? 1);
   }
   useEffect(() => {
     load();
@@ -90,15 +93,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
   }
 
   async function exportBackup() {
-    const backup = await BackupRepository.exportAll();
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `expense-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    BackupRepository.markBackedUp();
+    await saveBackupFile();
     setLastBackup(BackupRepository.getLastBackupAt());
     onChange();
   }
@@ -192,6 +187,29 @@ export default function Settings({ version, onChange, global = false }: Props) {
             style={{ display: 'none' }}
             onChange={importBackup}
           />
+        </div>
+        <div className="row" style={{ marginTop: 12 }}>
+          <span>Remind me to back up</span>
+          <select
+            className="input"
+            style={{ width: 'auto' }}
+            value={reminderDays}
+            onChange={(e) => {
+              const d = Number(e.target.value);
+              setReminderDays(d);
+              setPrefs({ backupReminderDays: d });
+            }}
+          >
+            <option value={1}>Every day</option>
+            <option value={3}>Every 3 days</option>
+            <option value={7}>Weekly</option>
+            <option value={14}>Every 2 weeks</option>
+            <option value={0}>Never</option>
+          </select>
+        </div>
+        <div className="muted" style={{ marginTop: 8 }}>
+          When it's been this long since your last backup, Kaizen pops up a one-tap
+          reminder as soon as you open the app.
         </div>
       </div>
 
