@@ -85,7 +85,7 @@ export default function Summary({ version }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [drillId, setDrillId] = useState<string | null>(null);
-  const [picked, setPicked] = useState<{ name: string; total: number; color: string } | null>(null);
+  const [picked, setPicked] = useState<{ name: string; total: number; color: string; categoryId?: string } | null>(null);
   const lastClick = useRef<{ id: string; t: number }>({ id: '', t: 0 });
   const initialized = useRef(false);
 
@@ -195,19 +195,36 @@ export default function Summary({ version }: Props) {
           <p className="card__subtitle">
             {drill
               ? 'Sub-category breakdown.'
-              : 'Tap a slice for its amount · double-tap to break it down.'}
+              : 'Tap a slice for its amount · tap the amount to break it down.'}
           </p>
 
           <div className="pie__pickslot">
             {picked ? (
-              <div
-                className="pie__pick"
-                style={{ background: tint(picked.color, 0.18), borderColor: picked.color }}
-              >
-                <span className="pie__pick-dot" style={{ background: picked.color }} />
-                <span className="pie__pick-name">{picked.name}</span>
-                <strong style={{ color: picked.color }}>{formatINR(picked.total)}</strong>
-              </div>
+              (() => {
+                const canDrill =
+                  !drill &&
+                  !!picked.categoryId &&
+                  picked.categoryId !== 'uncategorized' &&
+                  subcategories.some((s) => s.categoryId === picked.categoryId);
+                return (
+                  <button
+                    type="button"
+                    className={`pie__pick${canDrill ? ' pie__pick--drill' : ''}`}
+                    style={{ background: tint(picked.color, 0.18), borderColor: picked.color }}
+                    onClick={() => {
+                      if (canDrill && picked.categoryId) {
+                        setDrillId(picked.categoryId);
+                        setPicked(null);
+                      }
+                    }}
+                  >
+                    <span className="pie__pick-dot" style={{ background: picked.color }} />
+                    <span className="pie__pick-name">{picked.name}</span>
+                    <strong style={{ color: picked.color }}>{formatINR(picked.total)}</strong>
+                    {canDrill && <span className="pie__pick-drill">Breakdown ›</span>}
+                  </button>
+                );
+              })()
             ) : (
               <span className="pie__hint">Tap a slice to see its amount</span>
             )}
@@ -260,9 +277,9 @@ export default function Summary({ version }: Props) {
                         setPicked(null);
                       }
                     } else {
-                      // Single-tap → show the amount pill and keep it open (a
-                      // second tap within 350ms turns it into a drill instead).
-                      setPicked({ name: c.name, total: c.total, color: c.color });
+                      // Single-tap → show the amount pill (tap the pill to drill,
+                      // or double-tap the slice within 350ms).
+                      setPicked({ name: c.name, total: c.total, color: c.color, categoryId: c.categoryId });
                     }
                   }}
                 >

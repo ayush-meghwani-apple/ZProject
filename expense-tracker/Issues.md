@@ -9,7 +9,15 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 _Nothing open right now - all reported items are shipped._
 
+
+
 ## Done
+
+- ✅ **(2026-07-05)** **More canvas while typing (Kaizen).** When the keyboard is up, the app now also hides the **top app header** (and already the tab bar), and the note editor tightens its own top bar/title — so there's noticeably more writing/room above the keyboard. Everything returns when the keyboard closes.
+- ✅ **(2026-07-05)** **Tap the amount to see the sub-category breakdown (Expensify).** Tapping a pie slice shows its amount pill; the pill now has a **"Breakdown ›"** affordance and **tapping it drills into that category's sub-category pie** (no more finicky double-tap). Categories without sub-categories just show the amount.
+- ✅ **(2026-07-05)** **Cleaner table grabbers — just the dots (Slate).** The row/column grabbers no longer show a grey box by default; they're now **just the three dots**. They only fill in with the **purple pill** when you tap one (with the row/column outline), exactly as before.
+- ✅ **(2026-07-05)** **Dragging a grabber closes its menu (Slate).** If you tap a grabber (opening the insert/delete menu) and then start dragging to reorder, the menu now **gets out of the way** immediately.
+- ✅ **(2026-07-05)** **Real indentation for plain text (Slate).** Indenting normal (non-list) text used to only add a tab's worth of space; it now applies a **proper left-indent step** (same feel as indenting a bullet).
 
 - ✅ **(2026-07-05)** **Consistent icon set across the whole app (Kaizen).** Swapped the grab-bag of emoji used for *UI* icons — the drawer, header, bottom tab bars, note toolbar and every action button (edit, delete, pin, undo/redo, reorder, add, chevrons, etc.) — for one clean line-icon set (lucide), so nothing looks mismatched anymore. It's centralised in a single `AppIcon` component, so future icon tweaks are one edit. Your **category / sub-category / goal emojis stay emoji** since those are personal picks.
 

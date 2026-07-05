@@ -365,15 +365,12 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     return false;
   }
 
-  // Tab / Shift+Tab indents & outdents — inside a list that nests a sub-bullet.
+  // Tab / Shift+Tab indents & outdents — lists nest sub-bullets, plain text gets
+  // a real left-margin step (not just tab characters).
   function onBodyKeyDown(e: React.KeyboardEvent) {
     if (e.key !== 'Tab') return;
     e.preventDefault();
-    snapshot(true);
-    if (inList()) document.execCommand(e.shiftKey ? 'outdent' : 'indent');
-    else document.execCommand('insertText', false, '\t');
-    normalizeTodos();
-    afterStructural();
+    indent(e.shiftKey);
   }
 
   // ---- toolbar commands (mousedown preventDefault keeps the caret) ----
@@ -384,13 +381,26 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     afterStructural();
   }
 
-  // Indent / outdent the current line (make it a sub-point, or lift it back).
-  // Always available — it's handy outside lists too.
+  // Indent / outdent the current line. In a list it nests a sub-bullet; in plain
+  // text it steps the block's left margin by a proper amount (execCommand's plain
+  // indent only nudged it a couple of spaces).
   function indent(out: boolean) {
     restoreSelection();
     snapshot(true);
-    document.execCommand(out ? 'outdent' : 'indent');
-    normalizeTodos();
+    if (inList()) {
+      document.execCommand(out ? 'outdent' : 'indent');
+      normalizeTodos();
+    } else {
+      const block = currentTopBlock();
+      if (block && block.nodeType === 1) {
+        const step = 28;
+        const cur = parseFloat(block.style.marginLeft || '0') || 0;
+        const next = Math.max(0, cur + (out ? -step : step));
+        block.style.marginLeft = next ? `${next}px` : '';
+      } else {
+        document.execCommand(out ? 'outdent' : 'indent');
+      }
+    }
     afterStructural();
   }
 
@@ -557,7 +567,11 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   function onGrabMove(e: React.PointerEvent) {
     const d = drag.current;
     if (!d) return;
-    if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 6) d.moved = true;
+    if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 6) {
+      d.moved = true;
+      // Once a real drag starts, get the tap-menu out of the way.
+      setMenu(null);
+    }
     if (!d.moved) return;
     // Let the grabber follow the finger, just like the drop-line cue.
     setDragShift(d.axis === 'row' ? e.clientY - d.startY : e.clientX - d.startX);

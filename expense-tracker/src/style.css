@@ -569,8 +569,29 @@ body {
   display: none;
 }
 
+/* Also drop the global app header while the keyboard is up: it's redundant when
+   you're focused on a field/note, and reclaiming it gives the canvas ~50px more
+   room above the keyboard (which the toolbar + keyboard eat into). */
+.kb-open .app__header {
+  display: none;
+}
+
+/* Tighten the note editor's own chrome while typing for a bit more writing room. */
+.kb-open .noteedit__top {
+  padding-top: 6px;
+  padding-bottom: 2px;
+}
+.kb-open .noteedit__title {
+  margin-bottom: 2px;
+  font-size: 18px;
+}
+
 @media (pointer: coarse) {
   .kb-typing .tabbar {
+    display: none;
+  }
+
+  .kb-typing .app__header {
     display: none;
   }
 }
@@ -1718,7 +1739,27 @@ body {
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 14px;
+  color: var(--text);
   animation: pickIn 0.16s ease;
+}
+
+/* The pill is a real button when tapping it drills into the sub-category pie. */
+button.pie__pick {
+  appearance: none;
+  font: inherit;
+  cursor: default;
+  text-align: left;
+}
+button.pie__pick--drill {
+  cursor: pointer;
+}
+
+.pie__pick-drill {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-left: 2px;
 }
 
 @keyframes pickIn {
@@ -2494,16 +2535,15 @@ body {
   justify-content: center;
   border: none;
   border-radius: 5px;
-  background: rgba(148, 163, 184, 0.4);
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
+  background: transparent;
+  color: rgba(148, 163, 184, 0.95);
+  font-size: 14px;
   line-height: 1;
   font-weight: 900;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   cursor: grab;
   touch-action: none;
-  opacity: 0.55;
-  transition: background 0.12s ease, opacity 0.12s ease;
+  opacity: 0.9;
+  transition: background 0.12s ease, color 0.12s ease, opacity 0.12s ease;
 }
 
 .tgrab:active {
@@ -2511,11 +2551,12 @@ body {
   opacity: 1;
 }
 
-/* When its menu is open, the grabber turns solid accent to show it's active. */
+/* Only when its menu is open does the grabber become a solid accent pill. */
 .tgrab--on {
   background: var(--accent);
   color: #fff;
   opacity: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
 /* Outline drawn around the whole row/column whose grabber menu is open. */

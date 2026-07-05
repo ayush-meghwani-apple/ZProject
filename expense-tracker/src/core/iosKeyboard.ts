@@ -57,14 +57,22 @@ export function initIosKeyboard(): void {
     });
   }
 
-  // Before focus moves (tap/click), lift our flags so a tapped field can take
-  // focus and raise the keyboard normally. Only bother when the tap is heading
-  // for a real field or the editable note body, so tapping toolbar buttons
-  // doesn't needlessly unmask.
+  // Before focus moves (tap/click), unmask ONLY the field about to be focused, so
+  // it can take focus and raise the keyboard — while every other field stays
+  // readonly. Clearing them all here caused a race where, for a split second, all
+  // fields were editable at focus time and iOS drew the prev/next arrows anyway.
   const onDown = (e: Event) => {
     const t = e.target as Element | null;
     if (!t) return;
-    if (t.closest?.(FIELD_SELECTOR) || t.closest?.('[contenteditable="true"]')) clearMarks();
+    const field = t.closest?.(FIELD_SELECTOR) as
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | HTMLSelectElement
+      | null;
+    if (field && marked.has(field)) {
+      field.removeAttribute('readonly');
+      marked.delete(field);
+    }
   };
   document.addEventListener('pointerdown', onDown, true);
   document.addEventListener('touchstart', onDown, true);
