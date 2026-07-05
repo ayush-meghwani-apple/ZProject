@@ -40,7 +40,11 @@ export function initViewport(): void {
     // SVG) and reports a small offsetTop, which would shift the fixed app down
     // and push the bottom tab bar off-screen.
     root.style.setProperty('--app-top', `${kbOpen ? Math.round(top) : 0}px`);
+    const wasKbOpen = root.classList.contains('kb-open');
     root.classList.toggle('kb-open', kbOpen);
+    // The moment the keyboard actually opens (and `.kb-open` padding kicks in),
+    // dock the focused field just above it.
+    if (kbOpen && !wasKbOpen) startDocking();
   }
 
   // The keyboard animates open/closed over a few hundred ms, and iOS sometimes
@@ -53,6 +57,30 @@ export function initViewport(): void {
     resyncTimers.forEach((t) => window.clearTimeout(t));
     apply();
     resyncTimers = [60, 160, 320, 550, 850, 1200].map((d) => window.setTimeout(apply, d));
+  }
+
+  // Dock a focused *form field* just above the keyboard so there's no dead gap
+  // between the field and the keyboard. `.kb-open .page` adds room above/below
+  // (see CSS) which pushes the field below the fold; `scrollIntoView('nearest')`
+  // then brings it up to the bottom edge (just above the keyboard, via the CSS
+  // `scroll-margin-bottom`). Native + idempotent, and it can never hide the
+  // field. Chat and the note editor manage their own layout, so fields outside a
+  // `.page` are skipped.
+  function dockFocused() {
+    if (!root.classList.contains('kb-open')) return;
+    const el = document.activeElement as HTMLElement | null;
+    if (!el) return;
+    const tag = el.tagName;
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') return;
+    if (!el.closest('.page')) return;
+    el.scrollIntoView({ block: 'end' });
+  }
+
+  // The browser's own "scroll the focused input into view" fires on focus and
+  // the keyboard opens over a few hundred ms, so re-dock a few times to land on
+  // the settled position.
+  function startDocking() {
+    [100, 250, 450, 700].forEach((d) => window.setTimeout(dockFocused, d));
   }
 
   apply();
@@ -82,7 +110,13 @@ export function initViewport(): void {
   // `.kb-open` OR `.kb-typing` (the latter gated to touch devices).
   document.addEventListener('focusin', (e) => {
     root.classList.toggle('kb-typing', isEditable(e.target));
-    if (isEditable(e.target)) resync();
+    if (isEditable(e.target)) {
+      resync();
+      // Dock the field above the keyboard once it (and the shrunk viewport) have
+      // settled; the loop keeps correcting for ~900ms so native scroll-into-view
+      // doesn't leave it stranded.
+      startDocking();
+    }
   });
   document.addEventListener('focusout', () => {
     // Wait a tick so we read the element that actually ends up focused.

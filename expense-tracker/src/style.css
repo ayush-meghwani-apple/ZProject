@@ -586,6 +586,24 @@ body {
   font-size: 18px;
 }
 
+/* While the keyboard is open, give form pages generous room above and below so
+   a focused field can be docked right above the keyboard (JS scrolls it there
+   in core/viewport.ts) instead of being stranded with a big gap between the
+   field and the keyboard. The padding is scrolled out of view while typing. */
+.kb-open .page {
+  padding-top: 50vh;
+  padding-bottom: 45vh;
+}
+
+/* When the focused field is docked (scrollIntoView: nearest), leave a small
+   gap above the keyboard rather than sitting flush against it. */
+.kb-open .page input,
+.kb-open .page textarea,
+.kb-open .page select {
+  scroll-margin-bottom: 22px;
+  scroll-margin-top: 12px;
+}
+
 @media (pointer: coarse) {
   .kb-typing .tabbar {
     display: none;

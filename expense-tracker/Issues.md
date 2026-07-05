@@ -15,6 +15,8 @@ earlier these two issues were intermittent but now they happen every 2-3 times o
 
 ## Done
 
+- ✅ **(2026-07-05)** **No more dead gap between a form field and the keyboard.** Great catch — on form screens (Categories, Settings, Goals) the focused field sat wherever it was in the page, so when the keyboard opened there was a big empty gap between the field and the keyboard. Now, while the keyboard is up, those pages get scroll room and the focused field is **docked ~20px right above the keyboard** (verified for both top-of-page and lower fields). Chat and the note editor keep their own bottom-pinned layouts. Pairs with the earlier fix that stops the field floating in the middle on open.
+
 - ✅ **(2026-07-05)** **Proper Kaizen app icon.** The home-screen / install icon was still the old expense-tracker mark. It's now the **Kaizen sprout** 🌱 (white seedling on the app's indigo→violet gradient), regenerated for every size (apple-touch-icon, 192, 512 maskable) and the browser favicon. _On iPhone you may need to **remove and re-add** the Home Screen shortcut once for iOS to pick up the new icon (iOS caches the old one)._
 
 - ✅ **(2026-07-05)** **Backups now reuse one file name (Kaizen).** The export is always named `kaizen-backup.json` (no date), so each new backup **replaces the previous one** in Files/iCloud Drive instead of leaving a pile of dated copies — just tap **Replace** when iOS asks.
