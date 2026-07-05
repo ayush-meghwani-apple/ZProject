@@ -11,6 +11,8 @@ _Nothing open right now - all reported items are shipped._
 
 ## Done
 
+- ✅ **(2026-07-05)** **Proper Kaizen app icon.** The home-screen / install icon was still the old expense-tracker mark. It's now the **Kaizen sprout** 🌱 (white seedling on the app's indigo→violet gradient), regenerated for every size (apple-touch-icon, 192, 512 maskable) and the browser favicon. _On iPhone you may need to **remove and re-add** the Home Screen shortcut once for iOS to pick up the new icon (iOS caches the old one)._
+
 - ✅ **(2026-07-05)** **Backups now reuse one file name (Kaizen).** The export is always named `kaizen-backup.json` (no date), so each new backup **replaces the previous one** in Files/iCloud Drive instead of leaving a pile of dated copies — just tap **Replace** when iOS asks.
 
 - ✅ **(2026-07-05)** **Automatic backup reminder (Kaizen).** Since data lives only on the device, Kaizen now **pops up a one-tap backup prompt when you open the app** if it's been longer than your chosen interval (default: **every day**) since the last backup. Tap **Back up now** → choose **Save to Files** (iCloud Drive) and you're safe; **Not now** waits until the next open. The frequency (daily / 3 days / weekly / 2 weeks / never) is in **Settings → Backup & Sync**, and it won't nag an empty app. Backups use the native share sheet on iPhone so the file actually leaves the device.
