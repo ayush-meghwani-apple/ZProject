@@ -8,6 +8,10 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 ## Open
 
 _Nothing open right now - all reported items are shipped._
+- I am still seeing this issue in both expensify app where typing box and uggestions uI floats at top, it should be fixated at bootom and when typing box is clicked then it should move to a fixed position such that it comes over top of keyboard but that should be fixed because keyboard is of fix and ame height always
+- Same goes for notes app too there also options menu flowat over keyboard.
+
+earlier these two issues were intermittent but now they happen every 2-3 times out of 5 times app is opened
 
 ## Done
 

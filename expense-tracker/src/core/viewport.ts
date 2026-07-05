@@ -10,15 +10,30 @@
 export function initViewport(): void {
   const root = document.documentElement;
 
+  function isEditable(el: EventTarget | null): boolean {
+    const n = el as HTMLElement | null;
+    if (!n) return false;
+    const tag = n.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || n.isContentEditable;
+  }
+
   function apply() {
     const vv = window.visualViewport;
-    const height = vv ? vv.height : window.innerHeight;
+    const vvh = vv ? vv.height : window.innerHeight;
     const top = vv ? vv.offsetTop : 0;
-    // When the on-screen keyboard covers a big chunk of the layout viewport,
-    // flag it so the UI can hide the bottom tab bar (Apple-Notes style) and let
-    // only the editor toolbar sit right above the keyboard.
-    const covered = window.innerHeight - height;
-    const kbOpen = covered > 120;
+    // The on-screen keyboard can ONLY be up when an editable field is focused.
+    // Gating on that is critical: at a cold PWA start (or when resuming from the
+    // background) iOS can briefly report a short `visualViewport.height` even
+    // though no keyboard is open. Without this gate the app treated that as
+    // "keyboard open", shrank its box, and the input/toolbar ended up floating
+    // in the middle of the screen instead of pinned to the bottom.
+    const editableFocused = isEditable(document.activeElement);
+    const covered = window.innerHeight - vvh;
+    const kbOpen = editableFocused && covered > 120;
+    // Keyboard closed → size to the stable layout viewport (`innerHeight`), not
+    // `visualViewport.height` which can be transiently wrong on start/resume.
+    // Keyboard open → size to the visible area so the bottom sits above it.
+    const height = kbOpen ? vvh : window.innerHeight;
     root.style.setProperty('--app-height', `${Math.round(height)}px`);
     // Only honour a non-zero offset while the keyboard is actually open. Without
     // this, iOS transiently scrolls to a focused element (e.g. a tapped chart
@@ -28,19 +43,23 @@ export function initViewport(): void {
     root.classList.toggle('kb-open', kbOpen);
   }
 
-  apply();
-
   // The keyboard animates open/closed over a few hundred ms, and iOS sometimes
-  // fires only an intermediate `resize` — leaving `--app-height` stuck at a
-  // half-open value (a dead gap between the field and the keyboard that only a
-  // restart cleared). Re-sampling a few times after a trigger catches the
+  // fires only an intermediate `resize` — or none at all on a cold start /
+  // resume — leaving the CSS vars stuck at a wrong value (a dead gap, or the
+  // input/toolbar floating). Re-sampling a few times after a trigger catches the
   // settled height and self-heals that stuck state.
   let resyncTimers: number[] = [];
   function resync() {
     resyncTimers.forEach((t) => window.clearTimeout(t));
     apply();
-    resyncTimers = [60, 160, 320, 550].map((d) => window.setTimeout(apply, d));
+    resyncTimers = [60, 160, 320, 550, 850, 1200].map((d) => window.setTimeout(apply, d));
   }
+
+  apply();
+  // Cold-start viewport can be wrong for a moment — re-sample after first paint
+  // and once everything has loaded.
+  resync();
+  window.addEventListener('load', resync);
 
   const vv = window.visualViewport;
   if (vv) {
@@ -49,17 +68,18 @@ export function initViewport(): void {
   }
   window.addEventListener('resize', apply);
   window.addEventListener('orientationchange', resync);
+  // Resuming a backgrounded PWA is the main source of the intermittent bad
+  // layout ("2–3 times out of 5 opens") — re-measure when we return to the
+  // foreground, since iOS may have restored a stale visual viewport.
+  window.addEventListener('pageshow', resync);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) resync();
+  });
 
   // Belt-and-suspenders for hiding the bottom tab bar while typing: some setups
   // (and some iOS timing) don't shrink visualViewport reliably, so also flag
   // whenever an editable element is focused. CSS hides the tab bar on
   // `.kb-open` OR `.kb-typing` (the latter gated to touch devices).
-  function isEditable(el: EventTarget | null): boolean {
-    const n = el as HTMLElement | null;
-    if (!n) return false;
-    const tag = n.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || n.isContentEditable;
-  }
   document.addEventListener('focusin', (e) => {
     root.classList.toggle('kb-typing', isEditable(e.target));
     if (isEditable(e.target)) resync();
