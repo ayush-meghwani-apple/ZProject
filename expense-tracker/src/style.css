@@ -2419,6 +2419,19 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* While the keyboard is up, add roomy scroll space below the content so the last
+   lines / a bottom table can always be scrolled up above the keyboard (instead
+   of the caret ending up hidden behind it with nothing left to scroll). */
+.kb-open .notebody {
+  padding-bottom: 50vh;
+}
+
+@media (pointer: coarse) {
+  .kb-typing .notebody {
+    padding-bottom: 50vh;
+  }
+}
+
 /* Non-scrolling wrapper so the table grabbers can be positioned over the body
    (they follow the table as the body scrolls, via recompute on scroll). */
 .notebody-wrap {
@@ -2500,6 +2513,11 @@ body {
   border-radius: 10px;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
   overflow: hidden;
+}
+
+/* Open the menu upward when there's no room below (e.g. above the keyboard). */
+.tmenu--up {
+  transform: translateY(calc(-100% - 6px));
 }
 
 .tmenu button {

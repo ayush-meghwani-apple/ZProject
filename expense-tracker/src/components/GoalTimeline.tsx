@@ -46,6 +46,7 @@ export default function GoalTimeline({ goal }: { goal: Goal }) {
         value={month}
         onChange={(e) => setMonth(Number(e.target.value))}
         aria-label="Scrub goal timeline"
+        data-noswipe
       />
       <div className="timeline__read">
         <div className="timeline__metric">

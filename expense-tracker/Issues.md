@@ -9,18 +9,19 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ### Kaizen (app-wide)
 
-_(nothing open right now)_
-
-### Expensify
-
-_(nothing open right now)_
-
-### Slate (Notes)
-
-_(nothing open right now)_
+- Choice of icon us not great in whole app we are using emojis for icons we should use some icon package because each icon loooks different from each other, _(Bigger job — this is a whole-app visual overhaul: I want to pick a consistent icon set and swap every nav/toolbar/action icon in one careful pass so it doesn't end up half emoji, half icons. Keeping it here to do next as a dedicated change; category icons will stay emoji since you pick those.)_
 
 
 ## Done
+
+- ✅ **(2026-07-05)** **Steadier UI — no more sideways jerk.** The swipe-between-tabs gesture was triggering on slight diagonal movement during ordinary scrolling/tapping, nudging the whole screen left/right. It now only engages on a **clearly horizontal, deliberate swipe** (with a small dead-zone), so the UI stays put otherwise.
+- ✅ **(2026-07-05)** **Bigger pie chart (Expensify).** Since the category names already appear in the coloured list right below (and on tap), the pie no longer draws cramped edge labels — so it's **noticeably larger** and never clips a long name.
+- ✅ **(2026-07-05)** **Removed Recent Expenses from Summary.** The Summary tab is now totals + charts + the category breakdown only (edit/delete still live on the Reels tab).
+- ✅ **(2026-07-05)** **New list/to-do/table lands the caret in the right place (Slate).** Inserting a checklist or table now drops the cursor **in the first item / first cell** (ready to type) instead of the empty line after it.
+- ✅ **(2026-07-05)** **Sub-bullets from the toolbar (Slate).** When you're in a bullet list, **⇥ / ⇤** buttons appear to **indent a point into a sub-bullet** (or lift it back) — no keyboard Tab needed.
+- ✅ **(2026-07-05)** **Table grabber menu opens upward when needed (Slate).** If a table sits low on the page with no room beneath (e.g. above the keyboard), tapping a grabber now opens its insert/delete menu **above** the grabber instead of behind the keyboard.
+- ✅ **(2026-07-05)** **Room to scroll the last lines above the keyboard (Slate).** While typing, the editor now keeps generous scroll space at the bottom, so a table or line at the very end of a note can be **scrolled up above the keyboard** instead of the caret getting stuck behind it.
+- ✅ **(2026-07-05)** **Goal timeline slider no longer flips tabs (Questify).** Dragging the “when will I have how much” slider used to swipe you over to the Settings tab; the slider now keeps the gesture to itself.
 
 - ✅ **(2026-07-05)** **Pie labels no longer get cut off.** Long category names (e.g. *Entertainment*, *Transport*) were spilling past the chart edges. The pie is now a touch smaller with slightly smaller, **shortened labels** (e.g. *Entertain…*), so every label fits inside the card. The full names are still in the list below.
 - ✅ **(2026-07-05)** **Tapping a slice keeps its amount open.** A **single tap** now shows the category's amount pill and **keeps it up** (tapping the same slice or the pill itself no longer closes it); a **double tap** opens that category's **sub-category pie**; tapping anywhere outside still dismisses the pill.

@@ -76,12 +76,17 @@ export default function TabbedApp({ tabs, initialId, controlledOpen }: Props) {
     const t = e.touches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
-    if (dirLock.current === null && Math.abs(dx) + Math.abs(dy) > 12) {
-      dirLock.current = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'h' : 'v';
+    // Lock direction only once the gesture is clearly one way. Requiring the
+    // horizontal move to strongly dominate (and a bigger initial threshold)
+    // stops the view jittering sideways during ordinary vertical scrolls/taps.
+    if (dirLock.current === null && Math.abs(dx) + Math.abs(dy) > 16) {
+      dirLock.current = Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 12 ? 'h' : 'v';
     }
     if (dirLock.current === 'h') {
+      // Ignore a small dead-zone so a settled horizontal drag doesn't twitch.
+      const eff = dx - Math.sign(dx) * 12;
       const atEnd = (dx < 0 && tabIdx === tabs.length - 1) || (dx > 0 && tabIdx === 0);
-      setSwipeX(atEnd ? dx * 0.25 : dx);
+      setSwipeX(atEnd ? eff * 0.25 : eff);
     }
   }
 

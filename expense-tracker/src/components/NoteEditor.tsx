@@ -49,6 +49,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   const lastRange = useRef<Range | null>(null);
   const [title, setTitle] = useState(doc.title);
   const [inTable, setInTable] = useState(false);
+  const [inListState, setInListState] = useState(false);
   // Which category this note is in, plus the category picker / new-category sheet.
   const [categoryId, setCategoryId] = useState<ID | undefined>(doc.categoryId);
   const [catPicker, setCatPicker] = useState(false);
@@ -64,7 +65,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
 
   // Grabber overlay geometry + the drag/tap-menu state that drives it.
   const [grab, setGrab] = useState<GrabGeo | null>(null);
-  const [menu, setMenu] = useState<{ axis: 'row' | 'col'; index: number; table: HTMLTableElement; x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ axis: 'row' | 'col'; index: number; table: HTMLTableElement; x: number; y: number; up: boolean } | null>(null);
   const [drop, setDrop] = useState<{ axis: 'row' | 'col'; pos: number } | null>(null);
   // While dragging a grabber, how far it has followed the pointer (px).
   const [dragShift, setDragShift] = useState(0);
@@ -133,6 +134,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   // controls contextually.
   function refreshContext() {
     setInTable(!!currentCell());
+    setInListState(inList());
     computeGrab();
     updateFmt();
   }
@@ -272,6 +274,13 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     afterEdit();
   }
 
+  // Indent / outdent the current bullet (make it a sub-point, or lift it back).
+  function indent(out: boolean) {
+    restoreSelection();
+    document.execCommand(out ? 'outdent' : 'indent');
+    afterEdit();
+  }
+
   // Insert a checklist (to-do) item. Pressing Enter inside continues the list;
   // tapping a box toggles it via onBodyClick below.
   function insertTodo() {
@@ -279,8 +288,15 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     document.execCommand(
       'insertHTML',
       false,
-      '<ul class="notetodo"><li data-done="false">\u200b</li></ul><p><br></p>',
+      '<ul class="notetodo" data-fresh="1"><li data-done="false"><br></li></ul><p><br></p>',
     );
+    // Drop the caret into the first item instead of the trailing paragraph.
+    const ul = bodyRef.current?.querySelector('ul.notetodo[data-fresh]');
+    if (ul) {
+      ul.removeAttribute('data-fresh');
+      const li = ul.querySelector('li') as HTMLElement | null;
+      if (li) placeCaret(li);
+    }
     afterEdit();
   }
 
@@ -298,7 +314,14 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
 
   function insertTable() {
     restoreSelection();
-    document.execCommand('insertHTML', false, TABLE_HTML);
+    document.execCommand('insertHTML', false, TABLE_HTML.replace('<table', '<table data-fresh="1"'));
+    // Drop the caret into the first cell instead of the trailing paragraph.
+    const table = bodyRef.current?.querySelector('table[data-fresh]') as HTMLTableElement | null;
+    if (table) {
+      table.removeAttribute('data-fresh');
+      const cell = table.querySelector('td, th') as HTMLElement | null;
+      if (cell) placeCaret(cell);
+    }
     afterEdit();
   }
 
@@ -464,16 +487,25 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     setDragShift(0);
     if (!d) return;
     if (!d.moved) {
-      // A tap (not a drag) opens the insert/delete menu next to the grabber.
+      // A tap (not a drag) opens the insert/delete menu next to the grabber. If
+      // there isn't room below (e.g. the table sits above the keyboard), open it
+      // upward instead so it isn't hidden.
       const wrap = wrapRef.current!;
       const wrapRect = wrap.getBoundingClientRect();
       const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const spaceBelow = wrapRect.bottom - r.bottom;
+      const up = spaceBelow < 160;
       setMenu({
         axis,
         index: d.from,
         table: d.table,
+        up,
         x: axis === 'row' ? r.right - wrapRect.left + 4 : r.left - wrapRect.left,
-        y: axis === 'row' ? r.top - wrapRect.top : r.bottom - wrapRect.top + 4,
+        y: up
+          ? r.top - wrapRect.top
+          : axis === 'row'
+            ? r.top - wrapRect.top
+            : r.bottom - wrapRect.top + 4,
       });
       return;
     }
@@ -654,7 +686,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
             {drop?.axis === 'row' && <div className="tdrop tdrop--row" style={{ top: drop.pos, left: grab.tableLeft }} />}
             {drop?.axis === 'col' && <div className="tdrop tdrop--col" style={{ left: drop.pos, top: grab.tableTop }} />}
             {menu && (
-              <div className="tmenu" style={{ left: menu.x, top: menu.y }}>
+              <div className={`tmenu${menu.up ? ' tmenu--up' : ''}`} style={{ left: menu.x, top: menu.y }}>
                 {menu.axis === 'row' ? (
                   <>
                     <button onPointerDown={(e) => e.preventDefault()} onClick={() => insertRowAt(menu.table, menu.index)}>
@@ -728,12 +760,22 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
             🖍️
           </button>
           <span className="notebar__sep" />
-          <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list (Tab to indent)">
+          <button className="notebar__btn" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list">
             • List
           </button>
           <button className="notebar__btn" onMouseDown={keepFocus} onClick={insertTodo} title="Checklist / to-do">
             ☑ To-do
           </button>
+          {inListState && (
+            <>
+              <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => indent(true)} title="Outdent">
+                ⇤
+              </button>
+              <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => indent(false)} title="Indent (sub-point)">
+                ⇥
+              </button>
+            </>
+          )}
           <button
             className="notebar__btn"
             onMouseDown={keepFocus}

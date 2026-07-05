@@ -17,12 +17,11 @@ import {
   getSubcategorySummary,
   totalSpend,
 } from '../core/reports';
-import { formatINR, formatDate } from '../core/util';
+import { formatINR } from '../core/util';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import CycleFilter, { filterByCycles, selectionLabel } from './CycleFilter';
-import EditExpenseModal from './EditExpenseModal';
 import type { Category, Expense, SalaryCycle, Subcategory } from '../types/models';
 
 interface Props {
@@ -36,24 +35,18 @@ function tint(hex: string, alpha: number): string {
   if (!m) return `rgba(148, 163, 184, ${alpha})`;
   return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
 }
-
-/** Shorten long slice labels so they don't get clipped at the chart edges. */
-function shortName(s: string): string {
-  return s && s.length > 10 ? `${s.slice(0, 9)}…` : s;
-}
 /**
  * The single "Summary" tab: combines the at-a-glance totals + collapsible
  * category breakdown + recent expenses (formerly Dashboard) with the charts
  * (pie + monthly trend, formerly Reports), so there's one place to understand
  * your spending instead of two overlapping tabs.
  */
-export default function Summary({ version, onChange }: Props) {
+export default function Summary({ version }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [cycles, setCycles] = useState<SalaryCycle[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [editing, setEditing] = useState<Expense | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [drillId, setDrillId] = useState<string | null>(null);
   const [picked, setPicked] = useState<{ name: string; total: number; color: string } | null>(null);
@@ -136,20 +129,6 @@ export default function Summary({ version, onChange }: Props) {
     });
   }
 
-  function labelFor(e: Expense): string {
-    const cat = categories.find((c) => c.id === e.categoryId);
-    const sub = subcategories.find((s) => s.id === e.subcategoryId);
-    const base = cat ? `${cat.icon} ${cat.name}` : '📦 Uncategorized';
-    return sub ? `${base} › ${sub.icon ? sub.icon + ' ' : ''}${sub.name}` : base;
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this expense?')) return;
-    await ExpenseRepository.deleteExpense(id);
-    await load();
-    onChange();
-  }
-
   return (
     <div className="page">
       <CycleFilter cycles={cycles} value={selected} onChange={setSelected} />
@@ -205,9 +184,8 @@ export default function Summary({ version, onChange }: Props) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={70}
+                  outerRadius={95}
                   isAnimationActive={false}
-                  label={(d) => shortName(d.name)}
                   onClick={(_, index) => {
                     const s = drillData[index];
                     if (s) setPicked({ name: s.name, total: s.total, color: s.color });
@@ -224,9 +202,8 @@ export default function Summary({ version, onChange }: Props) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={70}
+                  outerRadius={95}
                   isAnimationActive={false}
-                  label={(d) => shortName(d.name)}
                   onClick={(_, index) => {
                     const c = categorySummary[index];
                     if (!c) return;
@@ -324,50 +301,6 @@ export default function Summary({ version, onChange }: Props) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      )}
-
-      <div className="card">
-        <h3>Recent Expenses</h3>
-        {scoped.length === 0 ? (
-          <div className="muted">Nothing yet. Add one from the Add tab.</div>
-        ) : (
-          scoped.slice(0, 20).map((e) => (
-            <div className="row" key={e.id}>
-              <div className="row__left">
-                <div style={{ minWidth: 0 }}>
-                  <div>{labelFor(e)}</div>
-                  <div className="muted">
-                    {formatDate(e.date)}
-                    {e.note ? ` · ${e.note}` : ''}
-                  </div>
-                </div>
-              </div>
-              <div className="inline">
-                <span className="amount">{formatINR(e.amount)}</span>
-                <button className="iconbtn" onClick={() => setEditing(e)} title="Edit">
-                  ✏️
-                </button>
-                <button className="iconbtn" onClick={() => handleDelete(e.id)} title="Delete">
-                  🗑️
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {editing && (
-        <EditExpenseModal
-          expense={editing}
-          categories={categories}
-          subcategories={subcategories}
-          onClose={() => setEditing(null)}
-          onSaved={async () => {
-            setEditing(null);
-            await load();
-            onChange();
-          }}
-        />
       )}
     </div>
   );
