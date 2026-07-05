@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { seedIfEmpty } from './storage/seed';
 import { ensurePersistentStorage } from './storage/persistence';
+import { SalaryCycleRepository } from './repository/salaryCycleRepository';
 import { initViewport } from './core/viewport';
 import { initIosKeyboard } from './core/iosKeyboard';
 import './style.css';
@@ -35,6 +36,9 @@ async function bootstrap() {
 
   try {
     await seedIfEmpty();
+    // Keep every expense filed under the cycle its date falls in (self-heals
+    // expenses added before a cycle existed, or imported from a backup).
+    await SalaryCycleRepository.reassignExpensesByDate().catch(() => {});
   } catch (err) {
     // A failed open/migration must NEVER silently wipe data — surface it instead.
     renderFatal((err as Error)?.message ?? String(err));

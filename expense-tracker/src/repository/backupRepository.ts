@@ -2,6 +2,7 @@ import { storage } from '../storage';
 import { SCHEMA_VERSION } from '../storage/db';
 import { newId, now } from '../core/util';
 import { ActivityRepository } from './activityRepository';
+import { SalaryCycleRepository } from './salaryCycleRepository';
 import type { BackupFile } from '../types/models';
 
 export const BackupRepository = {
@@ -88,9 +89,45 @@ export const BackupRepository = {
     await storage.noteDocs.bulkPut(d.noteDocs ?? []);
     await storage.noteCategories.bulkPut(d.noteCategories ?? []);
 
+    // Backups don't carry the per-expense cycle tag, and expenses may pre-date
+    // their cycle — so re-derive cycle membership from each expense's date.
+    await SalaryCycleRepository.reassignExpensesByDate();
+
     await ActivityRepository.log('data.imported', 'backup', newId(), {
       expenses: d.expenses?.length ?? 0,
     });
+  },
+
+  /**
+   * Restore a backup as the *only* data: wipe every store first, then import.
+   * Use this to recover a clean state (e.g. after a messy cycle setup) without
+   * having to delete and re-add the home-screen app. Destructive by design.
+   */
+  async replaceAll(file: BackupFile): Promise<void> {
+    if (file.app !== 'expense-tracker') {
+      throw new Error('Not a Kaizen backup file.');
+    }
+    if (file.schema > SCHEMA_VERSION) {
+      throw new Error(
+        `Backup is from a newer app version (schema ${file.schema}). Update the app first.`,
+      );
+    }
+    await Promise.all([
+      storage.categories.clear(),
+      storage.subcategories.clear(),
+      storage.merchants.clear(),
+      storage.contexts.clear(),
+      storage.paymentMethods.clear(),
+      storage.aliases.clear(),
+      storage.salaryCycles.clear(),
+      storage.expenses.clear(),
+      storage.activities.clear(),
+      storage.recurring.clear(),
+      storage.goals.clear(),
+      storage.noteDocs.clear(),
+      storage.noteCategories.clear(),
+    ]);
+    await this.importAll(file);
   },
 
   /** Records that the user exported a backup (localStorage, separate from the DB). */

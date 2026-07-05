@@ -44,6 +44,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
   const [soundOn, setSoundOn] = useState(true);
   const [reminderDays, setReminderDays] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
+  const restoreRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const cy = await SalaryCycleRepository.getCyclesSorted();
@@ -111,6 +112,29 @@ export default function Settings({ version, onChange, global = false }: Props) {
       alert(`Import failed: ${(err as Error).message}`);
     } finally {
       if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  async function restoreBackup(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (
+        !confirm(
+          'Restore this backup as your ONLY data?\n\nThis erases everything currently in the app and replaces it with the backup — use it to recover a clean state. Your other backup files are untouched.',
+        )
+      ) {
+        return;
+      }
+      await BackupRepository.replaceAll(parsed);
+      await load();
+      onChange();
+      alert('Backup restored ✅');
+    } catch (err) {
+      alert(`Restore failed: ${(err as Error).message}`);
+    } finally {
+      if (restoreRef.current) restoreRef.current.value = '';
     }
   }
 
@@ -187,6 +211,23 @@ export default function Settings({ version, onChange, global = false }: Props) {
             style={{ display: 'none' }}
             onChange={importBackup}
           />
+        </div>
+        <div className="inline" style={{ marginTop: 8 }}>
+          <button className="btn btn--ghost btn--danger" onClick={() => restoreRef.current?.click()}>
+            Restore (replace all)
+          </button>
+          <input
+            ref={restoreRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={restoreBackup}
+          />
+        </div>
+        <div className="muted" style={{ marginTop: 8 }}>
+          <strong>Import</strong> merges a backup into what's here. <strong>Restore</strong> wipes
+          everything first and rebuilds from the backup — use it to recover a clean state (e.g. a
+          messy cycle setup). Expenses are automatically filed under the cycle their date falls in.
         </div>
         <div className="row" style={{ marginTop: 12 }}>
           <span>Remind me to back up</span>

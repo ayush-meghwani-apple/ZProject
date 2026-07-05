@@ -805,6 +805,11 @@ body {
   box-shadow: none;
 }
 
+.btn--danger {
+  color: var(--bad);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+}
+
 /* ---- Generic content ---- */
 .page {
   padding: 16px;
