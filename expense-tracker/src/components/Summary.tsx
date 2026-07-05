@@ -22,6 +22,7 @@ import { ExpenseRepository } from '../repository/expenseRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import CycleFilter, { filterByCycles, selectionLabel } from './CycleFilter';
+import AppIcon from './AppIcon';
 import type { Category, Expense, SalaryCycle, Subcategory } from '../types/models';
 
 interface Props {
@@ -187,7 +188,7 @@ export default function Summary({ version }: Props) {
             <h3>{drill ? drill.name : 'Spend by Category'}</h3>
             {drill && (
               <button className="btn btn--ghost btn--sm" onClick={() => setDrillId(null)}>
-                ← All categories
+                <AppIcon name="back" size={15} /> All categories
               </button>
             )}
           </div>
@@ -292,7 +293,7 @@ export default function Summary({ version }: Props) {
                   disabled={c.subs.length === 0}
                 >
                   <span className="barrow__chev">
-                    {c.subs.length === 0 ? '' : open ? '▾' : '▸'}
+                    {c.subs.length === 0 ? '' : <AppIcon name={open ? 'chevronDown' : 'chevronRight'} size={14} />}
                   </span>
                   <span className="barrow__name">
                     {c.icon} {c.name}

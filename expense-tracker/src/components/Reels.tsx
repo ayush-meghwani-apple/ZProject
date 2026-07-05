@@ -11,6 +11,7 @@ import { getPrefs, setPrefs } from '../core/preferences';
 import { playSound } from '../core/sound';
 import { requestNotificationPermission } from '../core/notify';
 import EditExpenseModal from './EditExpenseModal';
+import AppIcon from './AppIcon';
 import type { Alias, Category, Expense, SalaryCycle, Subcategory } from '../types/models';
 
 interface Props {
@@ -275,16 +276,16 @@ export default function Reels({ version, onChange }: Props) {
                     onChange={(e) => setNoteAmt((m) => ({ ...m, [n.id]: e.target.value }))}
                   />
                   <button className="btn" onClick={() => addExpenseFromNote(n)}>
-                    ➕ Add expense
+                    <AppIcon name="plus" size={16} /> Add expense
                   </button>
                 </div>
 
                 <div className="reel__actions">
                   <button className="btn btn--ghost" onClick={() => deleteNote(n)}>
-                    🗑️ Delete
+                    <AppIcon name="trash" size={16} /> Delete
                   </button>
                   <button className="btn btn--ghost" onClick={() => markNoteDone(n)}>
-                    ✓ Done
+                    <AppIcon name="done" size={16} /> Done
                   </button>
                 </div>
               </section>
@@ -331,7 +332,7 @@ export default function Reels({ version, onChange }: Props) {
 
                   {isRecurring && (
                     <div className="reel__recurring" title="Created automatically from a recurring rule">
-                      ↻ Recurring
+                      <AppIcon name="recurring" size={13} /> Recurring
                     </div>
                   )}
 
@@ -343,18 +344,18 @@ export default function Reels({ version, onChange }: Props) {
 
                   <div className="reel__actions">
                     <button className="reel__act" onClick={() => handleDelete(e.id)}>
-                      🗑️ <span>Delete</span>
+                      <AppIcon name="trash" size={17} /> <span>Delete</span>
                     </button>
                     {isBig && (
                       <button className="reel__act" onClick={() => toggleReviewed(e)}>
-                        {e.reviewed ? '↩️' : '✅'} <span>{e.reviewed ? 'Unreview' : 'Reviewed'}</span>
+                        {e.reviewed ? <AppIcon name="undo" size={17} /> : <AppIcon name="reviewed" size={17} />} <span>{e.reviewed ? 'Unreview' : 'Reviewed'}</span>
                       </button>
                     )}
                     <button className="reel__act" onClick={() => setRemindExpense(e)}>
-                      ⏰ <span>Remind</span>
+                      <AppIcon name="remind" size={17} /> <span>Remind</span>
                     </button>
                     <button className="reel__act" onClick={() => setEditing(e)}>
-                      ✏️ <span>Edit</span>
+                      <AppIcon name="edit" size={17} /> <span>Edit</span>
                     </button>
                   </div>
                 </section>

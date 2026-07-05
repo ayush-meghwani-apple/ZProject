@@ -7,12 +7,11 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-### Kaizen (app-wide)
-
-- Choice of icon us not great in whole app we are using emojis for icons we should use some icon package because each icon loooks different from each other, _(Bigger job — this is a whole-app visual overhaul: I want to pick a consistent icon set and swap every nav/toolbar/action icon in one careful pass so it doesn't end up half emoji, half icons. Keeping it here to do next as a dedicated change; category icons will stay emoji since you pick those.)_
-
+_Nothing open right now - all reported items are shipped._
 
 ## Done
+
+- ✅ **(2026-07-05)** **Consistent icon set across the whole app (Kaizen).** Swapped the grab-bag of emoji used for *UI* icons — the drawer, header, bottom tab bars, note toolbar and every action button (edit, delete, pin, undo/redo, reorder, add, chevrons, etc.) — for one clean line-icon set (lucide), so nothing looks mismatched anymore. It's centralised in a single `AppIcon` component, so future icon tweaks are one edit. Your **category / sub-category / goal emojis stay emoji** since those are personal picks.
 
 - ✅ **(2026-07-05)** **Only the tapped bar highlights now (Expensify).** Tapping a bar in Monthly Spend used to wash a faint highlight across the **whole** chart area; that background band is gone, so now just the tapped bar gets its darker outline (and the amount card).
 - ✅ **(2026-07-05)** **iOS keyboard's prev/next arrow bar is hidden (Slate + app-wide).** On iPhone/iPad, Safari was adding its up/down field-navigation accessory bar above the keyboard whenever a screen had more than one field. A global helper now momentarily marks every *other* field `readonly` while one is focused (and the note body counts too), so iOS sees a single field and drops the arrows — then restores everything on blur. It only runs on iOS and never touches genuinely read-only/disabled fields, so forms, validation and later-rendered inputs keep working.

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CategoryRepository } from '../repository/categoryRepository';
+import AppIcon from './AppIcon';
 import type { Alias, Category, Subcategory } from '../types/models';
 
 interface Props {
@@ -222,7 +223,7 @@ export default function Categories({ version, onChange }: Props) {
                     Save
                   </button>
                   <button className="iconbtn" onClick={() => setEditCat(null)} title="Cancel">
-                    ✕
+                    <AppIcon name="close" size={16} />
                   </button>
                 </div>
               ) : (
@@ -236,7 +237,7 @@ export default function Categories({ version, onChange }: Props) {
                         title="Move up"
                         aria-label="Move up"
                       >
-                        ↑
+                        <AppIcon name="chevronUp" size={16} />
                       </button>
                       <button
                         className="reorder__btn"
@@ -245,7 +246,7 @@ export default function Categories({ version, onChange }: Props) {
                         title="Move down"
                         aria-label="Move down"
                       >
-                        ↓
+                        <AppIcon name="chevronDown" size={16} />
                       </button>
                     </div>
                     <button
@@ -253,7 +254,7 @@ export default function Categories({ version, onChange }: Props) {
                       onClick={() => toggleCat(cat.id)}
                       aria-label={openCats.has(cat.id) ? 'Collapse' : 'Expand'}
                     >
-                      {subs.length === 0 ? '·' : openCats.has(cat.id) ? '▾' : '▸'}
+                      {subs.length === 0 ? '·' : <AppIcon name={openCats.has(cat.id) ? 'chevronDown' : 'chevronRight'} size={15} />}
                     </button>
                     <span className="dot" style={{ background: cat.color }} />
                     <strong>
@@ -268,14 +269,14 @@ export default function Categories({ version, onChange }: Props) {
                       onClick={() => setEditCat({ id: cat.id, name: cat.name, icon: cat.icon })}
                       title="Edit"
                     >
-                      ✏️
+                      <AppIcon name="edit" size={16} />
                     </button>
                     <button
                       className="iconbtn"
                       onClick={() => removeCategory(cat.id)}
                       title="Delete"
                     >
-                      🗑️
+                      <AppIcon name="trash" size={16} />
                     </button>
                   </div>
                 </>
@@ -304,7 +305,7 @@ export default function Categories({ version, onChange }: Props) {
                       Save
                     </button>
                     <button className="iconbtn" onClick={() => setEditSub(null)} title="Cancel">
-                      ✕
+                      <AppIcon name="close" size={16} />
                     </button>
                   </div>
                 </div>
@@ -321,17 +322,17 @@ export default function Categories({ version, onChange }: Props) {
                         onClick={() => setAliasOpen(aliasOpen === s.id ? null : s.id)}
                         title="View & edit the words that match this subcategory"
                       >
-                        🏷️ {aliasesFor(s.id).length} aliases
+                        <AppIcon name="categories" size={13} /> {aliasesFor(s.id).length} aliases
                       </button>
                       <button
                         className="iconbtn"
                         onClick={() => setEditSub({ id: s.id, name: s.name, icon: s.icon ?? '' })}
                         title="Rename"
                       >
-                        ✏️
+                        <AppIcon name="edit" size={16} />
                       </button>
                       <button className="iconbtn" onClick={() => removeSub(s.id)} title="Delete">
-                        🗑️
+                        <AppIcon name="trash" size={16} />
                       </button>
                     </div>
                   </div>
@@ -354,7 +355,7 @@ export default function Categories({ version, onChange }: Props) {
                               title="Remove alias"
                               aria-label={`Remove alias ${a.text}`}
                             >
-                              ✕
+                              <AppIcon name="close" size={12} />
                             </button>
                           </span>
                         ))}

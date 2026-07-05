@@ -5,6 +5,7 @@ import Reels from './Reels';
 import Categories from './Categories';
 import Settings from './Settings';
 import TabbedApp, { type TabDef } from './TabbedApp';
+import AppIcon from './AppIcon';
 import { RecurringRepository } from '../repository/recurringRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
 
@@ -68,20 +69,20 @@ export default function ExpensifyApp({ refreshNonce = 0, openReelsNonce = 0 }: P
     {
       id: 'chat',
       label: 'Add',
-      icon: '💬',
+      icon: <AppIcon name="add" size={22} />,
       render: () => (
         <Chat messages={chatMessages} setMessages={setChatMessages} onChange={onChange} />
       ),
     },
-    { id: 'summary', label: 'Summary', icon: '📊', render: () => <Summary version={version} onChange={onChange} /> },
-    { id: 'reels', label: 'Reels', icon: '🎞️', render: () => <Reels version={version} onChange={onChange} /> },
+    { id: 'summary', label: 'Summary', icon: <AppIcon name="summary" size={22} />, render: () => <Summary version={version} onChange={onChange} /> },
+    { id: 'reels', label: 'Reels', icon: <AppIcon name="reels" size={22} />, render: () => <Reels version={version} onChange={onChange} /> },
     {
       id: 'categories',
       label: 'Categories',
-      icon: '🏷️',
+      icon: <AppIcon name="categories" size={22} />,
       render: () => <Categories version={version} onChange={onChange} />,
     },
-    { id: 'settings', label: 'Settings', icon: '⚙️', render: () => <Settings version={version} onChange={onChange} /> },
+    { id: 'settings', label: 'Settings', icon: <AppIcon name="settings" size={22} />, render: () => <Settings version={version} onChange={onChange} /> },
   ];
 
   return (

@@ -6,6 +6,7 @@ import { blocksToHtml, isHtmlEmpty, sanitizeHtml } from '../core/noteHtml';
 import * as T from '../core/noteTable';
 import NoteCategoryModal from './NoteCategoryModal';
 import ColorSpectrum from './ColorSpectrum';
+import AppIcon from './AppIcon';
 import type { ID, NoteCategory, NoteDoc } from '../types/models';
 
 interface Props {
@@ -689,8 +690,8 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
   return (
     <div className="noteedit">
       <div className="noteedit__top">
-        <button className="btn btn--ghost btn--sm" onClick={exit}>
-          ← Notes
+        <button className="btn btn--ghost btn--sm noteedit__back" onClick={exit}>
+          <AppIcon name="back" size={17} /> Notes
         </button>
         <div className="noteedit__actions">
           <button
@@ -699,13 +700,13 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
             onClick={() => setPinned((v) => !v)}
             title={pinned ? 'Unpin note' : 'Pin note'}
           >
-            📌
+            <AppIcon name="pin" size={18} />
           </button>
           <button className="iconbtn" onMouseDown={keepFocus} onClick={undo} title="Undo">
-            ↶
+            <AppIcon name="undo" size={18} />
           </button>
           <button className="iconbtn" onMouseDown={keepFocus} onClick={redo} title="Redo">
-            ↷
+            <AppIcon name="redo" size={18} />
           </button>
           <div className="noteedit__cat">
             <button
@@ -714,7 +715,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
               onClick={() => setCatPicker((v) => !v)}
               title="Category"
             >
-              {currentCat ? currentCat.emoji : '🗂️'}
+              {currentCat ? <span className="iconbtn__emoji">{currentCat.emoji}</span> : <AppIcon name="folder" size={18} />}
             </button>
             {catPicker && (
               <div className="catmenu catmenu--right">
@@ -727,13 +728,13 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
                   </button>
                 ))}
                 <button className="catmenu__new" onClick={() => { setCatPicker(false); setNewCat(true); }}>
-                  ＋ New category…
+                  <AppIcon name="plus" size={15} /> New category…
                 </button>
               </div>
             )}
           </div>
           <button className="iconbtn" onClick={del} title="Delete note">
-            🗑️
+            <AppIcon name="trash" size={18} />
           </button>
         </div>
       </div>
@@ -822,7 +823,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
                       ↓ Insert below
                     </button>
                     <button className="tmenu__danger" onPointerDown={(e) => e.preventDefault()} onClick={() => deleteRowAt(menu.table, menu.index)}>
-                      🗑️ Delete row
+                      <AppIcon name="trash" size={15} /> Delete row
                     </button>
                   </>
                 ) : (
@@ -834,7 +835,7 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
                       → Insert right
                     </button>
                     <button className="tmenu__danger" onPointerDown={(e) => e.preventDefault()} onClick={() => deleteColAt(menu.table, menu.index)}>
-                      🗑️ Delete column
+                      <AppIcon name="trash" size={15} /> Delete column
                     </button>
                   </>
                 )}
@@ -883,20 +884,20 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
             onClick={() => setPop(pop === 'back' ? null : 'back')}
             title="Highlight colour"
           >
-            🖍️
+            <AppIcon name="highlight" size={18} />
           </button>
           <span className="notebar__sep" />
           <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={toggleList} title="Bullet list">
-            ☰
+            <AppIcon name="bulletList" size={18} />
           </button>
           <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={insertTodo} title="Checklist / to-do">
-            ☑
+            <AppIcon name="todo" size={18} />
           </button>
           <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => indent(true)} title="Outdent">
-            ⇤
+            <AppIcon name="outdent" size={18} />
           </button>
           <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={() => indent(false)} title="Indent (sub-point)">
-            ⇥
+            <AppIcon name="indent" size={18} />
           </button>
           <button
             className="notebar__btn notebar__btn--sq"
@@ -904,23 +905,23 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
             onClick={() => fileRef.current?.click()}
             title="Insert image"
           >
-            🖼️
+            <AppIcon name="image" size={18} />
           </button>
           <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={insertTable} title="Insert table">
-            ▦
+            <AppIcon name="table" size={18} />
           </button>
 
           {inTable && (
             <>
               <span className="notebar__sep" />
               <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={toggleHeaderRow} title="Toggle header row">
-                ⊤
+                <AppIcon name="header" size={18} />
               </button>
               <button className="notebar__btn notebar__btn--sq" onMouseDown={keepFocus} onClick={copyTable} title="Copy table">
-                ⧉
+                <AppIcon name="copy" size={18} />
               </button>
               <button className="notebar__btn notebar__btn--sq notebar__btn--danger" onMouseDown={keepFocus} onClick={deleteTable} title="Delete table">
-                🗑️
+                <AppIcon name="trash" size={18} />
               </button>
             </>
           )}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Notes from './Notes';
 import Settings from './Settings';
 import TabbedApp, { type TabDef } from './TabbedApp';
+import AppIcon from './AppIcon';
 import type { ID } from '../types/models';
 
 /** Notes: a simple place for rich notes (text, lists, images, links). */
@@ -16,7 +17,7 @@ export default function NotesApp() {
     {
       id: 'notes',
       label: 'Notes',
-      icon: '📝',
+      icon: <AppIcon name="notes" size={22} />,
       render: () => (
         <Notes version={version} onChange={onChange} openId={openId} setOpenId={setOpenId} />
       ),
@@ -24,7 +25,7 @@ export default function NotesApp() {
     {
       id: 'settings',
       label: 'Settings',
-      icon: '⚙️',
+      icon: <AppIcon name="settings" size={22} />,
       render: () => <Settings version={version} onChange={onChange} global />,
     },
   ];

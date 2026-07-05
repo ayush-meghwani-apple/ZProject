@@ -4,6 +4,7 @@ import { NoteCategoryRepository } from '../repository/noteCategoryRepository';
 import NoteEditor from './NoteEditor';
 import NoteCategoryModal from './NoteCategoryModal';
 import NoteRow from './NoteRow';
+import AppIcon from './AppIcon';
 import type { ID, NoteCategory, NoteDoc } from '../types/models';
 
 interface Props {
@@ -154,10 +155,10 @@ export default function Notes({ version, onChange, openId, setOpenId }: Props) {
     <div className="page">
       <div className="notes__actions">
         <button className="btn notes__new" onClick={() => startNew()}>
-          ➕ New Note
+          <AppIcon name="plus" size={17} /> New Note
         </button>
         <button className="btn btn--ghost" onClick={() => setEditCat('new')} title="Add category">
-          🗂️ Category
+          <AppIcon name="folder" size={16} /> Category
         </button>
       </div>
 
@@ -172,7 +173,9 @@ export default function Notes({ version, onChange, openId, setOpenId }: Props) {
           <div className="notegroup" key={g.id}>
             <div className="notegroup__head">
               <button className="notegroup__toggle" onClick={() => toggle(g.id)}>
-                <span className={`notegroup__chev${open ? ' notegroup__chev--open' : ''}`}>▸</span>
+                <span className={`notegroup__chev${open ? ' notegroup__chev--open' : ''}`}>
+                  <AppIcon name="chevronRight" size={16} />
+                </span>
                 <span className="notegroup__emoji">{g.emoji}</span>
                 <span className="notegroup__name">{g.name}</span>
                 <span className="notegroup__count">{g.notes.length}</span>
@@ -183,21 +186,21 @@ export default function Notes({ version, onChange, openId, setOpenId }: Props) {
                   onClick={() => startNew(real ? g.id : undefined)}
                   title={`New note in ${g.name}`}
                 >
-                  ＋
+                  <AppIcon name="plus" size={16} />
                 </button>
                 {real && (
                   <>
                     <button className="notegroup__ic" disabled={g.catIndex === 0} onClick={() => moveCat(g.id, -1)} title="Move up">
-                      ↑
+                      <AppIcon name="chevronUp" size={16} />
                     </button>
                     <button className="notegroup__ic" disabled={g.catIndex >= cats.length - 1} onClick={() => moveCat(g.id, 1)} title="Move down">
-                      ↓
+                      <AppIcon name="chevronDown" size={16} />
                     </button>
                     <button className="notegroup__ic" onClick={() => setEditCat(cats.find((c) => c.id === g.id)!)} title="Edit">
-                      ✎
+                      <AppIcon name="edit" size={15} />
                     </button>
                     <button className="notegroup__ic notegroup__ic--danger" onClick={() => deleteCat(cats.find((c) => c.id === g.id)!)} title="Delete">
-                      🗑️
+                      <AppIcon name="trash" size={15} />
                     </button>
                   </>
                 )}

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { blocksToHtml, htmlToPreview } from '../core/noteHtml';
 import { formatDate } from '../core/util';
+import AppIcon from './AppIcon';
 import type { ID, NoteCategory, NoteDoc } from '../types/models';
 
 interface Props {
@@ -87,7 +88,7 @@ export default function NoteRow({ doc, categories, onOpen, onDelete, onMove, onT
               close();
             }}
           >
-            🗑️
+            <AppIcon name="trash" size={18} />
             <span>Delete</span>
           </button>
         </div>
@@ -100,11 +101,11 @@ export default function NoteRow({ doc, categories, onOpen, onDelete, onMove, onT
               close();
             }}
           >
-            📌
+            <AppIcon name="pin" size={18} />
             <span>{doc.pinned ? 'Unpin' : 'Pin'}</span>
           </button>
           <button className="noterow__move" onClick={() => setMoveMenu((v) => !v)}>
-            📁
+            <AppIcon name="folder" size={18} />
             <span>Move</span>
           </button>
         </div>
@@ -117,7 +118,7 @@ export default function NoteRow({ doc, categories, onOpen, onDelete, onMove, onT
           onPointerUp={onPointerUp}
         >
           <div className="card notecard">
-            {doc.pinned && <span className="notecard__pin">📌</span>}
+            {doc.pinned && <span className="notecard__pin"><AppIcon name="pin" size={13} /></span>}
             <div className="notecard__title">{doc.title.trim() || 'Untitled note'}</div>
             <div className="notecard__preview">{preview}</div>
             <div className="notecard__date">{formatDate(doc.updatedAt)}</div>

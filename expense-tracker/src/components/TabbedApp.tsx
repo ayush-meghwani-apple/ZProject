@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 export interface TabDef {
   id: string;
   label: string;
-  icon: string;
+  icon: ReactNode;
   render: () => ReactNode;
 }
 

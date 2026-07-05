@@ -10,6 +10,7 @@ import {
   notificationPermission,
   requestNotificationPermission,
 } from '../core/notify';
+import AppIcon from './AppIcon';
 import type { Alias, Category, Subcategory } from '../types/models';
 
 interface Props {
@@ -159,7 +160,7 @@ export default function RemindersInbox({
             title="Dismiss"
             aria-label="Dismiss reminder"
           >
-            ✕
+            <AppIcon name="close" size={16} />
           </button>
         </div>
       </div>
@@ -171,7 +172,7 @@ export default function RemindersInbox({
       <div className="inbox-overlay" onClick={onClose} />
       <div className="inbox" role="dialog" aria-label="Reminders">
         <div className="inbox__head">
-          <strong>🔔 Reminders</strong>
+          <strong className="inbox__title"><AppIcon name="bell" size={18} /> Reminders</strong>
           <div className="inbox__head-actions">
             {reminders.length > 0 && (
               <button className="btn btn--ghost btn--sm" onClick={clearAll}>
@@ -179,7 +180,7 @@ export default function RemindersInbox({
               </button>
             )}
             <button className="iconbtn" onClick={onClose} aria-label="Close reminders">
-              ✕
+              <AppIcon name="close" size={18} />
             </button>
           </div>
         </div>
@@ -210,7 +211,7 @@ export default function RemindersInbox({
         <div className="inbox__foot">
           {perm !== 'granted' && perm !== 'unsupported' && (
             <button className="btn btn--ghost btn--sm" onClick={enableNotifications}>
-              🔔 Enable notifications
+              <AppIcon name="bell" size={15} /> Enable notifications
             </button>
           )}
           <label className="inbox__toggle">

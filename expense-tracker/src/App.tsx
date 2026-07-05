@@ -3,6 +3,7 @@ import ExpensifyApp from './components/ExpensifyApp';
 import GoalsApp from './components/GoalsApp';
 import NotesApp from './components/NotesApp';
 import RemindersInbox from './components/RemindersInbox';
+import AppIcon, { type IconName } from './components/AppIcon';
 import { RemindersRepository } from './repository/remindersRepository';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
@@ -12,19 +13,19 @@ type AppId = 'expensify' | 'goals' | 'notes';
 interface AppDef {
   id: AppId;
   name: string;
-  icon: string;
+  icon: IconName;
   section: string;
 }
 
 const APPS: AppDef[] = [
-  { id: 'expensify', name: 'Expensify', icon: '💸', section: 'Money' },
-  { id: 'goals', name: 'Questify', icon: '🧭', section: 'Planning' },
-  { id: 'notes', name: 'Slate', icon: '📝', section: 'Studio' },
+  { id: 'expensify', name: 'Expensify', icon: 'expensify', section: 'Money' },
+  { id: 'goals', name: 'Questify', icon: 'questify', section: 'Planning' },
+  { id: 'notes', name: 'Slate', icon: 'slate', section: 'Studio' },
 ];
 
 // Listed in the drawer but not yet built.
-const SOON: { name: string; icon: string; section: string }[] = [
-  { name: 'Investments', icon: '📈', section: 'Planning' },
+const SOON: { name: string; icon: IconName; section: string }[] = [
+  { name: 'Investments', icon: 'investments', section: 'Planning' },
 ];
 
 export default function App() {
@@ -79,16 +80,18 @@ export default function App() {
     <div className="app">
       <header className="app__header">
         <button className="hamburger" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
-          ☰
+          <AppIcon name="menu" size={22} />
         </button>
-        <span className="app__icon">{current.icon}</span>
+        <span className="app__icon">
+          <AppIcon name={current.icon} size={20} />
+        </span>
         <span className="app__title">{current.name}</span>
         <button
           className="bell"
           onClick={() => setInboxOpen(true)}
           aria-label={dueCount > 0 ? `${dueCount} reminders due` : 'Reminders'}
         >
-          🔔
+          <AppIcon name="bell" size={20} />
           {dueCount > 0 && <span className="bell__badge">{dueCount > 9 ? '9+' : dueCount}</span>}
         </button>
       </header>
@@ -98,13 +101,15 @@ export default function App() {
         <div className="drawer__head">
           <div className="drawer__brandwrap">
             <span className="drawer__brand">
-              <span className="drawer__brand-icon">🌱</span>
+              <span className="drawer__brand-icon">
+                <AppIcon name="brand" size={22} />
+              </span>
               <span className="drawer__brand-text">Kaizen</span>
             </span>
             <span className="drawer__subtitle">continuous improvement</span>
           </div>
           <button className="iconbtn" onClick={() => setDrawerOpen(false)} aria-label="Close menu">
-            ✕
+            <AppIcon name="close" size={18} />
           </button>
         </div>
         {sections.map((section) => (
@@ -116,13 +121,17 @@ export default function App() {
                 className={`drawer__item ${a.id === activeApp ? 'drawer__item--active' : ''}`}
                 onClick={() => openApp(a.id)}
               >
-                <span className="drawer__icon">{a.icon}</span>
+                <span className="drawer__icon">
+                  <AppIcon name={a.icon} size={20} />
+                </span>
                 {a.name}
               </button>
             ))}
             {SOON.filter((s) => s.section === section).map((s) => (
               <button key={s.name} className="drawer__item drawer__item--soon" disabled>
-                <span className="drawer__icon">{s.icon}</span>
+                <span className="drawer__icon">
+                  <AppIcon name={s.icon} size={20} />
+                </span>
                 {s.name}
                 <span className="drawer__badge">soon</span>
               </button>

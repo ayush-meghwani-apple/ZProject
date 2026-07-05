@@ -10,6 +10,7 @@ import {
 } from '../core/vehicles';
 import AmountInput from './AmountInput';
 import GoalTimeline from './GoalTimeline';
+import AppIcon from './AppIcon';
 import type {
   Compounding,
   Goal,
@@ -300,7 +301,7 @@ export default function Goals({ version, onChange }: Props) {
                       onClick={() => removeItem(it.id)}
                       title="Remove block"
                     >
-                      🗑️
+                      <AppIcon name="trash" size={16} />
                     </button>
                   </div>
                   <div className="grid-2">
@@ -406,10 +407,10 @@ export default function Goals({ version, onChange }: Props) {
 
             <div className="inline" style={{ marginTop: 8 }}>
               <button className="btn btn--ghost" onClick={() => addItem('recurring')}>
-                ＋ Monthly saving
+                <AppIcon name="plus" size={15} /> Monthly saving
               </button>
               <button className="btn btn--ghost" onClick={() => addItem('lumpsum')}>
-                ＋ Lump sum / FD
+                <AppIcon name="plus" size={15} /> Lump sum / FD
               </button>
             </div>
           </div>
@@ -449,7 +450,7 @@ export default function Goals({ version, onChange }: Props) {
         </div>
       ) : (
         <button className="btn" style={{ width: '100%' }} onClick={startNew}>
-          ➕ New Goal
+          <AppIcon name="plus" size={17} /> New Goal
         </button>
       )}
 
@@ -471,10 +472,10 @@ export default function Goals({ version, onChange }: Props) {
               </div>
               <div className="inline">
                 <button className="iconbtn" onClick={() => startEdit(g)} title="Edit">
-                  ✏️
+                  <AppIcon name="edit" size={16} />
                 </button>
                 <button className="iconbtn" onClick={() => remove(g.id)} title="Delete">
-                  🗑️
+                  <AppIcon name="trash" size={16} />
                 </button>
               </div>
             </div>

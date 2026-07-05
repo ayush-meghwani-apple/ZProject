@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { RecurringRepository } from '../repository/recurringRepository';
 import { formatINR, formatDate } from '../core/util';
+import AppIcon from './AppIcon';
 import type {
   Category,
   RecurringExpense,
@@ -126,10 +127,10 @@ export default function RecurringManager({ version, onChange }: Props) {
                   onClick={() => toggle(r.id)}
                   title={r.active ? 'Pause' : 'Resume'}
                 >
-                  {r.active ? '⏸️' : '▶️'}
+                  {r.active ? <AppIcon name="pause" size={16} /> : <AppIcon name="play" size={16} />}
                 </button>
                 <button className="iconbtn" onClick={() => remove(r.id)} title="Delete">
-                  🗑️
+                  <AppIcon name="trash" size={16} />
                 </button>
               </div>
             </div>

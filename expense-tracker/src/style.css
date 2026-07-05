@@ -2833,3 +2833,66 @@ body {
 }
 
 
+
+/* ===== Consistent line-icon (lucide) rendering across the app chrome ===== */
+/* All icons share one visual language now; these rules keep the SVGs sized and
+   aligned the same way whether they sit alone in a button or beside a label. */
+svg.lucide {
+  flex: 0 0 auto;
+  vertical-align: -0.14em;
+}
+
+/* Icon-only buttons: centre the glyph. */
+.iconbtn,
+.hamburger,
+.bell,
+.reorder__btn,
+.notegroup__ic,
+.cat__toggle,
+.notebar__btn--sq {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Icon holders in the drawer / header / tab bar. */
+.app__icon,
+.drawer__icon,
+.drawer__brand-icon,
+.tabbar .icon,
+.notegroup__chev,
+.barrow__chev {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The rotating chevron in note groups: keep the SVG centred as it spins. */
+.notegroup__chev svg.lucide,
+.barrow__chev svg.lucide {
+  vertical-align: 0;
+}
+
+/* Text buttons that lead with an icon: tidy inline gap + baseline alignment. */
+.btn,
+.notes__new,
+.reel__act,
+.catmenu__new {
+  gap: 5px;
+}
+.btn svg.lucide {
+  vertical-align: -0.16em;
+}
+
+/* Category emoji shown in the note editor's category button keeps its size. */
+.iconbtn__emoji {
+  font-size: 17px;
+  line-height: 1;
+}
+
+/* Reminder inbox title icon sits inline with the heading text. */
+.inbox__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
