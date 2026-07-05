@@ -1,8 +1,9 @@
 import { BackupRepository } from '../repository/backupRepository';
 
-/** File name for an exported backup, dated so successive saves don't collide. */
+/** Fixed file name for an exported backup, so each new save replaces the same
+ *  file (in Files / Downloads) instead of piling up one per day. */
 export function backupFilename(): string {
-  return `kaizen-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  return 'kaizen-backup.json';
 }
 
 /**

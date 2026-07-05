@@ -9,18 +9,9 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 _Nothing open right now - all reported items are shipped._
 
-if you see there is not much space left in the canvas after everything opens up, can we do something about it, i will reduce the keyboard size at my end but can't reduce it much, we have to adjust in canvas only
-![alt text](image-29.png)
-
-for table, we still are showing grey highlights, i think just showing 3 dots for grabbers are enought and when we click on them,  that behavior is correct
-Also when i click on grabbers, it shows me options, but wheni start dragging then options should disappear 
-indentation of rbulleted list is correct, but when I do indentation with normal text, it jus adds 2-3 space characters, not enough indentation
-
-double-click on this ui still does nothing:
-![alt text](image-30.png)
-please fix this too
-
 ## Done
+
+- ✅ **(2026-07-05)** **Backups now reuse one file name (Kaizen).** The export is always named `kaizen-backup.json` (no date), so each new backup **replaces the previous one** in Files/iCloud Drive instead of leaving a pile of dated copies — just tap **Replace** when iOS asks.
 
 - ✅ **(2026-07-05)** **Automatic backup reminder (Kaizen).** Since data lives only on the device, Kaizen now **pops up a one-tap backup prompt when you open the app** if it's been longer than your chosen interval (default: **every day**) since the last backup. Tap **Back up now** → choose **Save to Files** (iCloud Drive) and you're safe; **Not now** waits until the next open. The frequency (daily / 3 days / weekly / 2 weeks / never) is in **Settings → Backup & Sync**, and it won't nag an empty app. Backups use the native share sheet on iPhone so the file actually leaves the device.
 
