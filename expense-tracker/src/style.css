@@ -482,6 +482,11 @@ body {
      so a diagonal gesture never fights the page or flips tabs by accident. */
   touch-action: pan-y;
   position: relative;
+  /* When a focused field is scrolled into view, land it a small margin above the
+     keyboard (bottom) / below the header (top) — WITHOUT adding any real content
+     height, so nothing grows and no blank gap appears. */
+  scroll-padding-bottom: 24px;
+  scroll-padding-top: 10px;
 }
 
 /* The active tab's content; eases back after a partial swipe and fades in on
@@ -586,13 +591,11 @@ body {
   font-size: 18px;
 }
 
-/* While the keyboard is open, give form pages a small amount of scroll room at
-   the very bottom so the *last* field can still be docked a touch above the
-   keyboard. Kept minimal: the focused field is docked deterministically
-   (core/viewport.ts), so this padding always sits at/below the keyboard line
-   and never shows as a blank gap above the field. */
+/* While the keyboard is open, give form pages a little scroll room at the very
+   bottom so the *last* field can still be scrolled a touch above the keyboard.
+   Kept small so it can't show as a blank gap. */
 .kb-open .page {
-  padding-bottom: 40px;
+  padding-bottom: 28px;
 }
 
 @media (pointer: coarse) {
