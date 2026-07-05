@@ -336,7 +336,7 @@ export default function Summary({ version }: Props) {
               <YAxis stroke="#94a3b8" fontSize={11} width={40} />
               <Tooltip
                 content={<BarTip />}
-                cursor={{ fill: 'rgba(56, 189, 248, 0.1)' }}
+                cursor={false}
               />
               <Bar
                 dataKey="total"
