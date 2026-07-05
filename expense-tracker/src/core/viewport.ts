@@ -59,11 +59,22 @@ export function initViewport(): void {
     resyncTimers = [60, 160, 320, 550, 850, 1200].map((d) => window.setTimeout(apply, d));
   }
 
-  // Gently make sure a focused *form field* is visible above the keyboard. This
-  // ONLY nudges the scroll container when the field is actually clipped (hidden
-  // behind the keyboard, or scrolled above the top) — never a big jump, so it
-  // can't make "the whole thing scroll up". Chat and the note editor manage
-  // their own layout, so fields outside a `.page` are skipped.
+  // Dock a focused *form field* just above the keyboard — deterministically.
+  //
+  // When the keyboard opens, iOS/Blink run their own scroll-into-view which
+  // *over-scrolls* the field toward the middle of the now-shrunken viewport,
+  // leaving a big empty gap between the field and the keyboard (the reported
+  // "whole thing scrolls up / blank area"). Nudging only when the field is
+  // clipped never fixed that, because an over-scrolled field isn't clipped — it
+  // just floats too high.
+  //
+  // So we compute the exact scroll that puts the field's bottom a small margin
+  // above the scroll container's bottom (which sits right at the keyboard) and
+  // set it directly. A positive delta scrolls up (field was behind the
+  // keyboard); a negative delta scrolls down (field was floating too high).
+  // `scrollTop` clamps to the valid range, so a field near the very top simply
+  // stays there instead of forcing blank space above it. Chat and the note
+  // editor own their layout, so fields outside a `.page` are skipped.
   function dockFocused() {
     if (!root.classList.contains('kb-open')) return;
     const el = document.activeElement as HTMLElement | null;
@@ -75,22 +86,16 @@ export function initViewport(): void {
     if (!sc) return;
     const scRect = sc.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
-    const margin = 16;
-    if (elRect.bottom > scRect.bottom - margin) {
-      // Field sits below the visible area (behind the keyboard) — scroll up just
-      // enough to reveal it a touch above the keyboard.
-      sc.scrollTop += elRect.bottom - (scRect.bottom - margin);
-    } else if (elRect.top < scRect.top + margin) {
-      // Field is above the visible area — scroll down just enough.
-      sc.scrollTop -= scRect.top + margin - elRect.top;
-    }
-    // Otherwise it's already comfortably in view — leave the scroll alone.
+    const gap = 24; // rest the field this far above the keyboard
+    const delta = elRect.bottom - (scRect.bottom - gap);
+    if (Math.abs(delta) > 2) sc.scrollTop += delta;
   }
 
   // The keyboard opens over a few hundred ms and the viewport settles in stages,
-  // so re-check the focused field a few times to land it in view.
+  // while the browser's own scroll-into-view fires in between — so re-assert our
+  // deterministic position a few times to override it and land the field.
   function startDocking() {
-    [120, 300, 550, 800].forEach((d) => window.setTimeout(dockFocused, d));
+    [0, 90, 200, 350, 550, 800].forEach((d) => window.setTimeout(dockFocused, d));
   }
 
   apply();

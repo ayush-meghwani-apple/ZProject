@@ -7,11 +7,17 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-_Nothing open right now - all reported items are shipped._
+- I will show ypu exact scenario in which there is that abrupt ui broken experience, I was trying to add a recurring expense so i cliced on AMount(See screenshot below):
+![alt text](image-31.png)
+then this is how the keyboard opens, the whole thing scrolls-up:
+![alt text](image-32.png)
+
+Now this issue happens everytime when i click on some text box which is in the space of keyboard position area.
+FOr ex - mobile is of 10 cm and bottom 3 cm is taken by keyboard when it opens, so when i opens anything between 6/7-10cmm this issue will always occur
+
+  - 🟡 **(v1.12.2, awaiting your on-device confirmation)** Found the real cause by measuring it: when the keyboard opens, the browser's own auto-scroll **over-scrolls** the focused field toward the middle of the shrunken screen — in my repro the field jumped up 481px and ended up **261px above the keyboard** (that empty gap = the "blank area" you saw), and the old bottom padding also grew the page (the shrinking scrollbar). My previous attempt only corrected fields *hidden behind* the keyboard, not ones floating *too high*, so the gap stayed. Now the focused field is **deterministically parked 24px above the keyboard** every time (pulled down if it floated too high, up if it was behind the keyboard), and the page padding is trimmed. Measured after the fix: field sits exactly 24px above the keyboard, scroll moves only what's needed, no gap. Please re-test on 1.12.2 and tell me if it's truly gone before I mark it done.
 
 ## Done
-
-- ✅ **(2026-07-05)** **Fixed the "whole thing scrolls up" when tapping a field in the keyboard's area.** The real culprit was my own earlier fix: while the keyboard was open I'd added a huge `50vh` top padding to form pages and force-scrolled the field to the bottom — which on the actual iPhone made the page lurch way up, leaving the field off-screen with a big empty gap (your Amount screenshot). Ripped that out. Now, when the keyboard opens, the focused field is **only nudged into view if it's actually hidden behind the keyboard** — a small, controlled scroll that lands it ~16px above the keyboard, never a big jump. Verified for a low field (like Recurring → Amount) and confirmed the Notes toolbar still sits right above the keyboard.
 
 - ✅ **(2026-07-05)** **No more dead gap between a form field and the keyboard.** Great catch — on form screens (Categories, Settings, Goals) the focused field sat wherever it was in the page, so when the keyboard opened there was a big empty gap between the field and the keyboard. Now, while the keyboard is up, those pages get scroll room and the focused field is **docked ~20px right above the keyboard** (verified for both top-of-page and lower fields). Chat and the note editor keep their own bottom-pinned layouts. Pairs with the earlier fix that stops the field floating in the middle on open.
 

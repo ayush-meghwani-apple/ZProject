@@ -586,12 +586,13 @@ body {
   font-size: 18px;
 }
 
-/* While the keyboard is open, give form pages a little breathing room at the
-   bottom so a field near the very end can sit just above the keyboard when the
-   scroll nudges it into view (core/viewport.ts). Deliberately small — a big
-   padding here made the whole page lurch upward on focus. */
+/* While the keyboard is open, give form pages a small amount of scroll room at
+   the very bottom so the *last* field can still be docked a touch above the
+   keyboard. Kept minimal: the focused field is docked deterministically
+   (core/viewport.ts), so this padding always sits at/below the keyboard line
+   and never shows as a blank gap above the field. */
 .kb-open .page {
-  padding-bottom: 88px;
+  padding-bottom: 40px;
 }
 
 @media (pointer: coarse) {
