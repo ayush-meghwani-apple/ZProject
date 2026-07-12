@@ -7,7 +7,31 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-_Nothing open right now._
+-> Fix the liquid toggle UI:
+
+![alt text](image-57.png)
+
+Why is there liquid toggle's background present, its simply a toggle button why is there a background which make its having a broken ui.
+
+-> we recently pushed these 4 files which are going to help us:
+
+![alt text](image-59.png)
+
+but we have to make sure that this doesn't expose any vital information or security threat of some important data as its a public repo, implementation details are all good but nothing else - just do a quick security review check,
+
+-> Also in any field if we click on update icon, focus goes to the text box:
+![alt text](image-58.png)
+which opens the keyboard, till now this flow is correct but if i try to click on delete button from their, then first keyboard closes and then i have to click on delete button again then delete happens.
+
+SO i don't want to change the flow, but when i click anywhere on screen keyboard should close but if i am clicking on tick mark or delete icon then that operation should also happen and not just keyboard close.
+
+if you are unable to fix this then don't change anything here let it be like this only.
+
+
+Code feedback:
+-> style.css is now ~5k lines — worth splitting per-feature (e.g. fortuna.css) at some point.
+-> The pure functions in core/plannerMath.ts (returns, SIP, net worth, migrations) are ideal for a small unit-test file — that would catch regressions in exactly the risky money-math I keep re-verifying by hand in the browser.
+-> ALso review the whole code from the perspective of an Principal engineer and improove things without breaking any features or changes I don't want that at all
 
 ## Done
 

@@ -76,11 +76,18 @@ export default function HoldingList({
               className="iconbtn ft-holding__del"
               aria-label="Remove"
               title="Remove"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => { setEditingId(null); onChange((rs) => { rs.splice(i, 1); }); }}
             >
               <AppIcon name="trash" size={16} />
             </button>
-            <button className="iconbtn ft-holding__done" aria-label="Done" title="Done" onClick={() => setEditingId(null)}>
+            <button
+              className="iconbtn ft-holding__done"
+              aria-label="Done"
+              title="Done"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setEditingId(null)}
+            >
               <AppIcon name="done" size={16} />
             </button>
           </div>

@@ -3953,6 +3953,9 @@ svg.lucide {
 }
 .ft-row__field--switch {
   justify-content: flex-end;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 /* Add-category button & delete-category button */

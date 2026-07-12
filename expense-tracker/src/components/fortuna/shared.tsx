@@ -128,7 +128,7 @@ export function RenamableMoneyRow({
           <span className="ft-row__cur">₹</span>
           <AmountInput className="input ft-holding__val" value={value} onChange={onChange} placeholder="0" />
         </span>
-        <button className="iconbtn ft-holding__done" aria-label="Done" title="Done" onClick={commit}>
+        <button className="iconbtn ft-holding__done" aria-label="Done" title="Done" onMouseDown={(e) => e.preventDefault()} onClick={commit}>
           <AppIcon name="done" size={16} />
         </button>
       </div>

@@ -203,11 +203,23 @@ function GoalTypeRow({
           />
         </div>
         {canDelete && (
-          <button className="iconbtn ft-gtype__del" aria-label="Remove goal type" title="Remove" onClick={onRemove}>
+          <button
+            className="iconbtn ft-gtype__del"
+            aria-label="Remove goal type"
+            title="Remove"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onRemove}
+          >
             <AppIcon name="trash" size={16} />
           </button>
         )}
-        <button className="iconbtn ft-gtype__done" aria-label="Done" title="Done" onClick={() => setEditing(false)}>
+        <button
+          className="iconbtn ft-gtype__done"
+          aria-label="Done"
+          title="Done"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setEditing(false)}
+        >
           <AppIcon name="done" size={16} />
         </button>
       </div>
