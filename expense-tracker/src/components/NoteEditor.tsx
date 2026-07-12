@@ -93,6 +93,15 @@ export default function NoteEditor({ doc, categories, onExit, onCategoriesChange
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // While the note editor is open, mark the root so the global app header is
+  // kept visible even when the keyboard opens. Otherwise hiding the header (done
+  // elsewhere to reclaim space) makes this editor's top toolbar jump up under
+  // the phone's status bar / notch when the keyboard appears.
+  useEffect(() => {
+    document.documentElement.classList.add('note-editing');
+    return () => document.documentElement.classList.remove('note-editing');
+  }, []);
+
   // Remember the last selection inside the body, so colour pickers (which steal
   // focus when their native picker opens) can restore it before applying.
   useEffect(() => {

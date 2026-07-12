@@ -6,8 +6,16 @@ When it's fixed, I'll move it to **Done** with the date and a short fix note.
 Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
+- i want a way so that when i add expense i can add it whats the payment method, cash, my one of the credit card, my one of the bank accounts, or upi lite or cash or splitwise, but don't want to complicate the adding expense mechanism - so may be something like this would be a good flow that as i press or send message from typing box then a pop-up comes which asks me the payment method and i can dismiss it it or whatever easily so its not a compulsion to add it and obviously from reels also i should be able to add payment method.
+- and in summary tab also i would be able to see the expenses based on payment method like we have apie chart for categories.
+
+- Also i need a hidden way to save some of my saving values but i don't want it to be visible just like that me be something hiddent which can be seen only by a pass-code or something like that, may be we can add that in Questify App or create new sub-app called savings or think of some better way.
 
 ## Done
+
+- ✅ **(2026-07-12)** **Slate top toolbar no longer flies under the notch when the keyboard opens.** Tapping into the note body used to make the note's top bar (back / pin / undo / redo / category / delete) jump to the very top of the screen and overlap the phone's status bar. Cause: the app-wide rule that hides the global header when the keyboard opens (to reclaim space) removed the safe-area padding that keeps things below the notch. Now the header is **kept while you're editing a note**, so the note toolbar stays put in its proper place.
+
+- ✅ **(2026-07-12)** **Pie chart taps work again.** Tapping a slice did nothing on the phone — recharts' built-in SVG tap handling is unreliable on iOS. Replaced it with our own reliable pointer-based tap that hit-tests which slice you touched, so **single-tap shows the amount** and **double-tap drills into the sub-categories** as before (and a finger wobble over the chart can no longer accidentally flip tabs).
 
 - ✅ **(2026-07-05)** **Fixed the keyboard "whole thing scrolls up / blank area" for good (v1.12.3).** When you tapped a field low on the screen (like Recurring → Amount), the keyboard opening threw the page up and left a big empty gap. The earlier attempts (v1.12.1/1.12.2) worked perfectly in my simulator but did nothing on your phone — which was the real clue: my simulator can't mimic real iOS, so the true problem was elsewhere. Three fixes: (1) **keyboard detection now survives iOS quirks** — it measures the keyboard against the tallest viewport height it has seen, so it still detects the keyboard even on iOS versions where the reported window height *also* shrinks (which was previously making the app think no keyboard was open, so none of the keyboard layout ran); (2) it now uses the **browser's own native scroll-into-view** (which iOS does reliably) plus CSS `scroll-padding` to land the field ~24px above the keyboard, instead of my own scroll math fighting iOS; (3) trimmed the page padding so nothing grows. Confirmed working on-device. _(A hidden `?kbdebug=1` viewport readout was added along the way for diagnosing this kind of thing on a real phone.)_
 

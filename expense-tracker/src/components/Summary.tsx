@@ -88,6 +88,10 @@ export default function Summary({ version }: Props) {
   const [picked, setPicked] = useState<{ name: string; total: number; color: string; categoryId?: string } | null>(null);
   const lastClick = useRef<{ id: string; t: number }>({ id: '', t: 0 });
   const initialized = useRef(false);
+  // Robust pie tap: recharts' SVG onClick is unreliable on iOS taps, so we do our
+  // own hit-testing on pointerup (see handlePieTap).
+  const pieWrapRef = useRef<HTMLDivElement>(null);
+  const tapStart = useRef<{ x: number; y: number } | null>(null);
 
   // Dismiss the picked-slice amount only when tapping somewhere that is neither a
   // slice nor the amount pill itself (so tapping the pill keeps it open).
@@ -103,24 +107,16 @@ export default function Summary({ version }: Props) {
   }, []);
 
   // Recharts makes its SVG surface + sectors keyboard-focusable. On iOS, tapping
-  // a slice focuses that element and Safari scrolls it into view, which nudges
-  // the visual viewport and pushes our fixed bottom tab bar off-screen. Two
-  // guards: (1) keep stripping the tabindex recharts adds, and (2) if a chart
-  // element still manages to grab focus, blur it immediately so nothing scrolls.
+  // a slice focused that element and Safari scrolled it into view (which shoved
+  // the fixed tab bar off-screen) and the focus handling also swallowed the tap
+  // so the slice did nothing. Strip the tabindex recharts adds entirely so the
+  // chart isn't focusable at all — no focus, no scroll, no swallowed tap. Runs
+  // every render since recharts re-adds it.
   useEffect(() => {
     document
       .querySelectorAll('.recharts-wrapper [tabindex], .recharts-surface[tabindex]')
-      .forEach((el) => el.setAttribute('tabindex', '-1'));
+      .forEach((el) => el.removeAttribute('tabindex'));
   });
-
-  useEffect(() => {
-    function onFocusIn(e: FocusEvent) {
-      const t = e.target as HTMLElement | null;
-      if (t?.closest?.('.recharts-wrapper')) t.blur?.();
-    }
-    document.addEventListener('focusin', onFocusIn);
-    return () => document.removeEventListener('focusin', onFocusIn);
-  }, []);
 
   async function load() {
     const [e, c, s, cy] = await Promise.all([
@@ -163,6 +159,63 @@ export default function Summary({ version }: Props) {
       else next.add(id);
       return next;
     });
+  }
+
+  // Find which pie sector is under a point. Recharts renders `.recharts-sector`
+  // paths in data order, so the DOM index maps to the data index. We nudge the
+  // hit-test point toward the pie centre a few times so a tap that lands on a
+  // label (which sits over the wedge) still resolves to its slice.
+  function sectorIndexAt(clientX: number, clientY: number): number {
+    const wrap = pieWrapRef.current;
+    if (!wrap) return -1;
+    const sectors = Array.from(wrap.querySelectorAll('.recharts-sector'));
+    if (!sectors.length) return -1;
+    const surf = wrap.querySelector('.recharts-surface') ?? wrap;
+    const rect = surf.getBoundingClientRect();
+    const ccx = rect.left + rect.width / 2;
+    const ccy = rect.top + rect.height / 2;
+    for (let f = 0; f <= 4; f++) {
+      const t = f / 6;
+      const el = document.elementFromPoint(clientX + (ccx - clientX) * t, clientY + (ccy - clientY) * t);
+      const sector = el?.closest?.('.recharts-sector');
+      if (sector) return sectors.indexOf(sector);
+    }
+    return -1;
+  }
+
+  // Our own tap handling (a plain pointer event, which fires reliably on iOS —
+  // unlike recharts' SVG onClick). Ignores drags/scrolls via the small move
+  // threshold, then runs the same single-tap-pill / double-tap-drill behaviour.
+  function onPiePointerDown(e: React.PointerEvent) {
+    tapStart.current = { x: e.clientX, y: e.clientY };
+  }
+  function onPiePointerUp(e: React.PointerEvent) {
+    const s = tapStart.current;
+    tapStart.current = null;
+    if (!s) return;
+    if (Math.abs(e.clientX - s.x) + Math.abs(e.clientY - s.y) > 12) return;
+    const index = sectorIndexAt(e.clientX, e.clientY);
+    if (index < 0) return;
+    if (drill) {
+      const sd = drillData[index];
+      if (sd) setPicked({ name: sd.name, total: sd.total, color: sd.color });
+      return;
+    }
+    const c = categorySummary[index];
+    if (!c) return;
+    const now = Date.now();
+    const isSecond = lastClick.current.id === c.categoryId && now - lastClick.current.t < 350;
+    lastClick.current = { id: c.categoryId, t: now };
+    if (isSecond) {
+      // Double-tap → drill into the sub-category breakdown.
+      if (c.categoryId !== 'uncategorized') {
+        setDrillId(c.categoryId);
+        setPicked(null);
+      }
+    } else {
+      // Single-tap → show the amount pill (tap the pill to drill).
+      setPicked({ name: c.name, total: c.total, color: c.color, categoryId: c.categoryId });
+    }
   }
 
   return (
@@ -230,7 +283,8 @@ export default function Summary({ version }: Props) {
             )}
           </div>
 
-          <ResponsiveContainer width="100%" height={240}>
+          <div className="pie__chart" ref={pieWrapRef} data-noswipe onPointerDown={onPiePointerDown} onPointerUp={onPiePointerUp}>
+            <ResponsiveContainer width="100%" height={240}>
             <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
               {drill ? (
                 <Pie
@@ -243,10 +297,6 @@ export default function Summary({ version }: Props) {
                   label={pieLabel}
                   labelLine={false}
                   isAnimationActive={false}
-                  onClick={(_, index) => {
-                    const s = drillData[index];
-                    if (s) setPicked({ name: s.name, total: s.total, color: s.color });
-                  }}
                 >
                   {drillData.map((s) => (
                     <Cell key={s.subcategoryId} fill={s.color} style={{ cursor: 'pointer' }} />
@@ -263,25 +313,6 @@ export default function Summary({ version }: Props) {
                   label={pieLabel}
                   labelLine={false}
                   isAnimationActive={false}
-                  onClick={(_, index) => {
-                    const c = categorySummary[index];
-                    if (!c) return;
-                    const now = Date.now();
-                    const isSecond =
-                      lastClick.current.id === c.categoryId && now - lastClick.current.t < 350;
-                    lastClick.current = { id: c.categoryId, t: now };
-                    if (isSecond) {
-                      // Double-tap → drill into the sub-category breakdown.
-                      if (c.categoryId !== 'uncategorized') {
-                        setDrillId(c.categoryId);
-                        setPicked(null);
-                      }
-                    } else {
-                      // Single-tap → show the amount pill (tap the pill to drill,
-                      // or double-tap the slice within 350ms).
-                      setPicked({ name: c.name, total: c.total, color: c.color, categoryId: c.categoryId });
-                    }
-                  }}
                 >
                   {categorySummary.map((c) => (
                     <Cell key={c.categoryId} fill={c.color} style={{ cursor: 'pointer' }} />
@@ -290,6 +321,7 @@ export default function Summary({ version }: Props) {
               )}
             </PieChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
 

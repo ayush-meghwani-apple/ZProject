@@ -576,8 +576,10 @@ body {
 
 /* Also drop the global app header while the keyboard is up: it's redundant when
    you're focused on a field/note, and reclaiming it gives the canvas ~50px more
-   room above the keyboard (which the toolbar + keyboard eat into). */
-.kb-open .app__header {
+   room above the keyboard (which the toolbar + keyboard eat into). EXCEPTION:
+   the note editor has its own pinned top toolbar — hiding the header there makes
+   that toolbar jump up under the phone's status bar/notch, so keep it. */
+.kb-open:not(.note-editing) .app__header {
   display: none;
 }
 
@@ -603,7 +605,7 @@ body {
     display: none;
   }
 
-  .kb-typing .app__header {
+  .kb-typing:not(.note-editing) .app__header {
     display: none;
   }
 }
