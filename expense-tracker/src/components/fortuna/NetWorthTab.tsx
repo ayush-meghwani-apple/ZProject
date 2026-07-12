@@ -1,18 +1,14 @@
 import { useMemo } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
-import { computeNetWorth, targetAllocation, assetClassTotals, activeAssumptions, CLASS_LABEL } from '../../core/plannerMath';
+import {
+  computeNetWorth,
+  targetAllocation,
+  activeAssumptions,
+  classLabelMap,
+} from '../../core/plannerMath';
 import type { AssetClassKey } from '../../types/models';
 import HoldingList from './HoldingList';
 import { Section, TotalRow, Stat, formatINR } from './shared';
-
-const CLASS_ORDER: AssetClassKey[] = [
-  'domestic_equity',
-  'us_equity',
-  'debt',
-  'gold',
-  'crypto',
-  'real_estate',
-];
 
 const CLASS_COLOR: Record<AssetClassKey, string> = {
   domestic_equity: '#6366f1',
@@ -22,17 +18,33 @@ const CLASS_COLOR: Record<AssetClassKey, string> = {
   crypto: '#a855f7',
   real_estate: '#ef4444',
 };
+/** Palette for custom classes (cycled by order). */
+const CUSTOM_COLORS = ['#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#84cc16', '#06b6d4'];
 
 export default function NetWorthTab({ plan, update }: FortunaTabProps) {
   const disabled = plan.disabledClasses ?? [];
-  const nw = useMemo(() => computeNetWorth(plan.assets, plan.liabilities, disabled), [plan.assets, plan.liabilities, disabled]);
-  const totals = useMemo(() => assetClassTotals(plan.assets, disabled), [plan.assets, disabled]);
-  const target = useMemo(
-    () => targetAllocation(plan.goals, activeAssumptions(plan.assumptions, disabled)),
-    [plan.goals, plan.assumptions, disabled],
+  const custom = plan.customClasses ?? [];
+  const nw = useMemo(
+    () => computeNetWorth(plan.assets, plan.liabilities, disabled, custom),
+    [plan.assets, plan.liabilities, disabled, custom],
   );
+  const active = useMemo(() => activeAssumptions(plan.assumptions, disabled), [plan.assumptions, disabled]);
+  const target = useMemo(
+    () => targetAllocation(plan.goals, active, plan.horizons),
+    [plan.goals, active, plan.horizons],
+  );
+  const labelMap = useMemo(() => classLabelMap(active), [active]);
 
-  const targetTotal = CLASS_ORDER.reduce((s, k) => s + target[k], 0);
+  // A stable colour per class key (built-ins fixed; customs cycle a palette).
+  const colorFor = useMemo(() => {
+    const map: Record<string, string> = { ...CLASS_COLOR };
+    custom.forEach((c, i) => { map[c.id] = CUSTOM_COLORS[i % CUSTOM_COLORS.length]; });
+    return (k: string) => map[k] ?? '#94a3b8';
+  }, [custom]);
+
+  const mix = nw.byClass.filter((c) => c.value > 0);
+  const targetKeys = Object.keys(target).filter((k) => target[k] > 0);
+  const targetTotal = targetKeys.reduce((s, k) => s + target[k], 0);
 
   return (
     <main className="app__body">
@@ -59,24 +71,22 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
           {nw.totalAssets > 0 ? (
             <>
               <div className="ft-bar">
-                {CLASS_ORDER.map((k) =>
-                  totals[k] > 0 ? (
-                    <span
-                      key={k}
-                      className="ft-bar__seg"
-                      style={{ width: `${(totals[k] / nw.totalAssets) * 100}%`, background: CLASS_COLOR[k] }}
-                      title={CLASS_LABEL[k]}
-                    />
-                  ) : null,
-                )}
+                {mix.map((c) => (
+                  <span
+                    key={c.key}
+                    className="ft-bar__seg"
+                    style={{ width: `${(c.value / nw.totalAssets) * 100}%`, background: colorFor(c.key) }}
+                    title={c.label}
+                  />
+                ))}
               </div>
               <ul className="ft-legend">
-                {CLASS_ORDER.filter((k) => totals[k] > 0).map((k) => (
-                  <li key={k} className="ft-legend__item">
-                    <span className="ft-legend__dot" style={{ background: CLASS_COLOR[k] }} />
-                    <span className="ft-legend__label">{CLASS_LABEL[k]}</span>
-                    <span className="ft-legend__pct">{Math.round((totals[k] / nw.totalAssets) * 100)}%</span>
-                    <span className="ft-legend__val">{formatINR(totals[k])}</span>
+                {mix.map((c) => (
+                  <li key={c.key} className="ft-legend__item">
+                    <span className="ft-legend__dot" style={{ background: colorFor(c.key) }} />
+                    <span className="ft-legend__label">{c.label}</span>
+                    <span className="ft-legend__pct">{Math.round((c.value / nw.totalAssets) * 100)}%</span>
+                    <span className="ft-legend__val">{formatINR(c.value)}</span>
                   </li>
                 ))}
               </ul>
@@ -92,10 +102,10 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
             subtitle="How your goals' SIPs should be split across asset classes"
           >
             <ul className="ft-legend">
-              {CLASS_ORDER.filter((k) => target[k] > 0).map((k) => (
+              {targetKeys.map((k) => (
                 <li key={k} className="ft-legend__item">
-                  <span className="ft-legend__dot" style={{ background: CLASS_COLOR[k] }} />
-                  <span className="ft-legend__label">{CLASS_LABEL[k]}</span>
+                  <span className="ft-legend__dot" style={{ background: colorFor(k) }} />
+                  <span className="ft-legend__label">{labelMap[k] ?? k}</span>
                   <span className="ft-legend__pct">{Math.round((target[k] / targetTotal) * 100)}%</span>
                   <span className="ft-legend__val">{formatINR(target[k])}/mo</span>
                 </li>

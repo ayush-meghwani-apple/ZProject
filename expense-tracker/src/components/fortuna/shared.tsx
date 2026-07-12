@@ -82,6 +82,105 @@ export function MoneyRow({
   );
 }
 
+/** Like {@link MoneyRow} but the label can be renamed via a pencil, so built-in
+ *  fixed lines (Home, REITs, S&P 500 ETF…) can be given your own names. */
+export function RenamableMoneyRow({
+  label,
+  value,
+  onChange,
+  onRename,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  onRename: (name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(label);
+
+  function commit() {
+    onRename(draft.trim() || label);
+    setEditing(false);
+  }
+
+  return (
+    <label className="ft-row">
+      {editing ? (
+        <span className="ft-row__label ft-row__label--edit">
+          <input
+            className="input ft-row__nameinp"
+            value={draft}
+            autoFocus
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commit();
+              if (e.key === 'Escape') setEditing(false);
+            }}
+          />
+          <button type="button" className="iconbtn" aria-label="Save name" onClick={commit}>
+            <AppIcon name="done" size={15} />
+          </button>
+        </span>
+      ) : (
+        <span className="ft-row__label">
+          {label}
+          <button
+            type="button"
+            className="iconbtn ft-row__rename"
+            aria-label="Rename"
+            title="Rename"
+            onClick={() => {
+              setDraft(label);
+              setEditing(true);
+            }}
+          >
+            <AppIcon name="edit" size={13} />
+          </button>
+        </span>
+      )}
+      <span className="ft-row__field">
+        <span className="ft-row__cur">₹</span>
+        <AmountInput className="input ft-row__input" value={value} onChange={onChange} placeholder="0" />
+      </span>
+    </label>
+  );
+}
+
+/** A compact on/off toggle switch. Safe to place inside a clickable header — it
+ *  stops click/pointer events from bubbling to the parent. */
+export function Switch({
+  on,
+  onChange,
+  label,
+}: {
+  on: boolean;
+  onChange: (on: boolean) => void;
+  label?: string;
+}) {
+  return (
+    <span
+      className="ft-switchwrap"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {label && <span className="ft-switch__label">{label}</span>}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label ?? 'Toggle'}
+        className={`ft-switch ${on ? 'ft-switch--on' : ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange(!on);
+        }}
+      >
+        <span className="ft-switch__knob" />
+      </button>
+    </span>
+  );
+}
+
 /** A label + percent input row (whole-number %). */
 export function PercentRow({
   label,

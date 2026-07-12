@@ -1,13 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
-import type { AssetClassKey, FinancialGoalRow, GoalPriority } from '../../types/models';
+import type { FinancialGoalRow, GoalPriority } from '../../types/models';
 import { GOAL_PRIORITIES } from '../../types/models';
-import { computeGoal, horizonLabel, CLASS_LABEL, computeCashFlow, activeAssumptions } from '../../core/plannerMath';
+import { computeGoal, horizonLabel, classLabelMap, computeCashFlow, activeAssumptions } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import { Section, MoneyRow, PercentRow, formatINR } from './shared';
-
-const CLASS_ORDER: AssetClassKey[] = ['domestic_equity', 'us_equity', 'debt', 'gold', 'crypto', 'real_estate'];
 
 function newGoal(): FinancialGoalRow {
   return {
@@ -25,10 +23,12 @@ function newGoal(): FinancialGoalRow {
 export default function GoalsTab({ plan, update }: FortunaTabProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   const assumptions = activeAssumptions(plan.assumptions, plan.disabledClasses ?? []);
+  const horizons = plan.horizons;
+  const labelMap = useMemo(() => classLabelMap(assumptions), [assumptions]);
 
   const totalSip = useMemo(
-    () => plan.goals.reduce((s, g) => s + computeGoal(g, assumptions).sipRequired, 0),
-    [plan.goals, assumptions],
+    () => plan.goals.reduce((s, g) => s + computeGoal(g, assumptions, horizons).sipRequired, 0),
+    [plan.goals, assumptions, horizons],
   );
   const surplus = useMemo(() => computeCashFlow(plan.cashFlow).investingSurplus, [plan.cashFlow]);
   const overCommitted = totalSip > surplus && surplus > 0;
@@ -74,7 +74,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
         )}
 
         {plan.goals.map((g, i) => {
-          const c = computeGoal(g, assumptions);
+          const c = computeGoal(g, assumptions, horizons);
           const open = openId === g.id;
           return (
             <div className={`ft-goal ${open ? 'ft-goal--open' : ''}`} key={g.id}>
@@ -82,7 +82,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
                 <span className="ft-goal__title">
                   <span className="ft-goal__name">{g.name.trim() || 'Untitled goal'}</span>
                   <span className="ft-goal__meta">
-                    {horizonLabel(c.horizon)} · {g.yearsLeft || 0}y
+                    {horizonLabel(c.horizon, horizons)} · {g.yearsLeft || 0}y
                   </span>
                 </span>
                 <span className="ft-goal__sip">
@@ -161,7 +161,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
                     <div className="ft-goal__calcrow">
                       <span>Horizon</span>
                       <span>
-                        {horizonLabel(c.horizon)} · {(c.effReturn * 100).toFixed(1)}% return
+                        {horizonLabel(c.horizon, horizons)} · {(c.effReturn * 100).toFixed(1)}% return
                       </span>
                     </div>
                     <div className="ft-goal__calcrow">
@@ -177,12 +177,14 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
                   {c.sipRequired > 0 && (
                     <div className="ft-goal__alloc">
                       <div className="ft-sublabel">Monthly split across asset classes</div>
-                      {CLASS_ORDER.filter((k) => c.allocations[k] > 0).map((k) => (
-                        <div className="ft-goal__allocrow" key={k}>
-                          <span>{CLASS_LABEL[k]}</span>
-                          <span>{formatINR(c.allocations[k])}</span>
-                        </div>
-                      ))}
+                      {Object.keys(c.allocations)
+                        .filter((k) => c.allocations[k] > 0)
+                        .map((k) => (
+                          <div className="ft-goal__allocrow" key={k}>
+                            <span>{labelMap[k] ?? k}</span>
+                            <span>{formatINR(c.allocations[k])}</span>
+                          </div>
+                        ))}
                     </div>
                   )}
 

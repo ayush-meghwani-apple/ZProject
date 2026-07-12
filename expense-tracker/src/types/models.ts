@@ -219,14 +219,45 @@ export type AssetClassKey =
   | 'crypto'
   | 'real_estate';
 
-/** Expected return + per-horizon allocation weights for one asset class. */
+/**
+ * A goal time-horizon bucket. Goals fall into the first horizon (ordered by
+ * `maxYears` ascending) whose `maxYears` exceeds their years-left; the last one
+ * is the catch-all. Short/Medium/Long are built in but the user can add more.
+ */
+export interface HorizonDef {
+  id: string; // 'short' | 'medium' | 'long' | a uuid for custom horizons
+  label: string;
+  maxYears: number; // goals with yearsLeft < maxYears fall here (999 = catch-all)
+}
+
+/** The three horizons every plan starts with (mirrors the spreadsheet). */
+export const DEFAULT_HORIZONS: HorizonDef[] = [
+  { id: 'short', label: 'Short', maxYears: 3 },
+  { id: 'medium', label: 'Medium', maxYears: 7 },
+  { id: 'long', label: 'Long', maxYears: 999 },
+];
+
+/** Expected return + per-horizon allocation weights for one asset class. The
+ *  `weights` map is keyed by {@link HorizonDef.id} (whole-number %). `key` is a
+ *  built-in {@link AssetClassKey} or a custom class id. */
 export interface AssetClassAssumption {
-  key: AssetClassKey;
+  key: string;
   label: string;
   expectedReturnPct: number; // annual, whole number (e.g. 12)
-  shortPct: number; // allocation weight for short-term goals (<3y)
-  mediumPct: number; // medium-term goals (3–6y)
-  longPct: number; // long-term goals (>6y)
+  weights: Record<string, number>; // horizonId -> allocation weight %
+}
+
+/**
+ * A user-defined asset category, beyond the six built-in classes. It carries its
+ * own holdings list and whether it counts as liquid or illiquid in net worth;
+ * its expected return and per-horizon weights live in a matching
+ * {@link AssetClassAssumption} row (same id) so it flows into Returns and goals.
+ */
+export interface CustomAssetClass {
+  id: ID;
+  label: string;
+  liquid: boolean; // true = liquid, false = illiquid (for the net-worth split)
+  holdings: HoldingRow[];
 }
 
 /** A single line item inside a multi-row holdings list (a stock, MF, FD, an
@@ -343,10 +374,19 @@ export interface FinancialPlan {
   liabilities: Liabilities;
   goals: FinancialGoalRow[];
   recurringInvestments: RecurringInvestment[];
+  /** Goal time-horizon buckets (Short/Medium/Long + any the user adds). When
+   *  absent, {@link DEFAULT_HORIZONS} are assumed. */
+  horizons?: HorizonDef[];
+  /** User-defined asset categories beyond the six built-ins. Each has a matching
+   *  {@link AssetClassAssumption} row (same id) for its return & weights. */
+  customClasses?: CustomAssetClass[];
+  /** Custom display names for the built-in fixed portfolio lines (e.g. rename
+   *  "Home" → "Flat in Pune"). Keyed by a stable line id like `realEstate.home`. */
+  fixedLabels?: Record<string, string>;
   /** Asset classes the user has turned off — excluded from net worth, the asset
    *  mix, the Returns table and goal allocations, and shown collapsed at the
-   *  bottom of the Portfolio tab. */
-  disabledClasses?: AssetClassKey[];
+   *  bottom of the Portfolio tab. May include custom class ids. */
+  disabledClasses?: string[];
   updatedAt: ISODate;
 }
 

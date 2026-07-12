@@ -3610,6 +3610,7 @@ svg.lucide {
 .ft-readrow__name {
   color: var(--text);
   min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3754,10 +3755,11 @@ svg.lucide {
 /* Effective returns */
 .ft-eff {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 .ft-eff__cell {
-  flex: 1;
+  flex: 1 1 90px;
   background: var(--surface-2);
   border-radius: 12px;
   padding: 10px;
@@ -3780,6 +3782,16 @@ svg.lucide {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.ft-assum--scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ft-assum__grid {
+  display: grid;
+  gap: 5px 6px;
+  align-items: center;
+  min-width: max-content;
 }
 .ft-assum__head,
 .ft-assum__row {
@@ -3819,6 +3831,160 @@ svg.lucide {
 .ft-warn {
   color: var(--accent-2);
 }
+
+/* --- v1.22.0: toggle switch, per-row pencil, renamable lines, horizons --- */
+
+/* On/off toggle switch (used in Portfolio section headers & custom classes) */
+.ft-switchwrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+.ft-switch__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.ft-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+  padding: 0;
+  flex: 0 0 auto;
+  transition: background 0.15s ease;
+}
+.ft-switch--on {
+  background: var(--accent);
+  box-shadow: none;
+}
+.ft-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease;
+}
+.ft-switch--on .ft-switch__knob {
+  transform: translateX(16px);
+}
+
+/* Section header right slot: toggle beside the amount chip */
+.ft-secright {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Per-row pencil / trash on the read rows */
+.ft-readrow__edit,
+.ft-readrow__del {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  color: var(--muted);
+}
+.ft-readrow__del {
+  color: var(--bad);
+}
+.ft-holding__done {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+/* Rename pencil on a fixed money row's label */
+.ft-row__label--edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ft-row__nameinp {
+  padding: 6px 9px;
+  font-size: 13.5px;
+  max-width: 180px;
+}
+.ft-row__rename {
+  width: 26px;
+  height: 26px;
+  color: var(--muted);
+  opacity: 0.7;
+}
+.ft-row__field--switch {
+  justify-content: flex-end;
+}
+
+/* Add-category button & delete-category button */
+.ft-addclass {
+  width: 100%;
+  justify-content: center;
+  gap: 8px;
+}
+.ft-disablebtn--danger {
+  border-color: color-mix(in srgb, var(--bad) 50%, transparent);
+  color: var(--bad);
+}
+
+/* Danger delete text button reuse for goals already exists */
+
+/* Time-horizon editor rows (Returns tab) */
+.ft-hzrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.ft-hzrow__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 10px;
+  font-size: 13.5px;
+}
+.ft-hzrow__upto {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+.ft-hzrow__years {
+  width: 52px;
+  text-align: center;
+  padding: 6px 4px;
+  font-size: 13px;
+}
+.ft-hzrow__catchall {
+  font-style: italic;
+}
+.ft-hzrow__lock {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  width: 30px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+/* Assumptions grid header/sum cells inside the dynamic grid */
+.ft-assum__grid > .ft-assum__head > span,
+.ft-assum__grid > .ft-assum__row > span:not(.ft-assum__name),
+.ft-assum__grid > .ft-assum__row > .ft-assum__inp {
+  text-align: center;
+}
+
 
 /* Goals */
 .ft-goal {

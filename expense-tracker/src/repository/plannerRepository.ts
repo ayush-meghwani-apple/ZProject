@@ -2,24 +2,28 @@ import { storage } from '../storage';
 import { newId, now } from '../core/util';
 import type {
   AssetClassAssumption,
+  CustomAssetClass,
   FinancialPlan,
   HoldingRow,
+  HorizonDef,
 } from '../types/models';
+import { DEFAULT_HORIZONS } from '../types/models';
 
 const PLAN_ID = 'default';
 /** Current document version. Bump when the FinancialPlan shape changes and add a
  *  migration step in `migrate()`. Migration only ever ADDS/defaults fields. */
 export const PLAN_VERSION = 1;
 
-/** Default asset-mix assumptions, seeded from the source spreadsheet's table. */
+/** Default asset-mix assumptions, seeded from the source spreadsheet's table.
+ *  Weights are keyed by horizon id (short/medium/long). */
 function defaultAssumptions(): AssetClassAssumption[] {
   return [
-    { key: 'domestic_equity', label: 'Domestic equity', expectedReturnPct: 12, shortPct: 0, mediumPct: 40, longPct: 60 },
-    { key: 'us_equity', label: 'US equity', expectedReturnPct: 12, shortPct: 0, mediumPct: 0, longPct: 10 },
-    { key: 'debt', label: 'Debt', expectedReturnPct: 6, shortPct: 100, mediumPct: 50, longPct: 15 },
-    { key: 'gold', label: 'Gold (SGB / ETF)', expectedReturnPct: 6, shortPct: 0, mediumPct: 10, longPct: 5 },
-    { key: 'crypto', label: 'Crypto', expectedReturnPct: 20, shortPct: 0, mediumPct: 0, longPct: 5 },
-    { key: 'real_estate', label: 'Real Estate / REITs', expectedReturnPct: 10, shortPct: 0, mediumPct: 0, longPct: 5 },
+    { key: 'domestic_equity', label: 'Domestic equity', expectedReturnPct: 12, weights: { short: 0, medium: 40, long: 60 } },
+    { key: 'us_equity', label: 'US equity', expectedReturnPct: 12, weights: { short: 0, medium: 0, long: 10 } },
+    { key: 'debt', label: 'Debt', expectedReturnPct: 6, weights: { short: 100, medium: 50, long: 15 } },
+    { key: 'gold', label: 'Gold (SGB / ETF)', expectedReturnPct: 6, weights: { short: 0, medium: 10, long: 5 } },
+    { key: 'crypto', label: 'Crypto', expectedReturnPct: 20, weights: { short: 0, medium: 0, long: 5 } },
+    { key: 'real_estate', label: 'Real Estate / REITs', expectedReturnPct: 10, weights: { short: 0, medium: 0, long: 5 } },
   ];
 }
 
@@ -74,6 +78,9 @@ function defaultPlan(): FinancialPlan {
     liabilities: { items: defaultLiabilities() },
     goals: [],
     recurringInvestments: [],
+    horizons: DEFAULT_HORIZONS.map((h) => ({ ...h })),
+    customClasses: [],
+    fixedLabels: {},
     disabledClasses: [],
     updatedAt: now(),
   };
@@ -154,10 +161,7 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
   return {
     id: PLAN_ID,
     v: PLAN_VERSION,
-    assumptions:
-      Array.isArray(raw.assumptions) && raw.assumptions.length
-        ? (raw.assumptions as AssetClassAssumption[])
-        : base.assumptions,
+    assumptions: migrateAssumptions(raw.assumptions, base.assumptions),
     cashFlow: { inflows, outflows },
     assets: {
       realEstate: {
@@ -196,11 +200,60 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
     recurringInvestments: Array.isArray(raw.recurringInvestments)
       ? (raw.recurringInvestments as FinancialPlan['recurringInvestments'])
       : [],
+    horizons: migrateHorizons(raw.horizons),
+    customClasses: migrateCustomClasses(raw.customClasses),
+    fixedLabels:
+      raw.fixedLabels && typeof raw.fixedLabels === 'object'
+        ? (raw.fixedLabels as Record<string, string>)
+        : {},
     disabledClasses: Array.isArray(raw.disabledClasses)
-      ? (raw.disabledClasses as FinancialPlan['disabledClasses'])
+      ? (raw.disabledClasses as string[])
       : [],
     updatedAt: (raw.updatedAt as string) ?? now(),
   };
+}
+
+/** Migrate assumptions from the old fixed shortPct/mediumPct/longPct fields to
+ *  the `weights` map keyed by horizon id. Non-destructive: keeps any existing
+ *  `weights` and every row. */
+function migrateAssumptions(raw: unknown, fallback: AssetClassAssumption[]): AssetClassAssumption[] {
+  if (!Array.isArray(raw) || raw.length === 0) return fallback;
+  return (raw as Record<string, unknown>[]).map((a) => {
+    const existing = (a.weights && typeof a.weights === 'object' ? a.weights : null) as Record<string, number> | null;
+    const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const weights = existing ?? {
+      short: num(a.shortPct),
+      medium: num(a.mediumPct),
+      long: num(a.longPct),
+    };
+    return {
+      key: String(a.key ?? newId()),
+      label: String(a.label ?? ''),
+      expectedReturnPct: num(a.expectedReturnPct),
+      weights,
+    };
+  });
+}
+
+/** Migrate/seed the horizon list. When absent, use the three defaults. */
+function migrateHorizons(raw: unknown): HorizonDef[] {
+  if (!Array.isArray(raw) || raw.length === 0) return DEFAULT_HORIZONS.map((h) => ({ ...h }));
+  return (raw as Record<string, unknown>[]).map((h) => ({
+    id: String(h.id ?? newId()),
+    label: String(h.label ?? 'Horizon'),
+    maxYears: Number.isFinite(Number(h.maxYears)) ? Number(h.maxYears) : 999,
+  }));
+}
+
+/** Migrate/seed the custom asset classes list. */
+function migrateCustomClasses(raw: unknown): CustomAssetClass[] {
+  if (!Array.isArray(raw)) return [];
+  return (raw as Record<string, unknown>[]).map((c) => ({
+    id: String(c.id ?? newId()),
+    label: String(c.label ?? ''),
+    liquid: c.liquid !== false,
+    holdings: cleanRows(c.holdings as HoldingRow[] | undefined),
+  }));
 }
 
 function cleanRows(rows: HoldingRow[] | undefined): HoldingRow[] {

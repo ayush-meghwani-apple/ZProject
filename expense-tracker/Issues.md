@@ -7,13 +7,12 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
--> I still can't edit the options in "portfolio" tab (rename the fixed lines like Home / REITs / S&P 500 ETF): image-35 — needs the Portfolio redesign (turn each class's fixed lines into editable instruments); planned next.
-
--> add a new goal time-horizon category beyond short / medium / long in the Returns table: image-38 — planned (custom horizons).
-
--> add a new custom asset category (class) in Portfolio: image-39 — planned (custom classes).
+_Nothing open right now._
 
 ## Done
+
+- ✅ **(2026-07-12)** **Fortuna flexibility pass — toggles, pencil edits, renamable lines, custom categories & horizons (v1.22.0).** Five things: (1) **One-tap toggle to disable a category** — the big "Disable this category" button is gone; each Portfolio section now has a small **On/Off switch at the top beside its amount**. Flip it off and the category drops out of net worth, the mix, Returns and goals into the Disabled section (flip it back on there). (2) **Cleaner per-row editing (like Expensify sub-categories)** — every holding / cash-flow / liability line now shows as a clean read row with a **pencil** to edit and a **trash** to remove; no more page-wide "edit mode". (3) **Rename the built-in Portfolio lines** — Home, REITs, S&P 500 ETF, Jewellery, etc. each got a pencil so you can rename them to whatever you like (e.g. "Home" → "Flat in Pune") while keeping their behaviour. (4) **Add your own goal time-horizon** — the Returns tab now has an editable **horizons** list; add one beyond Short / Medium / Long (with its own year cut-off) and it becomes a new weight column that flows into the effective returns and goal SIP split. (5) **Add your own asset category** — a new **"Add asset category"** in Portfolio lets you create custom classes (e.g. Angel investments, P2P, Art) with their own holdings, liquid/illiquid flag, expected return and per-horizon weights; they roll into net worth, the asset mix, Returns and goals just like the built-ins. Your existing plan migrates automatically with all values preserved.
+
 
 - ✅ **(2026-07-12)** **Cleaner edit-on-click lists, fixed priority dropdown, and disable-a-category (v1.21.0).** (1) **No more wall of input boxes** — Cash Flow, Liabilities and the Portfolio holdings now show a **clean read-only view** with an **Edit** button; tap it to rename / re-value / remove / add, then Done. (2) **Goal priority dropdown fixed** — the options were invisible (light text on white); they're now dark and readable. (3) **Disable an asset category in one tap** — e.g. if you don't hold Crypto, tap **Disable this category** and it drops out of **net worth, the asset mix, the Returns table and goal allocations**, and moves to a **“Disabled” collapsible at the bottom** of Portfolio with a one-tap **Enable** to bring it back.
 

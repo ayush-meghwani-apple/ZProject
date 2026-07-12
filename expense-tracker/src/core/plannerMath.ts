@@ -2,12 +2,15 @@ import type {
   AssetClassAssumption,
   AssetClassKey,
   CashFlow,
+  CustomAssetClass,
   FinancialGoalRow,
   FinancialPlan,
   HoldingRow,
+  HorizonDef,
   Liabilities,
   PlanAssets,
 } from '../types/models';
+import { DEFAULT_HORIZONS } from '../types/models';
 
 /**
  * Fortuna financial math — pure functions, no side effects.
@@ -17,11 +20,17 @@ import type {
  * in as whole numbers (12 = 12%) and are converted to fractions internally.
  */
 
-export type Horizon = 'short' | 'medium' | 'long';
+/** A horizon is identified by its id ('short' | 'medium' | 'long' | custom). */
+export type Horizon = string;
 
 const pct = (n: number): number => (Number.isFinite(n) ? n / 100 : 0);
 const num = (n: number): number => (Number.isFinite(n) ? n : 0);
 const sumRows = (rows: HoldingRow[]): number => rows.reduce((s, r) => s + num(r.value), 0);
+
+/** The plan's horizons, or the three defaults if none are set. */
+export function planHorizons(horizons?: HorizonDef[]): HorizonDef[] {
+  return horizons && horizons.length ? horizons : DEFAULT_HORIZONS;
+}
 
 // --- Cash flow -------------------------------------------------------------
 
@@ -46,7 +55,7 @@ export function computeCashFlow(cf: CashFlow): CashFlowResult {
 // --- Returns & asset mix ---------------------------------------------------
 
 function weightFor(a: AssetClassAssumption, h: Horizon): number {
-  return pct(h === 'short' ? a.shortPct : h === 'medium' ? a.mediumPct : a.longPct);
+  return pct(num(a.weights?.[h] ?? 0));
 }
 
 /** Σ(expectedReturn · allocationWeight) for a horizon. */
@@ -54,31 +63,40 @@ function sumProductReturns(assumptions: AssetClassAssumption[], h: Horizon): num
   return assumptions.reduce((s, a) => s + pct(a.expectedReturnPct) * weightFor(a, h), 0);
 }
 
-export interface EffectiveReturns {
-  short: number;
-  medium: number;
-  long: number;
-}
-
-/** Effective (blended) annual return per horizon, faithful to the sheet's
- *  blended medium row: medium = SUMPRODUCT(mediumWeights)·0.4 + short·0.6. */
-export function effectiveReturns(assumptions: AssetClassAssumption[]): EffectiveReturns {
-  const short = sumProductReturns(assumptions, 'short');
-  const medium = sumProductReturns(assumptions, 'medium') * 0.4 + short * 0.6;
-  const long = sumProductReturns(assumptions, 'long');
-  return { short, medium, long };
+/** Effective (blended) annual return per horizon id. Faithful to the sheet's
+ *  blended medium row (medium = SUMPRODUCT(mediumWeights)·0.4 + short·0.6) when
+ *  both a 'short' and 'medium' horizon exist; any other horizon is a plain
+ *  SUMPRODUCT. */
+export function effectiveReturns(
+  assumptions: AssetClassAssumption[],
+  horizons?: HorizonDef[],
+): Record<string, number> {
+  const hs = planHorizons(horizons);
+  const out: Record<string, number> = {};
+  const shortId = hs.find((h) => h.id === 'short')?.id;
+  for (const h of hs) {
+    if (h.id === 'medium' && shortId) {
+      out[h.id] = sumProductReturns(assumptions, h.id) * 0.4 + sumProductReturns(assumptions, shortId) * 0.6;
+    } else {
+      out[h.id] = sumProductReturns(assumptions, h.id);
+    }
+  }
+  return out;
 }
 
 // --- Goals -----------------------------------------------------------------
 
-export function horizonFor(yearsLeft: number): Horizon {
-  if (yearsLeft < 3) return 'short';
-  if (yearsLeft <= 6) return 'medium';
-  return 'long';
+/** Which horizon a goal falls into: the first (ordered by maxYears ascending)
+ *  whose maxYears exceeds the years left; else the last. */
+export function horizonFor(yearsLeft: number, horizons?: HorizonDef[]): Horizon {
+  const hs = [...planHorizons(horizons)].sort((a, b) => a.maxYears - b.maxYears);
+  const match = hs.find((h) => yearsLeft < h.maxYears);
+  return (match ?? hs[hs.length - 1]).id;
 }
 
-export function horizonLabel(h: Horizon): string {
-  return h === 'short' ? 'Short Term' : h === 'medium' ? 'Medium Term' : 'Long Term';
+export function horizonLabel(h: Horizon, horizons?: HorizonDef[]): string {
+  const def = planHorizons(horizons).find((x) => x.id === h);
+  return def ? `${def.label} Term` : 'Term';
 }
 
 export interface GoalComputed {
@@ -86,7 +104,7 @@ export interface GoalComputed {
   effReturn: number; // effective annual return used
   amountRequiredFuture: number; // shortfall to fund via SIP
   sipRequired: number; // level (or stepped) monthly SIP
-  allocations: Record<AssetClassKey, number>; // monthly amount per asset class
+  allocations: Record<string, number>; // monthly amount per asset class key
 }
 
 /**
@@ -134,14 +152,18 @@ export function sipRequired(fv: number, years: number, eff: number, stepUpPct: n
   return factor > 0 ? fv / factor : 0;
 }
 
-export function computeGoal(goal: FinancialGoalRow, assumptions: AssetClassAssumption[]): GoalComputed {
-  const eff = effectiveReturns(assumptions);
-  const horizon = horizonFor(num(goal.yearsLeft));
-  const effReturn = eff[horizon];
+export function computeGoal(
+  goal: FinancialGoalRow,
+  assumptions: AssetClassAssumption[],
+  horizons?: HorizonDef[],
+): GoalComputed {
+  const eff = effectiveReturns(assumptions, horizons);
+  const horizon = horizonFor(num(goal.yearsLeft), horizons);
+  const effReturn = eff[horizon] ?? 0;
   const fv = amountRequiredFuture(goal, effReturn);
   const sip = sipRequired(fv, num(goal.yearsLeft), effReturn, num(goal.stepUpPct));
 
-  const allocations = {} as Record<AssetClassKey, number>;
+  const allocations: Record<string, number> = {};
   for (const a of assumptions) {
     allocations[a.key] = weightFor(a, horizon) * sip;
   }
@@ -152,30 +174,21 @@ export function computeGoal(goal: FinancialGoalRow, assumptions: AssetClassAssum
 export function targetAllocation(
   goals: FinancialGoalRow[],
   assumptions: AssetClassAssumption[],
-): Record<AssetClassKey, number> {
-  const total = emptyAllocation();
+  horizons?: HorizonDef[],
+): Record<string, number> {
+  const total: Record<string, number> = {};
+  for (const a of assumptions) total[a.key] = 0;
   for (const g of goals) {
-    const c = computeGoal(g, assumptions);
-    for (const a of assumptions) total[a.key] += c.allocations[a.key];
+    const c = computeGoal(g, assumptions, horizons);
+    for (const a of assumptions) total[a.key] += c.allocations[a.key] ?? 0;
   }
   return total;
-}
-
-function emptyAllocation(): Record<AssetClassKey, number> {
-  return {
-    domestic_equity: 0,
-    us_equity: 0,
-    debt: 0,
-    gold: 0,
-    crypto: 0,
-    real_estate: 0,
-  };
 }
 
 // --- Net worth -------------------------------------------------------------
 
 export interface AssetClassValue {
-  key: AssetClassKey;
+  key: string;
   label: string;
   value: number;
 }
@@ -206,7 +219,8 @@ export function totalLiabilities(l: Liabilities): number {
 export function computeNetWorth(
   assets: PlanAssets,
   liabilities: Liabilities,
-  disabled: AssetClassKey[] = [],
+  disabled: string[] = [],
+  customClasses: CustomAssetClass[] = [],
 ): NetWorthResult {
   const re = assets.realEstate;
   const de = assets.domesticEquity;
@@ -241,6 +255,16 @@ export function computeNetWorth(
     byClass.push({ key, label: CLASS_LABELS[key], value: p.liquid + p.illiquid });
   }
 
+  // Custom user-defined classes: each rolls up its holdings, counted as liquid
+  // or illiquid per its `liquid` flag, and shown as its own mix slice.
+  for (const c of customClasses) {
+    if (off.has(c.id)) continue;
+    const value = sumRows(c.holdings);
+    if (c.liquid) liquid += value;
+    else illiquid += value;
+    byClass.push({ key: c.id, label: c.label || 'Custom', value });
+  }
+
   const totalAssets = illiquid + liquid;
   const liab = totalLiabilities(liabilities);
 
@@ -257,23 +281,36 @@ export function computeNetWorth(
 const CLASS_ORDER: AssetClassKey[] = ['domestic_equity', 'us_equity', 'debt', 'gold', 'crypto', 'real_estate'];
 
 /** Per-asset-class value totals used by both Net Worth and Portfolio views. */
-export function assetClassTotals(assets: PlanAssets, disabled: AssetClassKey[] = []): Record<AssetClassKey, number> {
-  return computeNetWorth(assets, { items: [] }, disabled).byClass.reduce(
+export function assetClassTotals(
+  assets: PlanAssets,
+  disabled: string[] = [],
+  customClasses: CustomAssetClass[] = [],
+): Record<string, number> {
+  return computeNetWorth(assets, { items: [] }, disabled, customClasses).byClass.reduce(
     (acc, c) => {
       acc[c.key] = c.value;
       return acc;
     },
-    emptyAllocation(),
+    {} as Record<string, number>,
   );
 }
 
 /** The assumptions rows for classes that are currently enabled. */
-export function activeAssumptions(assumptions: AssetClassAssumption[], disabled: AssetClassKey[] = []): AssetClassAssumption[] {
+export function activeAssumptions(assumptions: AssetClassAssumption[], disabled: string[] = []): AssetClassAssumption[] {
   const off = new Set(disabled);
   return assumptions.filter((a) => !off.has(a.key));
 }
 
 export const CLASS_LABEL = CLASS_LABELS;
+
+/** A label lookup for every asset-class key in play — the six built-ins plus any
+ *  custom classes (read from their assumption rows). Used to label goal
+ *  allocations and the asset-mix legend generically. */
+export function classLabelMap(assumptions: AssetClassAssumption[]): Record<string, string> {
+  const map: Record<string, string> = { ...CLASS_LABELS };
+  for (const a of assumptions) map[a.key] = a.label || map[a.key] || 'Custom';
+  return map;
+}
 
 /**
  * Per-SECTION totals for the Portfolio tab — grouped the way the data-entry
@@ -359,8 +396,8 @@ export const AGE_EQUITY_ALLOCATION: {
 export function computePlanSummary(plan: FinancialPlan) {
   return {
     cashFlow: computeCashFlow(plan.cashFlow),
-    netWorth: computeNetWorth(plan.assets, plan.liabilities),
-    effReturns: effectiveReturns(plan.assumptions),
-    target: targetAllocation(plan.goals, plan.assumptions),
+    netWorth: computeNetWorth(plan.assets, plan.liabilities, plan.disabledClasses ?? [], plan.customClasses ?? []),
+    effReturns: effectiveReturns(plan.assumptions, plan.horizons),
+    target: targetAllocation(plan.goals, plan.assumptions, plan.horizons),
   };
 }
