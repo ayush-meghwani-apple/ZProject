@@ -27,6 +27,8 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
           <MoneyRow label="Home" value={a.realEstate.home} onChange={(v) => update((d) => { d.assets.realEstate.home = v; })} />
           <MoneyRow label="Other real estate" value={a.realEstate.otherRealEstate} onChange={(v) => update((d) => { d.assets.realEstate.otherRealEstate = v; })} />
           <MoneyRow label="REITs" value={a.realEstate.reits} onChange={(v) => update((d) => { d.assets.realEstate.reits = v; })} />
+          <div className="ft-sublabel">Other holdings</div>
+          <HoldingList rows={a.realEstate.others} namePlaceholder="e.g. Plot, 2nd property" onChange={(m) => update((d) => m(d.assets.realEstate.others))} />
         </Section>
 
         <Section title="Domestic Equity" subtitle="Stocks & mutual funds" right={<Chip value={totals.domesticEquity} />} collapsible defaultOpen={false}>
@@ -91,6 +93,8 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
           <MoneyRow label="Other ETFs" value={a.usEquity.otherEtfs} onChange={(v) => update((d) => { d.assets.usEquity.otherEtfs = v; })} />
           <MoneyRow label="US mutual funds" value={a.usEquity.mutualFunds} onChange={(v) => update((d) => { d.assets.usEquity.mutualFunds = v; })} />
           <MoneyRow label="Smallcase" value={a.misc.smallcase} onChange={(v) => update((d) => { d.assets.misc.smallcase = v; })} />
+          <div className="ft-sublabel">Other holdings</div>
+          <HoldingList rows={a.usEquity.others} namePlaceholder="e.g. VOO, QQQ, a US stock" onChange={(m) => update((d) => m(d.assets.usEquity.others))} />
         </Section>
 
         <Section title="Debt" subtitle="Cash, FDs, debt funds, EPF/PPF/VPF" right={<Chip value={totals.debt} />} collapsible defaultOpen={false}>
@@ -108,10 +112,14 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
           <MoneyRow label="Jewellery" value={a.gold.jewellery} onChange={(v) => update((d) => { d.assets.gold.jewellery = v; })} />
           <MoneyRow label="SGB" value={a.gold.sgb} onChange={(v) => update((d) => { d.assets.gold.sgb = v; })} />
           <MoneyRow label="Gold ETF / digital gold" value={a.gold.goldEtf} onChange={(v) => update((d) => { d.assets.gold.goldEtf = v; })} />
+          <div className="ft-sublabel">Other holdings</div>
+          <HoldingList rows={a.gold.others} namePlaceholder="e.g. Gold coins, fund" onChange={(m) => update((d) => m(d.assets.gold.others))} />
         </Section>
 
         <Section title="Crypto" right={<Chip value={totals.crypto} />} collapsible defaultOpen={false}>
           <MoneyRow label="Crypto" value={a.crypto.crypto} onChange={(v) => update((d) => { d.assets.crypto.crypto = v; })} />
+          <div className="ft-sublabel">Other holdings</div>
+          <HoldingList rows={a.crypto.others} namePlaceholder="e.g. BTC, ETH, SOL" onChange={(m) => update((d) => m(d.assets.crypto.others))} />
         </Section>
 
         <Section title="Total portfolio">

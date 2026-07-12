@@ -33,19 +33,8 @@ export interface CashFlowResult {
 }
 
 export function computeCashFlow(cf: CashFlow): CashFlowResult {
-  const totalInflows =
-    num(cf.inflows.salary) +
-    num(cf.inflows.business) +
-    num(cf.inflows.rental) +
-    num(cf.inflows.others) +
-    sumRows(cf.customInflows ?? []);
-  const totalOutflows =
-    num(cf.outflows.expenses) +
-    num(cf.outflows.compulsoryInvestments) +
-    num(cf.outflows.loanEmis) +
-    num(cf.outflows.insurance) +
-    num(cf.outflows.others) +
-    sumRows(cf.customOutflows ?? []);
+  const totalInflows = sumRows(cf.inflows);
+  const totalOutflows = sumRows(cf.outflows);
   return {
     totalInflows,
     totalOutflows,
@@ -211,15 +200,7 @@ const CLASS_LABELS: Record<AssetClassKey, string> = {
 };
 
 export function totalLiabilities(l: Liabilities): number {
-  return (
-    num(l.homeLoan) +
-    num(l.educationLoan) +
-    num(l.carLoan) +
-    num(l.personalGoldLoan) +
-    num(l.creditCard) +
-    num(l.other) +
-    sumRows(l.custom ?? [])
-  );
+  return sumRows(l.items);
 }
 
 export function computeNetWorth(assets: PlanAssets, liabilities: Liabilities): NetWorthResult {
@@ -231,24 +212,32 @@ export function computeNetWorth(assets: PlanAssets, liabilities: Liabilities): N
 
   const domesticStocksMF = sumRows(de.stocks) + sumRows(de.mutualFunds);
 
+  // Custom "other holdings" added under each fixed-field class.
+  const reOthers = sumRows(re.others);
+  const usOthers = sumRows(us.others);
+  const goldOthers = sumRows(gold.others);
+  const cryptoOthers = sumRows(assets.crypto.others);
+
   // Asset-CLASS buckets — mirrors the sheet's "Current Investable Asset
   // Allocation" (Net worth F14:F19): ULIPs and Smallcase are classed as
   // DOMESTIC EQUITY (not debt / US equity), US equity is only S&P/ETF/US MF, and
   // debt excludes ULIPs. This is used for the asset-mix pie, and is deliberately
   // independent of the illiquid/liquid split below.
   const domesticEquityTotal = domesticStocksMF + num(assets.misc.ulips) + num(assets.misc.smallcase);
-  const usEquityTotal = num(us.sp500Etf) + num(us.otherEtfs) + num(us.mutualFunds);
+  const usEquityTotal = num(us.sp500Etf) + num(us.otherEtfs) + num(us.mutualFunds) + usOthers;
   const debtTotal = num(debt.liquidCash) + sumRows(debt.fds) + sumRows(debt.debtFunds) + sumRows(debt.epfPpfVpf);
-  const goldTotal = num(gold.jewellery) + num(gold.sgb) + num(gold.goldEtf);
-  const cryptoTotal = num(assets.crypto.crypto);
-  const realEstateTotal = num(re.home) + num(re.otherRealEstate) + num(re.reits);
+  const goldTotal = num(gold.jewellery) + num(gold.sgb) + num(gold.goldEtf) + goldOthers;
+  const cryptoTotal = num(assets.crypto.crypto) + cryptoOthers;
+  const realEstateTotal = num(re.home) + num(re.otherRealEstate) + num(re.reits) + reOthers;
 
   // Illiquid vs liquid split (mirrors the Net worth sheet C21 / C33). Note this
   // is a DIFFERENT grouping from the asset classes above: ULIPs are illiquid,
-  // Smallcase is liquid.
+  // Smallcase is liquid. Custom "others": real-estate treated as illiquid
+  // (property), the rest (US/gold/crypto) as liquid/investable.
   const illiquid =
     num(re.home) +
     num(re.otherRealEstate) +
+    reOthers +
     num(gold.jewellery) +
     num(gold.sgb) +
     num(assets.misc.ulips) +
@@ -260,9 +249,11 @@ export function computeNetWorth(assets: PlanAssets, liabilities: Liabilities): N
     num(us.sp500Etf) +
     num(us.otherEtfs) +
     num(us.mutualFunds) +
+    usOthers +
     num(assets.misc.smallcase) +
     num(debt.liquidCash) +
     num(gold.goldEtf) +
+    goldOthers +
     cryptoTotal +
     num(re.reits);
 
@@ -290,14 +281,7 @@ export function computeNetWorth(assets: PlanAssets, liabilities: Liabilities): N
 
 /** Per-asset-class value totals used by both Net Worth and Portfolio views. */
 export function assetClassTotals(assets: PlanAssets): Record<AssetClassKey, number> {
-  return computeNetWorth(assets, {
-    homeLoan: 0,
-    educationLoan: 0,
-    carLoan: 0,
-    personalGoldLoan: 0,
-    creditCard: 0,
-    other: 0,
-  }).byClass.reduce(
+  return computeNetWorth(assets, { items: [] }).byClass.reduce(
     (acc, c) => {
       acc[c.key] = c.value;
       return acc;
@@ -325,17 +309,19 @@ export interface SectionTotals {
 }
 
 export function sectionTotals(assets: PlanAssets): SectionTotals {
-  const realEstate = num(assets.realEstate.home) + num(assets.realEstate.otherRealEstate) + num(assets.realEstate.reits);
+  const realEstate =
+    num(assets.realEstate.home) + num(assets.realEstate.otherRealEstate) + num(assets.realEstate.reits) + sumRows(assets.realEstate.others);
   const domesticEquity = sumRows(assets.domesticEquity.stocks) + sumRows(assets.domesticEquity.mutualFunds);
-  const usEquity = num(assets.usEquity.sp500Etf) + num(assets.usEquity.otherEtfs) + num(assets.usEquity.mutualFunds) + num(assets.misc.smallcase);
+  const usEquity =
+    num(assets.usEquity.sp500Etf) + num(assets.usEquity.otherEtfs) + num(assets.usEquity.mutualFunds) + sumRows(assets.usEquity.others) + num(assets.misc.smallcase);
   const debt =
     num(assets.debt.liquidCash) +
     sumRows(assets.debt.fds) +
     sumRows(assets.debt.debtFunds) +
     sumRows(assets.debt.epfPpfVpf) +
     num(assets.misc.ulips);
-  const gold = num(assets.gold.jewellery) + num(assets.gold.sgb) + num(assets.gold.goldEtf);
-  const crypto = num(assets.crypto.crypto);
+  const gold = num(assets.gold.jewellery) + num(assets.gold.sgb) + num(assets.gold.goldEtf) + sumRows(assets.gold.others);
+  const crypto = num(assets.crypto.crypto) + sumRows(assets.crypto.others);
   return {
     realEstate,
     domesticEquity,

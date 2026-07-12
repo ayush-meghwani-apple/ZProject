@@ -23,6 +23,35 @@ function defaultAssumptions(): AssetClassAssumption[] {
   ];
 }
 
+const row = (name: string, value: unknown): HoldingRow => ({
+  id: newId(),
+  name,
+  value: Number(value) || 0,
+});
+
+function defaultInflows(): HoldingRow[] {
+  return [row('Post-tax salary', 0), row('Business income', 0), row('Rental income', 0), row('Others', 0)];
+}
+function defaultOutflows(): HoldingRow[] {
+  return [
+    row('Monthly expenses', 0),
+    row('Compulsory investments', 0),
+    row('Loan EMIs', 0),
+    row('Insurance premiums', 0),
+    row('Others', 0),
+  ];
+}
+function defaultLiabilities(): HoldingRow[] {
+  return [
+    row('Home loan', 0),
+    row('Education loan', 0),
+    row('Car loan', 0),
+    row('Personal / Gold loan', 0),
+    row('Credit card', 0),
+    row('Other liabilities', 0),
+  ];
+}
+
 /** A brand-new, empty plan. All numbers start at 0 so nothing is assumed. */
 function defaultPlan(): FinancialPlan {
   return {
@@ -30,21 +59,19 @@ function defaultPlan(): FinancialPlan {
     v: PLAN_VERSION,
     assumptions: defaultAssumptions(),
     cashFlow: {
-      inflows: { salary: 0, business: 0, rental: 0, others: 0 },
-      outflows: { expenses: 0, compulsoryInvestments: 0, loanEmis: 0, insurance: 0, others: 0 },
-      customInflows: [],
-      customOutflows: [],
+      inflows: defaultInflows(),
+      outflows: defaultOutflows(),
     },
     assets: {
-      realEstate: { home: 0, otherRealEstate: 0, reits: 0 },
+      realEstate: { home: 0, otherRealEstate: 0, reits: 0, others: [] },
       domesticEquity: { stocks: [], mutualFunds: [] },
-      usEquity: { sp500Etf: 0, otherEtfs: 0, mutualFunds: 0 },
+      usEquity: { sp500Etf: 0, otherEtfs: 0, mutualFunds: 0, others: [] },
       debt: { liquidCash: 0, fds: [], debtFunds: [], epfPpfVpf: [] },
-      gold: { jewellery: 0, sgb: 0, goldEtf: 0 },
-      crypto: { crypto: 0 },
+      gold: { jewellery: 0, sgb: 0, goldEtf: 0, others: [] },
+      crypto: { crypto: 0, others: [] },
       misc: { ulips: 0, smallcase: 0 },
     },
-    liabilities: { homeLoan: 0, educationLoan: 0, carLoan: 0, personalGoldLoan: 0, creditCard: 0, other: 0, custom: [] },
+    liabilities: { items: defaultLiabilities() },
     goals: [],
     recurringInvestments: [],
     updatedAt: now(),
@@ -52,51 +79,123 @@ function defaultPlan(): FinancialPlan {
 }
 
 /**
+ * Build a cash-flow / liability list from whatever's stored: if it's already a
+ * list, keep it; if it's the OLD fixed-object shape, convert it into named rows
+ * (preserving values) and append any old `custom*` rows. Non-destructive.
+ */
+function toList(
+  current: unknown,
+  legacyFields: [string, string][],
+  legacyObj: Record<string, unknown> | undefined,
+  legacyExtra: unknown,
+): HoldingRow[] {
+  if (Array.isArray(current)) return cleanRows(current as HoldingRow[]);
+  const o = legacyObj ?? {};
+  const seeded = legacyFields.map(([key, name]) => row(name, o[key]));
+  return [...seeded, ...cleanRows(legacyExtra as HoldingRow[] | undefined)];
+}
+
+/**
  * Forward-only, non-destructive migration + defaulting. Takes whatever came out
  * of storage (possibly an older/partial document) and returns a complete plan
- * with every field present. NEVER drops fields it doesn't recognise; it only
- * fills in the ones that are missing. This is the safety net that keeps an old
- * plan from breaking after a schema change.
+ * with every field present. NEVER drops data; it fills in what's missing and
+ * upgrades old shapes (fixed cash-flow/liability objects → editable lists).
  */
-function migrate(raw: Partial<FinancialPlan> | undefined | null): FinancialPlan {
+function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan {
   const base = defaultPlan();
   if (!raw) return base;
 
-  const a = raw.assets ?? {};
-  const cf = raw.cashFlow ?? {};
+  const a = (raw.assets ?? {}) as Record<string, Record<string, unknown>>;
+  const cf = (raw.cashFlow ?? {}) as Record<string, unknown>;
+  const liab = (raw.liabilities ?? {}) as Record<string, unknown>;
+
+  const inflows = toList(
+    cf.inflows,
+    [['salary', 'Post-tax salary'], ['business', 'Business income'], ['rental', 'Rental income'], ['others', 'Others']],
+    cf.inflows as Record<string, unknown> | undefined,
+    cf.customInflows,
+  );
+  const outflows = toList(
+    cf.outflows,
+    [
+      ['expenses', 'Monthly expenses'],
+      ['compulsoryInvestments', 'Compulsory investments'],
+      ['loanEmis', 'Loan EMIs'],
+      ['insurance', 'Insurance premiums'],
+      ['others', 'Others'],
+    ],
+    cf.outflows as Record<string, unknown> | undefined,
+    cf.customOutflows,
+  );
+  const liabilityItems = toList(
+    liab.items,
+    [
+      ['homeLoan', 'Home loan'],
+      ['educationLoan', 'Education loan'],
+      ['carLoan', 'Car loan'],
+      ['personalGoldLoan', 'Personal / Gold loan'],
+      ['creditCard', 'Credit card'],
+      ['other', 'Other liabilities'],
+    ],
+    liab,
+    liab.custom,
+  );
+
+  const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const re = (a.realEstate ?? {}) as Record<string, unknown>;
+  const us = (a.usEquity ?? {}) as Record<string, unknown>;
+  const de = (a.domesticEquity ?? {}) as Record<string, unknown>;
+  const debt = (a.debt ?? {}) as Record<string, unknown>;
+  const gold = (a.gold ?? {}) as Record<string, unknown>;
+  const crypto = (a.crypto ?? {}) as Record<string, unknown>;
+  const misc = (a.misc ?? {}) as Record<string, unknown>;
+
   return {
     id: PLAN_ID,
     v: PLAN_VERSION,
     assumptions:
-      Array.isArray(raw.assumptions) && raw.assumptions.length ? raw.assumptions : base.assumptions,
-    cashFlow: {
-      inflows: { ...base.cashFlow.inflows, ...(cf as FinancialPlan['cashFlow']).inflows },
-      outflows: { ...base.cashFlow.outflows, ...(cf as FinancialPlan['cashFlow']).outflows },
-      customInflows: cleanRows((cf as FinancialPlan['cashFlow']).customInflows),
-      customOutflows: cleanRows((cf as FinancialPlan['cashFlow']).customOutflows),
-    },
+      Array.isArray(raw.assumptions) && raw.assumptions.length
+        ? (raw.assumptions as AssetClassAssumption[])
+        : base.assumptions,
+    cashFlow: { inflows, outflows },
     assets: {
-      realEstate: { ...base.assets.realEstate, ...(a as FinancialPlan['assets']).realEstate },
+      realEstate: {
+        home: num(re.home),
+        otherRealEstate: num(re.otherRealEstate),
+        reits: num(re.reits),
+        others: cleanRows(re.others as HoldingRow[] | undefined),
+      },
       domesticEquity: {
-        stocks: cleanRows((a as FinancialPlan['assets']).domesticEquity?.stocks),
-        mutualFunds: cleanRows((a as FinancialPlan['assets']).domesticEquity?.mutualFunds),
+        stocks: cleanRows(de.stocks as HoldingRow[] | undefined),
+        mutualFunds: cleanRows(de.mutualFunds as HoldingRow[] | undefined),
       },
-      usEquity: { ...base.assets.usEquity, ...(a as FinancialPlan['assets']).usEquity },
+      usEquity: {
+        sp500Etf: num(us.sp500Etf),
+        otherEtfs: num(us.otherEtfs),
+        mutualFunds: num(us.mutualFunds),
+        others: cleanRows(us.others as HoldingRow[] | undefined),
+      },
       debt: {
-        ...base.assets.debt,
-        ...(a as FinancialPlan['assets']).debt,
-        fds: cleanRows((a as FinancialPlan['assets']).debt?.fds),
-        debtFunds: cleanRows((a as FinancialPlan['assets']).debt?.debtFunds),
-        epfPpfVpf: cleanRows((a as FinancialPlan['assets']).debt?.epfPpfVpf),
+        liquidCash: num(debt.liquidCash),
+        fds: cleanRows(debt.fds as HoldingRow[] | undefined),
+        debtFunds: cleanRows(debt.debtFunds as HoldingRow[] | undefined),
+        epfPpfVpf: cleanRows(debt.epfPpfVpf as HoldingRow[] | undefined),
       },
-      gold: { ...base.assets.gold, ...(a as FinancialPlan['assets']).gold },
-      crypto: { ...base.assets.crypto, ...(a as FinancialPlan['assets']).crypto },
-      misc: { ...base.assets.misc, ...(a as FinancialPlan['assets']).misc },
+      gold: {
+        jewellery: num(gold.jewellery),
+        sgb: num(gold.sgb),
+        goldEtf: num(gold.goldEtf),
+        others: cleanRows(gold.others as HoldingRow[] | undefined),
+      },
+      crypto: { crypto: num(crypto.crypto), others: cleanRows(crypto.others as HoldingRow[] | undefined) },
+      misc: { ulips: num(misc.ulips), smallcase: num(misc.smallcase) },
     },
-    liabilities: { ...base.liabilities, ...raw.liabilities, custom: cleanRows(raw.liabilities?.custom) },
-    goals: Array.isArray(raw.goals) ? raw.goals : [],
-    recurringInvestments: Array.isArray(raw.recurringInvestments) ? raw.recurringInvestments : [],
-    updatedAt: raw.updatedAt ?? now(),
+    liabilities: { items: liabilityItems },
+    goals: Array.isArray(raw.goals) ? (raw.goals as FinancialPlan['goals']) : [],
+    recurringInvestments: Array.isArray(raw.recurringInvestments)
+      ? (raw.recurringInvestments as FinancialPlan['recurringInvestments'])
+      : [],
+    updatedAt: (raw.updatedAt as string) ?? now(),
   };
 }
 
@@ -109,7 +208,7 @@ export const PlannerRepository = {
   /** Load the plan, seeding+persisting a default if none exists. Always returns
    *  a complete, migrated document. */
   async load(): Promise<FinancialPlan> {
-    const raw = (await storage.plannerDocs.get(PLAN_ID)) as FinancialPlan | undefined;
+    const raw = (await storage.plannerDocs.get(PLAN_ID)) as Record<string, unknown> | undefined;
     if (!raw) {
       const seed = defaultPlan();
       await storage.plannerDocs.put(seed);
@@ -133,7 +232,7 @@ export const PlannerRepository = {
 
   /** Whether a non-empty plan exists (for backup nudges / first-run). */
   async hasData(): Promise<boolean> {
-    const raw = (await storage.plannerDocs.get(PLAN_ID)) as FinancialPlan | undefined;
+    const raw = (await storage.plannerDocs.get(PLAN_ID)) as Record<string, unknown> | undefined;
     if (!raw) return false;
     const p = migrate(raw);
     const anyAsset =

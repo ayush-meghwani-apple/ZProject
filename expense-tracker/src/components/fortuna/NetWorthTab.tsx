@@ -3,7 +3,7 @@ import type { FortunaTabProps } from '../FortunaApp';
 import { computeNetWorth, targetAllocation, assetClassTotals, CLASS_LABEL } from '../../core/plannerMath';
 import type { AssetClassKey } from '../../types/models';
 import HoldingList from './HoldingList';
-import { Section, MoneyRow, TotalRow, Stat, formatINR } from './shared';
+import { Section, TotalRow, Stat, formatINR } from './shared';
 
 const CLASS_ORDER: AssetClassKey[] = [
   'domestic_equity',
@@ -107,43 +107,12 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
           <TotalRow label="Total assets" value={nw.totalAssets} strong />
         </Section>
 
-        <Section title="Liabilities" subtitle="What you owe">
-          <MoneyRow
-            label="Home loan"
-            value={plan.liabilities.homeLoan}
-            onChange={(v) => update((d) => { d.liabilities.homeLoan = v; })}
-          />
-          <MoneyRow
-            label="Education loan"
-            value={plan.liabilities.educationLoan}
-            onChange={(v) => update((d) => { d.liabilities.educationLoan = v; })}
-          />
-          <MoneyRow
-            label="Car loan"
-            value={plan.liabilities.carLoan}
-            onChange={(v) => update((d) => { d.liabilities.carLoan = v; })}
-          />
-          <MoneyRow
-            label="Personal / Gold loan"
-            value={plan.liabilities.personalGoldLoan}
-            onChange={(v) => update((d) => { d.liabilities.personalGoldLoan = v; })}
-          />
-          <MoneyRow
-            label="Credit card"
-            value={plan.liabilities.creditCard}
-            onChange={(v) => update((d) => { d.liabilities.creditCard = v; })}
-          />
-          <MoneyRow
-            label="Other liabilities"
-            value={plan.liabilities.other}
-            onChange={(v) => update((d) => { d.liabilities.other = v; })}
-          />
-          <div className="ft-sublabel">Your own liabilities</div>
+        <Section title="Liabilities" subtitle="What you owe — rename, edit, remove or add lines">
           <HoldingList
-            rows={plan.liabilities.custom ?? []}
-            namePlaceholder="e.g. Loan from family"
+            rows={plan.liabilities.items}
+            namePlaceholder="Liability name"
             addLabel="Add liability"
-            onChange={(m) => update((d) => m(d.liabilities.custom ?? (d.liabilities.custom = [])))}
+            onChange={(m) => update((d) => m(d.liabilities.items))}
           />
           <TotalRow label="Total liabilities" value={nw.totalLiabilities} strong />
         </Section>

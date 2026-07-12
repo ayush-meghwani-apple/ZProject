@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import { computeCashFlow } from '../../core/plannerMath';
 import HoldingList from './HoldingList';
-import { Section, MoneyRow, TotalRow, Stat, formatINR } from './shared';
+import { Section, TotalRow, Stat, formatINR } from './shared';
 
 export default function CashFlowTab({ plan, update }: FortunaTabProps) {
   const cf = useMemo(() => computeCashFlow(plan.cashFlow), [plan.cashFlow]);
@@ -28,70 +28,22 @@ export default function CashFlowTab({ plan, update }: FortunaTabProps) {
           </div>
         </div>
 
-        <Section title="Inflows" subtitle="Money coming in each month">
-          <MoneyRow
-            label="Post-tax salary"
-            value={plan.cashFlow.inflows.salary}
-            onChange={(v) => update((d) => { d.cashFlow.inflows.salary = v; })}
-          />
-          <MoneyRow
-            label="Business income"
-            value={plan.cashFlow.inflows.business}
-            onChange={(v) => update((d) => { d.cashFlow.inflows.business = v; })}
-          />
-          <MoneyRow
-            label="Rental income"
-            value={plan.cashFlow.inflows.rental}
-            onChange={(v) => update((d) => { d.cashFlow.inflows.rental = v; })}
-          />
-          <MoneyRow
-            label="Others"
-            value={plan.cashFlow.inflows.others}
-            onChange={(v) => update((d) => { d.cashFlow.inflows.others = v; })}
-          />
-          <div className="ft-sublabel">Your own inflows</div>
+        <Section title="Inflows" subtitle="Money coming in each month — rename, edit, remove or add lines">
           <HoldingList
-            rows={plan.cashFlow.customInflows ?? []}
-            namePlaceholder="e.g. Freelance, Dividends"
+            rows={plan.cashFlow.inflows}
+            namePlaceholder="Inflow name"
             addLabel="Add inflow"
-            onChange={(m) => update((d) => m(d.cashFlow.customInflows ?? (d.cashFlow.customInflows = [])))}
+            onChange={(m) => update((d) => m(d.cashFlow.inflows))}
           />
           <TotalRow label="Total inflows" value={cf.totalInflows} strong />
         </Section>
 
-        <Section title="Outflows" subtitle="Money going out each month">
-          <MoneyRow
-            label="Monthly expenses"
-            value={plan.cashFlow.outflows.expenses}
-            onChange={(v) => update((d) => { d.cashFlow.outflows.expenses = v; })}
-          />
-          <MoneyRow
-            label="Compulsory investments"
-            hint="ULIPs, chit funds…"
-            value={plan.cashFlow.outflows.compulsoryInvestments}
-            onChange={(v) => update((d) => { d.cashFlow.outflows.compulsoryInvestments = v; })}
-          />
-          <MoneyRow
-            label="Loan EMIs"
-            value={plan.cashFlow.outflows.loanEmis}
-            onChange={(v) => update((d) => { d.cashFlow.outflows.loanEmis = v; })}
-          />
-          <MoneyRow
-            label="Insurance premiums"
-            value={plan.cashFlow.outflows.insurance}
-            onChange={(v) => update((d) => { d.cashFlow.outflows.insurance = v; })}
-          />
-          <MoneyRow
-            label="Others"
-            value={plan.cashFlow.outflows.others}
-            onChange={(v) => update((d) => { d.cashFlow.outflows.others = v; })}
-          />
-          <div className="ft-sublabel">Your own outflows</div>
+        <Section title="Outflows" subtitle="Money going out each month — rename, edit, remove or add lines">
           <HoldingList
-            rows={plan.cashFlow.customOutflows ?? []}
-            namePlaceholder="e.g. School fees, Subscriptions"
+            rows={plan.cashFlow.outflows}
+            namePlaceholder="Outflow name"
             addLabel="Add outflow"
-            onChange={(m) => update((d) => m(d.cashFlow.customOutflows ?? (d.cashFlow.customOutflows = [])))}
+            onChange={(m) => update((d) => m(d.cashFlow.outflows))}
           />
           <TotalRow label="Total outflows" value={cf.totalOutflows} strong />
         </Section>

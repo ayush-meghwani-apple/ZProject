@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
-import type { AssetClassKey, FinancialGoalRow } from '../../types/models';
+import type { AssetClassKey, FinancialGoalRow, GoalPriority } from '../../types/models';
+import { GOAL_PRIORITIES } from '../../types/models';
 import { computeGoal, horizonLabel, CLASS_LABEL, computeCashFlow } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
@@ -12,7 +13,7 @@ function newGoal(): FinancialGoalRow {
   return {
     id: newId(),
     name: '',
-    priority: '',
+    priority: 'Medium',
     yearsLeft: 5,
     amountRequiredToday: 0,
     amountAvailableToday: 0,
@@ -106,12 +107,17 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
                   <label className="ft-row">
                     <span className="ft-row__label">Priority</span>
                     <span className="ft-row__field">
-                      <input
+                      <select
                         className="input ft-row__input"
-                        value={g.priority ?? ''}
-                        placeholder="High / Medium / Low"
-                        onChange={(e) => update((d) => { d.goals[i].priority = e.target.value; })}
-                      />
+                        value={g.priority ?? 'Medium'}
+                        onChange={(e) => update((d) => { d.goals[i].priority = e.target.value as GoalPriority; })}
+                      >
+                        {GOAL_PRIORITIES.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
                     </span>
                   </label>
                   <label className="ft-row">

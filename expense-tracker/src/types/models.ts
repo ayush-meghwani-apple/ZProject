@@ -229,67 +229,58 @@ export interface AssetClassAssumption {
   longPct: number; // long-term goals (>6y)
 }
 
-export interface CashFlow {
-  inflows: {
-    salary: number;
-    business: number;
-    rental: number;
-    others: number;
-  };
-  outflows: {
-    expenses: number;
-    compulsoryInvestments: number;
-    loanEmis: number;
-    insurance: number;
-    others: number;
-  };
-  /** User-defined extra inflow lines (name + amount). */
-  customInflows?: HoldingRow[];
-  /** User-defined extra outflow lines (name + amount). */
-  customOutflows?: HoldingRow[];
-}
-
-/** A single line item inside a multi-row holdings list (a stock, MF, FD…). */
+/** A single line item inside a multi-row holdings list (a stock, MF, FD, an
+ *  inflow/outflow/liability line…). */
 export interface HoldingRow {
   id: ID;
   name: string;
   category?: string; // e.g. Largecap/Midcap/Smallcap/Flexi, or a bank name
-  value: number; // current value in INR
+  value: number; // current value / amount in INR
 }
 
-/** The full portfolio of holdings, grouped by the spreadsheet's asset sheets. */
+/**
+ * Cash flow is fully editable: `inflows` and `outflows` are each a list of
+ * named lines (name + amount) seeded with sensible defaults, so any line can be
+ * renamed, re-valued, removed, or added.
+ */
+export interface CashFlow {
+  inflows: HoldingRow[];
+  outflows: HoldingRow[];
+}
+
+/** The full portfolio of holdings, grouped by the spreadsheet's asset sheets.
+ *  Each class carries an `others` list so custom named instruments can be added
+ *  (and edited) beyond the fixed lines. */
 export interface PlanAssets {
-  realEstate: { home: number; otherRealEstate: number; reits: number };
+  realEstate: { home: number; otherRealEstate: number; reits: number; others: HoldingRow[] };
   domesticEquity: { stocks: HoldingRow[]; mutualFunds: HoldingRow[] };
-  usEquity: { sp500Etf: number; otherEtfs: number; mutualFunds: number };
+  usEquity: { sp500Etf: number; otherEtfs: number; mutualFunds: number; others: HoldingRow[] };
   debt: {
     liquidCash: number; // savings account, cash, liquid fund
     fds: HoldingRow[];
     debtFunds: HoldingRow[];
     epfPpfVpf: HoldingRow[];
   };
-  gold: { jewellery: number; sgb: number; goldEtf: number };
-  crypto: { crypto: number };
+  gold: { jewellery: number; sgb: number; goldEtf: number; others: HoldingRow[] };
+  crypto: { crypto: number; others: HoldingRow[] };
   misc: { ulips: number; smallcase: number };
 }
 
+/** Liabilities is a fully-editable list of named lines (seeded with defaults). */
 export interface Liabilities {
-  homeLoan: number;
-  educationLoan: number;
-  carLoan: number;
-  personalGoldLoan: number;
-  creditCard: number;
-  other: number;
-  /** User-defined extra liability lines (name + amount). */
-  custom?: HoldingRow[];
+  items: HoldingRow[];
 }
+
+/** Goal priority — a fixed 5-level scale from low to high. */
+export type GoalPriority = 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
+export const GOAL_PRIORITIES: GoalPriority[] = ['Very Low', 'Low', 'Medium', 'High', 'Very High'];
 
 /** One financial goal. Derived fields (horizon, future value, SIP, allocation)
  *  are computed at render time and never stored, so they can't go stale. */
 export interface FinancialGoalRow {
   id: ID;
   name: string;
-  priority?: string; // free text (e.g. High/Medium/Low) — optional
+  priority?: GoalPriority; // 5-level scale (Very Low … Very High)
   yearsLeft: number;
   amountRequiredToday: number;
   amountAvailableToday: number;
