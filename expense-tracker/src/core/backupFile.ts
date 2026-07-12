@@ -25,7 +25,10 @@ export async function saveBackupFile(): Promise<boolean> {
     const file = new File([json], name, { type: 'application/json' });
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
-      await nav.share({ files: [file], title: 'Kaizen backup' });
+      // Share ONLY the file — do NOT pass a title/text. iOS "Save to Files"
+      // turns any title/text into a second `text.txt`, so the user ends up with
+      // two files. Files-only saves the single JSON.
+      await nav.share({ files: [file] });
       BackupRepository.markBackedUp();
       return true;
     }

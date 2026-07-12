@@ -15,6 +15,8 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Done
 
+- ✅ **(2026-07-12)** **Backup now saves a single file (v1.15.1).** Exporting was producing two files — `kaizen-backup.json` **and** a stray `text.txt`. Cause: the share sheet was given a `title` alongside the file, and iOS "Save to Files" turns that title into a separate text file. Now it shares **only the JSON**, so you get one clean `kaizen-backup.json`.
+
 - ✅ **(2026-07-12)** **Incomplete expenses stand out on Reels.** While reviewing, any reel that's **missing something** — no category, a category whose sub-category wasn't picked, or no payment method (notes don't count) — now shows an **amber wash + ring and a "⚠️ Missing: …" badge** listing exactly what's absent, so gaps are easy to catch and fix (tap the on-card payment chip or Edit).
 
 - ✅ **(2026-07-12)** **Three Reels fixes (v1.14.2).** (1) The reel **"＋ Payment method"** list now opens **upward** (centred, with its own scroll if it's long) instead of getting cut off at the bottom of the card. (2) **Reels remembers where you were** — switch to another tab and back and it returns you to the same reel (per cycle, for the app session) instead of jumping to the first one. (3) **Double-tap-and-drag to select text no longer flips tabs** — a double-tap selection drag (or dragging with text already selected) is no longer mistaken for a sideways tab swipe.
