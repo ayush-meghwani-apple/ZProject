@@ -41,6 +41,9 @@ export const BackupRepository = {
       storage.vaultItems.getAll(),
     ]);
 
+    // The whole Fortuna financial plan is a single document (id `default`).
+    const plannerDoc = (await storage.plannerDocs.get('default')) ?? undefined;
+
     return {
       app: 'expense-tracker',
       schema: SCHEMA_VERSION,
@@ -61,6 +64,8 @@ export const BackupRepository = {
         noteCategories,
         vaultItems,
       },
+      // The single Fortuna plan document (omitted if none saved yet).
+      plannerDoc,
       // Non-secret key-derivation params so an encrypted vault can be restored
       // (with the same PIN). Omitted if no vault PIN has been set.
       vaultLock: getLockMeta() ?? undefined,
@@ -96,6 +101,11 @@ export const BackupRepository = {
     await storage.noteDocs.bulkPut(d.noteDocs ?? []);
     await storage.noteCategories.bulkPut(d.noteCategories ?? []);
     await storage.vaultItems.bulkPut(d.vaultItems ?? []);
+
+    // Restore the Fortuna plan document (singleton). Only overwrite when the
+    // backup actually carries one, so an older backup never wipes an existing
+    // plan on this device.
+    if (file.plannerDoc) await storage.plannerDocs.put({ ...file.plannerDoc, id: 'default' });
 
     // Only adopt the backup's vault PIN if this device doesn't already have one,
     // so a merge-import never clobbers an existing vault's key.
@@ -139,6 +149,7 @@ export const BackupRepository = {
       storage.noteDocs.clear(),
       storage.noteCategories.clear(),
       storage.vaultItems.clear(),
+      storage.plannerDocs.clear(),
     ]);
     // Clean restore replaces the vault lock too — drop the local PIN so the
     // backup's lock params (if any) are adopted by importAll.

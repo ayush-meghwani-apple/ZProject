@@ -200,6 +200,112 @@ export interface VaultItem {
   updatedAt: ISODate;
 }
 
+// ---------------------------------------------------------------------------
+// Fortuna — Financial Planning ("Investments" tile).
+//
+// Mirrors the user's Master Financial Planner spreadsheet. The ENTIRE plan is a
+// single versioned document (id `default`) so it saves atomically and is trivial
+// to back up/restore. It is deliberately NOT encrypted (only the screen is
+// PIN-gated) so a forgotten PIN can never make the plan unrecoverable. All money
+// is INR; all percentages are whole numbers (12 = 12%).
+// ---------------------------------------------------------------------------
+
+/** One of the six asset classes the planner reasons about. */
+export type AssetClassKey =
+  | 'domestic_equity'
+  | 'us_equity'
+  | 'debt'
+  | 'gold'
+  | 'crypto'
+  | 'real_estate';
+
+/** Expected return + per-horizon allocation weights for one asset class. */
+export interface AssetClassAssumption {
+  key: AssetClassKey;
+  label: string;
+  expectedReturnPct: number; // annual, whole number (e.g. 12)
+  shortPct: number; // allocation weight for short-term goals (<3y)
+  mediumPct: number; // medium-term goals (3–6y)
+  longPct: number; // long-term goals (>6y)
+}
+
+export interface CashFlow {
+  inflows: {
+    salary: number;
+    business: number;
+    rental: number;
+    others: number;
+  };
+  outflows: {
+    expenses: number;
+    compulsoryInvestments: number;
+    loanEmis: number;
+    insurance: number;
+    others: number;
+  };
+}
+
+/** A single line item inside a multi-row holdings list (a stock, MF, FD…). */
+export interface HoldingRow {
+  id: ID;
+  name: string;
+  category?: string; // e.g. Largecap/Midcap/Smallcap/Flexi, or a bank name
+  value: number; // current value in INR
+}
+
+/** The full portfolio of holdings, grouped by the spreadsheet's asset sheets. */
+export interface PlanAssets {
+  realEstate: { home: number; otherRealEstate: number; reits: number };
+  domesticEquity: { stocks: HoldingRow[]; mutualFunds: HoldingRow[] };
+  usEquity: { sp500Etf: number; otherEtfs: number; mutualFunds: number };
+  debt: {
+    liquidCash: number; // savings account, cash, liquid fund
+    fds: HoldingRow[];
+    debtFunds: HoldingRow[];
+    epfPpfVpf: HoldingRow[];
+  };
+  gold: { jewellery: number; sgb: number; goldEtf: number };
+  crypto: { crypto: number };
+  misc: { ulips: number; smallcase: number };
+}
+
+export interface Liabilities {
+  homeLoan: number;
+  educationLoan: number;
+  carLoan: number;
+  personalGoldLoan: number;
+  creditCard: number;
+  other: number;
+}
+
+/** One financial goal. Derived fields (horizon, future value, SIP, allocation)
+ *  are computed at render time and never stored, so they can't go stale. */
+export interface FinancialGoalRow {
+  id: ID;
+  name: string;
+  priority?: string; // free text (e.g. High/Medium/Low) — optional
+  yearsLeft: number;
+  amountRequiredToday: number;
+  amountAvailableToday: number;
+  inflationPct: number;
+  stepUpPct: number; // annual SIP step-up, whole number %
+}
+
+/**
+ * The one-and-only Fortuna document. `v` is an internal version used to migrate
+ * an older document forward in memory on load (never destructively).
+ */
+export interface FinancialPlan {
+  id: 'default';
+  v: number;
+  assumptions: AssetClassAssumption[];
+  cashFlow: CashFlow;
+  assets: PlanAssets;
+  liabilities: Liabilities;
+  goals: FinancialGoalRow[];
+  updatedAt: ISODate;
+}
+
 export type ActivityType =
   | 'expense.added'
   | 'expense.edited'
@@ -242,6 +348,9 @@ export interface BackupFile {
     noteCategories?: NoteCategory[];
     vaultItems?: VaultItem[];
   };
+  /** The whole Fortuna financial plan (single document). Optional so older
+   *  backups without it still import. */
+  plannerDoc?: FinancialPlan;
   /** Vault key-derivation params (non-secret) so an encrypted vault can be
    *  restored on another device with the same PIN. */
   vaultLock?: {

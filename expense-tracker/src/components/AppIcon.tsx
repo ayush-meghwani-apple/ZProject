@@ -1,6 +1,7 @@
 import {
   AlarmClock,
   ArrowLeft,
+  ArrowRightLeft,
   ArrowUpDown,
   Bell,
   Calculator,
@@ -34,6 +35,7 @@ import {
   RefreshCw,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Sprout,
   Table,
   Tags,
@@ -61,6 +63,10 @@ const ICONS = {
   investments: TrendingUp,
   vault: Lock,
   brand: Sprout,
+  // Fortuna (Financial Planning) tabs
+  cashflow: ArrowRightLeft,
+  portfolio: PieChart,
+  assumptions: SlidersHorizontal,
   // Header / drawer chrome
   menu: Menu,
   bell: Bell,

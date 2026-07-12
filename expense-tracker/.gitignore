@@ -5,3 +5,7 @@ dist-ssr
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+
+# Copyrighted reference material (The 1% Club planner) — must never be published
+*.xlsx
+_xlsx_extract/

@@ -4,6 +4,7 @@ import type {
   Category,
   Context,
   Expense,
+  FinancialPlan,
   Goal,
   Merchant,
   NoteCategory,
@@ -47,4 +48,5 @@ export interface StorageAdapter {
   noteDocs: StorageTable<NoteDoc>;
   noteCategories: StorageTable<NoteCategory>;
   vaultItems: StorageTable<VaultItem>;
+  plannerDocs: StorageTable<FinancialPlan>;
 }

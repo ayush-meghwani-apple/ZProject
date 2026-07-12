@@ -3,6 +3,7 @@ import ExpensifyApp from './components/ExpensifyApp';
 import GoalsApp from './components/GoalsApp';
 import NotesApp from './components/NotesApp';
 import VaultApp from './components/VaultApp';
+import FortunaApp from './components/FortunaApp';
 import RemindersInbox from './components/RemindersInbox';
 import BackupReminder from './components/BackupReminder';
 import AppIcon, { type IconName } from './components/AppIcon';
@@ -10,7 +11,7 @@ import { RemindersRepository } from './repository/remindersRepository';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
 
-type AppId = 'expensify' | 'goals' | 'notes' | 'vault';
+type AppId = 'expensify' | 'goals' | 'notes' | 'vault' | 'fortuna';
 
 interface AppDef {
   id: AppId;
@@ -22,14 +23,13 @@ interface AppDef {
 const APPS: AppDef[] = [
   { id: 'expensify', name: 'Expensify', icon: 'expensify', section: 'Money' },
   { id: 'goals', name: 'Questify', icon: 'questify', section: 'Planning' },
+  { id: 'fortuna', name: 'Fortuna', icon: 'investments', section: 'Planning' },
   { id: 'notes', name: 'Slate', icon: 'slate', section: 'Studio' },
   { id: 'vault', name: 'Vault', icon: 'vault', section: 'Private' },
 ];
 
 // Listed in the drawer but not yet built.
-const SOON: { name: string; icon: IconName; section: string }[] = [
-  { name: 'Investments', icon: 'investments', section: 'Planning' },
-];
+const SOON: { name: string; icon: IconName; section: string }[] = [];
 
 export default function App() {
   // Not persisted on purpose: the app always opens on Expensify.
@@ -148,6 +148,8 @@ export default function App() {
           <ExpensifyApp refreshNonce={refreshNonce} openReelsNonce={openReelsNonce} />
         ) : activeApp === 'goals' ? (
           <GoalsApp />
+        ) : activeApp === 'fortuna' ? (
+          <FortunaApp />
         ) : activeApp === 'vault' ? (
           <VaultApp />
         ) : (

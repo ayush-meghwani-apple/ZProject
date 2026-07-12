@@ -5,6 +5,7 @@ import type {
   Category,
   Context,
   Expense,
+  FinancialPlan,
   Goal,
   GoalPlanItem,
   Merchant,
@@ -23,7 +24,7 @@ import type {
  * existing data instead of dropping it — this is what keeps iterative
  * development from breaking an existing database.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export class ExpenseDB extends Dexie {
   categories!: Table<Category, string>;
@@ -40,6 +41,7 @@ export class ExpenseDB extends Dexie {
   noteDocs!: Table<NoteDoc, string>;
   noteCategories!: Table<NoteCategory, string>;
   vaultItems!: Table<VaultItem, string>;
+  plannerDocs!: Table<FinancialPlan, string>;
 
   constructor() {
     super('expense-tracker');
@@ -206,6 +208,28 @@ export class ExpenseDB extends Dexie {
       noteDocs: 'id, updatedAt, categoryId',
       noteCategories: 'id, order',
       vaultItems: 'id, order',
+    });
+
+    // ---- Version 8 -------------------------------------------------------
+    // Adds the Fortuna financial-planning document (the "Investments" tile). The
+    // whole plan is a single record keyed by id (`default`). Existing stores are
+    // repeated so Dexie keeps their data; only `plannerDocs` is introduced.
+    this.version(8).stores({
+      categories: 'id, name',
+      subcategories: 'id, categoryId',
+      merchants: 'id, name',
+      contexts: 'id, name',
+      paymentMethods: 'id, name',
+      aliases: 'id, text, subcategoryId, categoryId',
+      salaryCycles: 'id, startDate, endDate',
+      expenses: 'id, salaryCycleId, categoryId, subcategoryId, date',
+      activities: 'id, type, timestamp',
+      recurring: 'id, nextDate, active',
+      goals: 'id, createdAt',
+      noteDocs: 'id, updatedAt, categoryId',
+      noteCategories: 'id, order',
+      vaultItems: 'id, order',
+      plannerDocs: 'id',
     });
   }
 }
