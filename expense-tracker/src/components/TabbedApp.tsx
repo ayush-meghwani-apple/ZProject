@@ -26,6 +26,7 @@ export default function TabbedApp({ tabs, initialId, controlledOpen }: Props) {
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const dirLock = useRef<'h' | 'v' | null>(null);
   const noSwipe = useRef(false);
+  const lastTapAt = useRef(0);
   const [swipeX, setSwipeX] = useState(0);
   const [slideDir, setSlideDir] = useState<'next' | 'prev'>('next');
   // Don't play the directional slide on the very first render — otherwise a
@@ -66,7 +67,15 @@ export default function TabbedApp({ tabs, initialId, controlledOpen }: Props) {
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
     dirLock.current = null;
-    noSwipe.current = !!(e.target as HTMLElement).closest?.('[data-noswipe]');
+    // Don't treat a text-selection drag as a tab swipe: a double-tap-then-drag
+    // (iOS text selection) or an existing selection disables swiping for this
+    // gesture, as does anything explicitly marked [data-noswipe].
+    const now = Date.now();
+    const isDoubleTap = now - lastTapAt.current < 300;
+    lastTapAt.current = now;
+    const hasSelection = !!window.getSelection?.()?.toString();
+    noSwipe.current =
+      isDoubleTap || hasSelection || !!(e.target as HTMLElement).closest?.('[data-noswipe]');
     setSwipeX(0);
   }
 

@@ -1049,11 +1049,15 @@ input.pmrow__nameinput {
   color: var(--text);
 }
 
+/* On a reel the chip sits mid-card with little room below it, so open the menu
+   UPWARD (and centred). Bounded height + internal scroll keeps a long list
+   fully reachable. */
 .methodmenu--reel {
   left: 50%;
   transform: translateX(-50%);
-  bottom: auto;
-  top: calc(100% + 6px);
+  top: auto;
+  bottom: calc(100% + 6px);
+  max-height: 44vh;
 }
 
 .chat__input input {

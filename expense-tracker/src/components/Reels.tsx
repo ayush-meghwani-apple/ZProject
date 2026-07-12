@@ -20,6 +20,11 @@ interface Props {
   onChange: () => void;
 }
 
+// Remembers the reel index you were on, per cycle, so switching tabs and coming
+// back to Reels returns you to where you left off (kept in memory for the app
+// session).
+const reelScrollPos: Record<string, number> = {};
+
 /** Translucent version of a hex colour, for the card background wash. */
 function tint(hex: string, alpha: number): string {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -105,16 +110,33 @@ export default function Reels({ version, onChange }: Props) {
 
   const total = useMemo(() => reels.reduce((sum, e) => sum + e.amount, 0), [reels]);
 
-  // Reset to the top whenever the chosen cycle changes.
+  // Return to the reel you were on for this cycle (or the top for a cycle you
+  // haven't opened yet), once the track has a measurable height.
   useEffect(() => {
-    setActive(0);
-    trackRef.current?.scrollTo({ top: 0 });
+    if (!cycleId) return;
+    const el = trackRef.current;
+    if (!el) return;
+    const target = Math.min(reelScrollPos[cycleId] ?? 0, Math.max(0, reels.length - 1));
+    let raf = 0;
+    const restore = () => {
+      const h = el.clientHeight;
+      if (h === 0) {
+        raf = requestAnimationFrame(restore);
+        return;
+      }
+      el.scrollTo({ top: target * h });
+      setActive(target);
+    };
+    raf = requestAnimationFrame(restore);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cycleId]);
 
   function onScroll() {
     const el = trackRef.current;
     if (!el || el.clientHeight === 0) return;
     const idx = Math.round(el.scrollTop / el.clientHeight);
+    if (cycleId) reelScrollPos[cycleId] = idx;
     if (idx !== active) setActive(idx);
   }
 
