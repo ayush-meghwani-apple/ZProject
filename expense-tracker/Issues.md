@@ -7,7 +7,15 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
+-> On reels page, in the edit form, the date ui box is going out of the form, basically date-box length is more than other input fields box length
+-> with new fields and vault app values, if i save back up now it will have everything right, just make sure back up mechanism is not affected by any of this.
+-> and with pin operations, please audit the app from security perspective that nothing is broken or loosely coupled for any hacker or anyone to harm or hack the data of the app
+-> and latest version 14.2 is not deployed, so do the above changes and deploy the new version with all of these changes
+-> show different color on the reels if there is any field missing except for notes so that while reviewing that color can show off there is something missing here on this reel
+
 ## Done
+
+- ✅ **(2026-07-12)** **Incomplete expenses stand out on Reels.** While reviewing, any reel that's **missing something** — no category, a category whose sub-category wasn't picked, or no payment method (notes don't count) — now shows an **amber wash + ring and a "⚠️ Missing: …" badge** listing exactly what's absent, so gaps are easy to catch and fix (tap the on-card payment chip or Edit).
 
 - ✅ **(2026-07-12)** **Three Reels fixes (v1.14.2).** (1) The reel **"＋ Payment method"** list now opens **upward** (centred, with its own scroll if it's long) instead of getting cut off at the bottom of the card. (2) **Reels remembers where you were** — switch to another tab and back and it returns you to the same reel (per cycle, for the app session) instead of jumping to the first one. (3) **Double-tap-and-drag to select text no longer flips tabs** — a double-tap selection drag (or dragging with text already selected) is no longer mistaken for a sideways tab swipe.
 

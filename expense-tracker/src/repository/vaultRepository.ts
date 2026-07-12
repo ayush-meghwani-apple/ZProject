@@ -1,5 +1,4 @@
 import { storage } from '../storage';
-import { newId, now } from '../core/util';
 import type { ID, VaultItem } from '../types/models';
 
 export const VaultRepository = {
@@ -15,25 +14,14 @@ export const VaultRepository = {
       .map((x) => x.v);
   },
 
-  async add(label: string, amount: number, note?: string): Promise<VaultItem> {
-    const existing = await storage.vaultItems.getAll();
-    const order = existing.reduce((mx, v) => Math.max(mx, v.order ?? 0), 0) + 1;
-    const ts = now();
-    const item: VaultItem = {
-      id: newId(),
-      label: label.trim(),
-      amount,
-      note: note?.trim() || undefined,
-      order,
-      createdAt: ts,
-      updatedAt: ts,
-    };
+  /** Store a raw (already-encrypted) item. */
+  async put(item: VaultItem): Promise<void> {
     await storage.vaultItems.put(item);
-    return item;
   },
 
-  async update(item: VaultItem): Promise<void> {
-    await storage.vaultItems.put({ ...item, updatedAt: now() });
+  async nextOrder(): Promise<number> {
+    const all = await storage.vaultItems.getAll();
+    return all.reduce((mx, v) => Math.max(mx, v.order ?? 0), 0) + 1;
   },
 
   async remove(id: ID): Promise<void> {

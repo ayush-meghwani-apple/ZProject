@@ -1,6 +1,7 @@
 import { storage } from '../storage';
 import { SCHEMA_VERSION } from '../storage/db';
 import { newId, now } from '../core/util';
+import { getLockMeta, setLockMeta, hasPin, clearPin } from '../core/vaultLock';
 import { ActivityRepository } from './activityRepository';
 import { SalaryCycleRepository } from './salaryCycleRepository';
 import type { BackupFile } from '../types/models';
@@ -60,6 +61,9 @@ export const BackupRepository = {
         noteCategories,
         vaultItems,
       },
+      // Non-secret key-derivation params so an encrypted vault can be restored
+      // (with the same PIN). Omitted if no vault PIN has been set.
+      vaultLock: getLockMeta() ?? undefined,
     };
   },
 
@@ -92,6 +96,10 @@ export const BackupRepository = {
     await storage.noteDocs.bulkPut(d.noteDocs ?? []);
     await storage.noteCategories.bulkPut(d.noteCategories ?? []);
     await storage.vaultItems.bulkPut(d.vaultItems ?? []);
+
+    // Only adopt the backup's vault PIN if this device doesn't already have one,
+    // so a merge-import never clobbers an existing vault's key.
+    if (file.vaultLock && !hasPin()) setLockMeta(file.vaultLock);
 
     // Backups don't carry the per-expense cycle tag, and expenses may pre-date
     // their cycle — so re-derive cycle membership from each expense's date.
@@ -132,6 +140,9 @@ export const BackupRepository = {
       storage.noteCategories.clear(),
       storage.vaultItems.clear(),
     ]);
+    // Clean restore replaces the vault lock too — drop the local PIN so the
+    // backup's lock params (if any) are adopted by importAll.
+    clearPin();
     await this.importAll(file);
   },
 

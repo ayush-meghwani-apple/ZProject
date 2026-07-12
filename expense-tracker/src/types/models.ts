@@ -182,14 +182,19 @@ export interface NoteCategory {
 
 /**
  * A private savings entry kept in the passcode-locked Vault sub-app (e.g.
- * "Emergency fund 50000", "Gold", "FD at HDFC"). Deliberately separate from the
- * expense model so it never shows up in normal spend views.
+ * "Emergency fund 50000", "Gold", "FD at HDFC"). The sensitive fields are stored
+ * ENCRYPTED at rest: `enc` holds the AES-GCM ciphertext of {label, amount,
+ * note}. The plaintext `label`/`amount`/`note` fields only exist on legacy
+ * entries created before encryption (migrated to `enc` on first unlock).
+ * Deliberately separate from the expense model so it never shows up in normal
+ * spend views.
  */
 export interface VaultItem {
   id: ID;
-  label: string;
-  amount: number;
-  note?: string;
+  enc?: string; // encrypted { label, amount, note }
+  label?: string; // legacy plaintext (pre-encryption)
+  amount?: number; // legacy plaintext
+  note?: string; // legacy plaintext
   order?: number;
   createdAt: ISODate;
   updatedAt: ISODate;
@@ -236,5 +241,13 @@ export interface BackupFile {
     noteDocs?: NoteDoc[];
     noteCategories?: NoteCategory[];
     vaultItems?: VaultItem[];
+  };
+  /** Vault key-derivation params (non-secret) so an encrypted vault can be
+   *  restored on another device with the same PIN. */
+  vaultLock?: {
+    v: number;
+    salt: string;
+    iter: number;
+    verifier: string;
   };
 }

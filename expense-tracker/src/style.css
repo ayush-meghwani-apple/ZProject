@@ -1356,6 +1356,18 @@ input.pmrow__nameinput {
   width: 100%;
 }
 
+/* iOS renders date/time inputs at an intrinsic width that ignores width:100%
+   and overflows the form. Strip the native appearance so they size like every
+   other field. */
+.input[type='date'],
+.input[type='time'],
+.input[type='datetime-local'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .inline {
   display: flex;
   gap: 8px;
@@ -1854,6 +1866,21 @@ input.pmrow__nameinput {
   background: linear-gradient(135deg, #059669, #10b981);
   box-shadow: 0 8px 22px rgba(5, 150, 105, 0.4);
   animation: none;
+}
+
+/* Amber "something's missing" badge — no pulsing, calls attention while
+   reviewing without the alarm of a big-spend. */
+.reel__flame--missing {
+  color: #fef3c7;
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  box-shadow: 0 8px 22px rgba(217, 119, 6, 0.4);
+  animation: none;
+  text-transform: none;
+}
+
+/* Subtle amber inset ring so an incomplete reel reads as different at a glance. */
+.reel--incomplete {
+  box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.45);
 }
 
 /* Note reels — reminders typed in chat, surfaced for review/conversion. */

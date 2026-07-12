@@ -344,11 +344,20 @@ export default function Reels({ version, onChange }: Props) {
               const color = cat?.color ?? '#6366f1';
               const sub = subOf(e);
               const method = methodOf(e);
+              // Flag reels that are missing something worth filling in (notes are
+              // optional, so they don't count) — makes gaps easy to spot while
+              // reviewing. A category with sub-categories that has none counts too.
+              const catHasSubs = !!cat && subcategories.some((s) => s.categoryId === cat.id);
+              const missing: string[] = [];
+              if (!e.categoryId) missing.push('category');
+              else if (catHasSubs && !e.subcategoryId) missing.push('sub-category');
+              if (!e.paymentMethodId) missing.push('payment method');
+              const incomplete = missing.length > 0;
               const isBig = bigThreshold > 0 && e.amount >= bigThreshold;
               const big = isBig && !e.reviewed; // “hot” only until reviewed
               const reviewed = isBig && !!e.reviewed; // acknowledged → calm green
               const isRecurring = !!e.recurringId; // auto-created from a recurring rule
-              const cls = `reel${big ? ' reel--big' : ''}${reviewed ? ' reel--reviewed' : ''}`;
+              const cls = `reel${big ? ' reel--big' : ''}${reviewed ? ' reel--reviewed' : ''}${incomplete && !big && !reviewed ? ' reel--incomplete' : ''}`;
               return (
                 <section
                   className={cls}
@@ -358,11 +367,16 @@ export default function Reels({ version, onChange }: Props) {
                       ? 'radial-gradient(130% 90% at 50% 0%, rgba(244, 63, 94, 0.45) 0%, rgba(217, 70, 239, 0.18) 45%, transparent 70%)'
                       : reviewed
                         ? 'radial-gradient(130% 90% at 50% 0%, rgba(16, 185, 129, 0.34) 0%, rgba(16, 185, 129, 0.1) 45%, transparent 70%)'
-                        : `radial-gradient(120% 80% at 50% 0%, ${tint(color, 0.32)} 0%, transparent 60%)`,
+                        : incomplete
+                          ? 'radial-gradient(130% 90% at 50% 0%, rgba(245, 158, 11, 0.34) 0%, rgba(245, 158, 11, 0.08) 45%, transparent 70%)'
+                          : `radial-gradient(120% 80% at 50% 0%, ${tint(color, 0.32)} 0%, transparent 60%)`,
                   }}
                 >
                   {big && <div className="reel__flame">💸 Big spend!</div>}
                   {reviewed && <div className="reel__flame reel__flame--ok">✅ Reviewed</div>}
+                  {incomplete && !big && !reviewed && (
+                    <div className="reel__flame reel__flame--missing">⚠️ Missing: {missing.join(' · ')}</div>
+                  )}
 
                   <div className="reel__icon" style={{ background: tint(color, 0.18) }}>
                     {cat?.icon ?? '📦'}
