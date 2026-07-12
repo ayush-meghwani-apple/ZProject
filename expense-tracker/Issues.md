@@ -7,15 +7,17 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
--> On reels page, in the edit form, the date ui box is going out of the form, basically date-box length is more than other input fields box length
--> with new fields and vault app values, if i save back up now it will have everything right, just make sure back up mechanism is not affected by any of this.
--> and with pin operations, please audit the app from security perspective that nothing is broken or loosely coupled for any hacker or anyone to harm or hack the data of the app
--> and latest version 14.2 is not deployed, so do the above changes and deploy the new version with all of these changes
--> show different color on the reels if there is any field missing except for notes so that while reviewing that color can show off there is something missing here on this reel
-
 ## Done
 
 - ✅ **(2026-07-12)** **Backup now saves a single file (v1.15.1).** Exporting was producing two files — `kaizen-backup.json` **and** a stray `text.txt`. Cause: the share sheet was given a `title` alongside the file, and iOS "Save to Files" turns that title into a separate text file. Now it shares **only the JSON**, so you get one clean `kaizen-backup.json`.
+
+- ✅ **(2026-07-12)** **Vault is now encrypted at rest + security pass (v1.15.0).** Your Vault savings were previously only *hidden* behind the PIN but still stored as plain text in the database. Now every entry is **encrypted at rest** with a key derived from your PIN (PBKDF2 → AES-GCM) — so the raw database (and any backup) only holds ciphertext. The PIN is never stored. Existing data upgrades automatically on first unlock (older PINs and any plain-text entries migrate to the encrypted form — no lockout, no loss), and a wrong PIN can't decrypt anything. _(Trade-off: if you ever forget the PIN, the vault entries genuinely can't be recovered — so keep a backup and remember the PIN.)_
+
+- ✅ **(2026-07-12)** **Backups carry everything — safely (v1.15.0).** Verified end-to-end: a backup includes your **payment methods** and your **Vault** (as encrypted blobs) plus the non-secret key-derivation params, so a restore brings the vault back and you unlock it with the same PIN. A full wipe → restore → unlock round-trip was tested, and the backup file never contains your savings in plain text.
+
+- ✅ **(2026-07-12)** **Date box no longer overflows the edit form (v1.15.0).** On the Reels edit sheet (and other forms) the iOS date field rendered wider than the other inputs and spilled out; it now sizes like every other field.
+
+- ✅ **(2026-07-12)** **Deploys are fine — it was the app cache.** "v1.14.2 not deployed" was actually the installed PWA still serving its cached copy; the deploy had succeeded. To pick up a new version, fully **close and reopen the app twice**; Settings → About shows the current version.
 
 - ✅ **(2026-07-12)** **Incomplete expenses stand out on Reels.** While reviewing, any reel that's **missing something** — no category, a category whose sub-category wasn't picked, or no payment method (notes don't count) — now shows an **amber wash + ring and a "⚠️ Missing: …" badge** listing exactly what's absent, so gaps are easy to catch and fix (tap the on-card payment chip or Edit).
 
