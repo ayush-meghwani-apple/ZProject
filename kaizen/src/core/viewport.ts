@@ -47,6 +47,13 @@ export function initViewport(): void {
     root.style.setProperty('--app-top', `${kbOpen ? Math.round(top) : 0}px`);
     const wasKbOpen = root.classList.contains('kb-open');
     root.classList.toggle('kb-open', kbOpen);
+    // Self-heal the "typing" flag from the LIVE focus too. `kb-typing` is
+    // normally toggled on focusin/focusout, but removing a focused field from
+    // the DOM (e.g. deleting a row while its input is focused) fires NO focusout,
+    // so `kb-typing` — and thus the hidden global header — could stay stuck until
+    // an app restart. Re-deriving it here (this runs on the viewport resize that
+    // fires when the keyboard closes) brings the header back on its own.
+    if (!editableFocused) root.classList.remove('kb-typing');
     // The moment the keyboard actually opens, bring the focused field into view.
     if (kbOpen && !wasKbOpen) startDocking();
   }
