@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ExpensifyApp from './components/ExpensifyApp';
 import GoalsApp from './components/GoalsApp';
 import NotesApp from './components/NotesApp';
+import VaultApp from './components/VaultApp';
 import RemindersInbox from './components/RemindersInbox';
 import BackupReminder from './components/BackupReminder';
 import AppIcon, { type IconName } from './components/AppIcon';
@@ -9,7 +10,7 @@ import { RemindersRepository } from './repository/remindersRepository';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
 
-type AppId = 'expensify' | 'goals' | 'notes';
+type AppId = 'expensify' | 'goals' | 'notes' | 'vault';
 
 interface AppDef {
   id: AppId;
@@ -22,6 +23,7 @@ const APPS: AppDef[] = [
   { id: 'expensify', name: 'Expensify', icon: 'expensify', section: 'Money' },
   { id: 'goals', name: 'Questify', icon: 'questify', section: 'Planning' },
   { id: 'notes', name: 'Slate', icon: 'slate', section: 'Studio' },
+  { id: 'vault', name: 'Vault', icon: 'vault', section: 'Private' },
 ];
 
 // Listed in the drawer but not yet built.
@@ -146,6 +148,8 @@ export default function App() {
           <ExpensifyApp refreshNonce={refreshNonce} openReelsNonce={openReelsNonce} />
         ) : activeApp === 'goals' ? (
           <GoalsApp />
+        ) : activeApp === 'vault' ? (
+          <VaultApp />
         ) : (
           <NotesApp />
         )}

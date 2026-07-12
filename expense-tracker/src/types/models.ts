@@ -180,6 +180,21 @@ export interface NoteCategory {
   createdAt: ISODate;
 }
 
+/**
+ * A private savings entry kept in the passcode-locked Vault sub-app (e.g.
+ * "Emergency fund 50000", "Gold", "FD at HDFC"). Deliberately separate from the
+ * expense model so it never shows up in normal spend views.
+ */
+export interface VaultItem {
+  id: ID;
+  label: string;
+  amount: number;
+  note?: string;
+  order?: number;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
 export type ActivityType =
   | 'expense.added'
   | 'expense.edited'
@@ -220,5 +235,6 @@ export interface BackupFile {
     goals?: Goal[];
     noteDocs?: NoteDoc[];
     noteCategories?: NoteCategory[];
+    vaultItems?: VaultItem[];
   };
 }

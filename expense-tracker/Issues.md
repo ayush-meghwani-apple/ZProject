@@ -7,9 +7,9 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
-- Also i need a hidden way to save some of my saving values but i don't want it to be visible just like that me be something hiddent which can be seen only by a pass-code or something like that, may be we can add that in Questify App or create new sub-app called savings or think of some better way.
-
 ## Done
+
+- ✅ **(2026-07-12)** **New passcode-locked "Vault" for private savings.** There's a new **Vault** sub-app in the drawer (under **Private**) for the savings figures you don't want on show (emergency fund, gold, FDs…). First open asks you to **set a 4–6 digit PIN**; after that it asks for the PIN each time you open it, and it **re-locks automatically** the moment you switch away. Inside, add entries (label + amount + optional note) and see your **private total**. You can **change the PIN** (needs the current one) or, if you forget it, **reset the vault** (erases its entries) from **PIN & security**. The PIN is stored only on this device as a salted hash — never in plain text — and vault entries are kept completely separate from expenses so they never appear in any spend view. _(Vault entries are included in your backup so you don't lose them.)_
 
 - ✅ **(2026-07-12)** **Optional payment methods on expenses + a Summary breakdown.** You can now tag expenses with how you paid (Cash, cards, bank accounts, UPI Lite, Splitwise…) without slowing down adding them. On the **Add** tab there's a small **payment-method chip** above the box: pick one and it's remembered and applied to each expense you add (the confirmation shows it) — leave it on "No method" and nothing's tagged. It's fully editable per expense in the **edit sheet** (so also when adding/editing from **Reels**, which now shows a method badge on each card). Manage your list (add/rename/emoji/remove your own cards & banks) in **Settings → Payment Methods**. **Summary** gets a new **"Spend by Payment Method"** pie + breakdown (tap a slice for its amount). Existing expenses simply show as **"Untagged"** — nothing broke.
 

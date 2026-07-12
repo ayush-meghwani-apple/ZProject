@@ -19,6 +19,7 @@ import {
   Indent,
   List,
   ListTodo,
+  Lock,
   Menu,
   MessageSquare,
   NotebookPen,
@@ -58,6 +59,7 @@ const ICONS = {
   questify: Compass,
   slate: NotebookPen,
   investments: TrendingUp,
+  vault: Lock,
   brand: Sprout,
   // Header / drawer chrome
   menu: Menu,

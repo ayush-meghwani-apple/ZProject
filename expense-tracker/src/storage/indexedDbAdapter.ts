@@ -36,4 +36,5 @@ export const indexedDbAdapter: StorageAdapter = {
   goals: wrap(db.goals),
   noteDocs: wrap(db.noteDocs),
   noteCategories: wrap(db.noteCategories),
+  vaultItems: wrap(db.vaultItems),
 };

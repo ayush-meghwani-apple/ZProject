@@ -12,6 +12,7 @@ import type {
   RecurringExpense,
   SalaryCycle,
   Subcategory,
+  VaultItem,
 } from '../types/models';
 
 /**
@@ -45,4 +46,5 @@ export interface StorageAdapter {
   goals: StorageTable<Goal>;
   noteDocs: StorageTable<NoteDoc>;
   noteCategories: StorageTable<NoteCategory>;
+  vaultItems: StorageTable<VaultItem>;
 }

@@ -22,6 +22,7 @@ export const BackupRepository = {
       goals,
       noteDocs,
       noteCategories,
+      vaultItems,
     ] = await Promise.all([
       storage.categories.getAll(),
       storage.subcategories.getAll(),
@@ -36,6 +37,7 @@ export const BackupRepository = {
       storage.goals.getAll(),
       storage.noteDocs.getAll(),
       storage.noteCategories.getAll(),
+      storage.vaultItems.getAll(),
     ]);
 
     return {
@@ -56,6 +58,7 @@ export const BackupRepository = {
         goals,
         noteDocs,
         noteCategories,
+        vaultItems,
       },
     };
   },
@@ -88,6 +91,7 @@ export const BackupRepository = {
     await storage.goals.bulkPut(d.goals ?? []);
     await storage.noteDocs.bulkPut(d.noteDocs ?? []);
     await storage.noteCategories.bulkPut(d.noteCategories ?? []);
+    await storage.vaultItems.bulkPut(d.vaultItems ?? []);
 
     // Backups don't carry the per-expense cycle tag, and expenses may pre-date
     // their cycle — so re-derive cycle membership from each expense's date.
@@ -126,6 +130,7 @@ export const BackupRepository = {
       storage.goals.clear(),
       storage.noteDocs.clear(),
       storage.noteCategories.clear(),
+      storage.vaultItems.clear(),
     ]);
     await this.importAll(file);
   },

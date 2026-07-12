@@ -14,6 +14,7 @@ import type {
   RecurringExpense,
   SalaryCycle,
   Subcategory,
+  VaultItem,
 } from '../types/models';
 
 /**
@@ -22,7 +23,7 @@ import type {
  * existing data instead of dropping it — this is what keeps iterative
  * development from breaking an existing database.
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export class ExpenseDB extends Dexie {
   categories!: Table<Category, string>;
@@ -38,6 +39,7 @@ export class ExpenseDB extends Dexie {
   goals!: Table<Goal, string>;
   noteDocs!: Table<NoteDoc, string>;
   noteCategories!: Table<NoteCategory, string>;
+  vaultItems!: Table<VaultItem, string>;
 
   constructor() {
     super('expense-tracker');
@@ -184,6 +186,26 @@ export class ExpenseDB extends Dexie {
       goals: 'id, createdAt',
       noteDocs: 'id, updatedAt, categoryId',
       noteCategories: 'id, order',
+    });
+
+    // ---- Version 7 -------------------------------------------------------
+    // Adds the passcode-locked Vault sub-app's savings entries. Existing stores
+    // are repeated so Dexie keeps their data; only `vaultItems` is introduced.
+    this.version(7).stores({
+      categories: 'id, name',
+      subcategories: 'id, categoryId',
+      merchants: 'id, name',
+      contexts: 'id, name',
+      paymentMethods: 'id, name',
+      aliases: 'id, text, subcategoryId, categoryId',
+      salaryCycles: 'id, startDate, endDate',
+      expenses: 'id, salaryCycleId, categoryId, subcategoryId, date',
+      activities: 'id, type, timestamp',
+      recurring: 'id, nextDate, active',
+      goals: 'id, createdAt',
+      noteDocs: 'id, updatedAt, categoryId',
+      noteCategories: 'id, order',
+      vaultItems: 'id, order',
     });
   }
 }
