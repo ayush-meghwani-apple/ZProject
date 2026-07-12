@@ -158,6 +158,8 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
   const crypto = (a.crypto ?? {}) as Record<string, unknown>;
   const misc = (a.misc ?? {}) as Record<string, unknown>;
 
+  const horizons = migrateHorizons(raw.horizons);
+
   return {
     id: PLAN_ID,
     v: PLAN_VERSION,
@@ -196,7 +198,7 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
       misc: { ulips: num(misc.ulips), smallcase: num(misc.smallcase) },
     },
     liabilities: { items: liabilityItems },
-    goals: Array.isArray(raw.goals) ? (raw.goals as FinancialPlan['goals']) : [],
+    goals: migrateGoals(raw.goals, horizons),
     recurringInvestments: Array.isArray(raw.recurringInvestments)
       ? (raw.recurringInvestments as FinancialPlan['recurringInvestments'])
       : [],
@@ -235,14 +237,36 @@ function migrateAssumptions(raw: unknown, fallback: AssetClassAssumption[]): Ass
   });
 }
 
-/** Migrate/seed the horizon list. When absent, use the three defaults. */
+/** Migrate/seed the goal-type list (formerly "horizons"). When absent, use the
+ *  three defaults. Preserves any legacy `maxYears` so existing goals can be
+ *  mapped to a type, and carries the optional one-line `description`. */
 function migrateHorizons(raw: unknown): HorizonDef[] {
   if (!Array.isArray(raw) || raw.length === 0) return DEFAULT_HORIZONS.map((h) => ({ ...h }));
   return (raw as Record<string, unknown>[]).map((h) => ({
     id: String(h.id ?? newId()),
-    label: String(h.label ?? 'Horizon'),
-    maxYears: Number.isFinite(Number(h.maxYears)) ? Number(h.maxYears) : 999,
+    label: String(h.label ?? 'Goal type'),
+    description: typeof h.description === 'string' ? h.description : undefined,
+    maxYears: Number.isFinite(Number(h.maxYears)) ? Number(h.maxYears) : undefined,
   }));
+}
+
+/** Ensure every goal has a `goalTypeId`. Existing goals (which used to be mapped
+ *  by years-left) are assigned the type whose legacy `maxYears` they fall under,
+ *  preserving their current allocation; otherwise the first type. */
+function migrateGoals(raw: unknown, horizons: HorizonDef[]): FinancialPlan['goals'] {
+  if (!Array.isArray(raw)) return [];
+  const firstId = horizons[0]?.id;
+  const withMax = horizons.filter((h) => Number.isFinite(h.maxYears as number));
+  const sorted = [...withMax].sort((a, b) => (a.maxYears as number) - (b.maxYears as number));
+  return (raw as Record<string, unknown>[]).map((g) => {
+    let goalTypeId = typeof g.goalTypeId === 'string' ? g.goalTypeId : undefined;
+    if (!goalTypeId || !horizons.some((h) => h.id === goalTypeId)) {
+      const years = Number(g.yearsLeft) || 0;
+      const match = sorted.find((h) => years < (h.maxYears as number));
+      goalTypeId = (match ?? sorted[sorted.length - 1])?.id ?? firstId;
+    }
+    return { ...(g as unknown as FinancialPlan['goals'][number]), goalTypeId };
+  });
 }
 
 /** Migrate/seed the custom asset classes list. */

@@ -24,6 +24,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   const assumptions = activeAssumptions(plan.assumptions, plan.disabledClasses ?? []);
   const horizons = plan.horizons;
+  const goalTypes = plan.horizons ?? [];
   const labelMap = useMemo(() => classLabelMap(assumptions), [assumptions]);
 
   const totalSip = useMemo(
@@ -35,6 +36,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
 
   function addGoal() {
     const g = newGoal();
+    g.goalTypeId = plan.horizons?.[0]?.id;
     update((d) => { d.goals.push(g); });
     setOpenId(g.id);
   }
@@ -122,6 +124,22 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
                     </span>
                   </label>
                   <label className="ft-row">
+                    <span className="ft-row__label">Goal type</span>
+                    <span className="ft-row__field">
+                      <select
+                        className="input ft-row__input"
+                        value={g.goalTypeId ?? goalTypes[0]?.id ?? ''}
+                        onChange={(e) => update((d) => { d.goals[i].goalTypeId = e.target.value; })}
+                      >
+                        {goalTypes.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  </label>
+                  <label className="ft-row">
                     <span className="ft-row__label">Years left for goal</span>
                     <span className="ft-row__field ft-row__field--pct">
                       <input
@@ -159,7 +177,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
 
                   <div className="ft-goal__calc">
                     <div className="ft-goal__calcrow">
-                      <span>Horizon</span>
+                      <span>Goal type</span>
                       <span>
                         {horizonLabel(c.horizon, horizons)} · {(c.effReturn * 100).toFixed(1)}% return
                       </span>
@@ -210,8 +228,8 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
         <Section title="How this works">
           <p className="ft-note">
             Each goal's future cost is your required amount grown by inflation, minus what you've already set aside
-            grown at the expected return for its time horizon. The SIP is the monthly amount that reaches that
-            shortfall by the goal date, then split across asset classes using your Assumptions.
+            grown at the expected return for its goal type. The SIP is the monthly amount that reaches that
+            shortfall by the goal date, then split across asset classes using your Returns assumptions.
           </p>
         </Section>
       </div>

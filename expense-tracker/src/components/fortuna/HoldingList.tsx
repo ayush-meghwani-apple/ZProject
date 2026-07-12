@@ -7,10 +7,10 @@ import { formatINR } from './shared';
 
 /**
  * An editable list of `{name, [category], value}` rows — shared by the Portfolio
- * holdings and by the Cash Flow / Liabilities lines. Each row shows a clean
- * read-only line (name + value) with a **pencil** to edit and a **trash** to
- * remove — just like editing sub-categories in Expensify. Tapping the pencil
- * opens that single row's inputs inline; an **Add** button sits at the bottom.
+ * holdings and by the Cash Flow / Liabilities lines. Read rows show just the
+ * name + value and are tappable; tapping a row opens its inline editor (name /
+ * category / value + delete), so the edit & delete controls only appear when you
+ * actually want to change something — the list stays clean and uncluttered.
  */
 export default function HoldingList({
   rows,
@@ -68,29 +68,27 @@ export default function HoldingList({
                 placeholder="0"
               />
             </span>
-            <button className="iconbtn ft-holding__done" aria-label="Done" onClick={() => setEditingId(null)}>
+            <button
+              className="iconbtn ft-holding__del"
+              aria-label="Remove"
+              title="Remove"
+              onClick={() => { setEditingId(null); onChange((rs) => { rs.splice(i, 1); }); }}
+            >
+              <AppIcon name="trash" size={16} />
+            </button>
+            <button className="iconbtn ft-holding__done" aria-label="Done" title="Done" onClick={() => setEditingId(null)}>
               <AppIcon name="done" size={16} />
             </button>
           </div>
         ) : (
-          <div className="ft-readrow" key={row.id}>
+          <button className="ft-readrow ft-readrow--tap" key={row.id} onClick={() => setEditingId(row.id)}>
             <span className="ft-readrow__name">
               {row.name.trim() || '—'}
               {categories && row.category && <span className="ft-readrow__cat">{row.category}</span>}
             </span>
             <span className="ft-readrow__val">{formatINR(row.value)}</span>
-            <button className="iconbtn ft-readrow__edit" aria-label="Edit" title="Edit" onClick={() => setEditingId(row.id)}>
-              <AppIcon name="edit" size={15} />
-            </button>
-            <button
-              className="iconbtn ft-readrow__del"
-              aria-label="Remove"
-              title="Remove"
-              onClick={() => { if (editingId === row.id) setEditingId(null); onChange((rs) => { rs.splice(i, 1); }); }}
-            >
-              <AppIcon name="trash" size={15} />
-            </button>
-          </div>
+            <AppIcon name="chevronRight" size={15} className="ft-readrow__chev" />
+          </button>
         ),
       )}
 

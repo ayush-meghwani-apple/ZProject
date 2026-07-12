@@ -63,40 +63,41 @@ function sumProductReturns(assumptions: AssetClassAssumption[], h: Horizon): num
   return assumptions.reduce((s, a) => s + pct(a.expectedReturnPct) * weightFor(a, h), 0);
 }
 
-/** Effective (blended) annual return per horizon id. Faithful to the sheet's
- *  blended medium row (medium = SUMPRODUCT(mediumWeights)·0.4 + short·0.6) when
- *  both a 'short' and 'medium' horizon exist; any other horizon is a plain
- *  SUMPRODUCT. */
+/** Effective (blended) annual return per goal-type id — the allocation-weighted
+ *  average of the asset classes' expected returns for that type. */
 export function effectiveReturns(
   assumptions: AssetClassAssumption[],
   horizons?: HorizonDef[],
 ): Record<string, number> {
   const hs = planHorizons(horizons);
   const out: Record<string, number> = {};
-  const shortId = hs.find((h) => h.id === 'short')?.id;
-  for (const h of hs) {
-    if (h.id === 'medium' && shortId) {
-      out[h.id] = sumProductReturns(assumptions, h.id) * 0.4 + sumProductReturns(assumptions, shortId) * 0.6;
-    } else {
-      out[h.id] = sumProductReturns(assumptions, h.id);
-    }
-  }
+  for (const h of hs) out[h.id] = sumProductReturns(assumptions, h.id);
   return out;
 }
 
 // --- Goals -----------------------------------------------------------------
 
-/** Which horizon a goal falls into: the first (ordered by maxYears ascending)
- *  whose maxYears exceeds the years left; else the last. */
+/** Legacy helper: map years-left to the goal type whose `maxYears` it falls
+ *  under (only used when migrating pre-goal-type plans). */
 export function horizonFor(yearsLeft: number, horizons?: HorizonDef[]): Horizon {
-  const hs = [...planHorizons(horizons)].sort((a, b) => a.maxYears - b.maxYears);
-  const match = hs.find((h) => yearsLeft < h.maxYears);
+  const hs = [...planHorizons(horizons)]
+    .filter((h) => Number.isFinite(h.maxYears as number))
+    .sort((a, b) => (a.maxYears as number) - (b.maxYears as number));
+  if (hs.length === 0) return planHorizons(horizons)[0]?.id ?? '';
+  const match = hs.find((h) => yearsLeft < (h.maxYears as number));
   return (match ?? hs[hs.length - 1]).id;
+}
+
+/** The goal type a goal is assigned to (its id), falling back to the first. */
+export function goalTypeIdOf(goal: FinancialGoalRow, horizons?: HorizonDef[]): string {
+  const hs = planHorizons(horizons);
+  if (goal.goalTypeId && hs.some((h) => h.id === goal.goalTypeId)) return goal.goalTypeId;
+  return hs[0]?.id ?? '';
 }
 
 export function horizonLabel(h: Horizon, horizons?: HorizonDef[]): string {
   const def = planHorizons(horizons).find((x) => x.id === h);
-  return def ? `${def.label} Term` : 'Term';
+  return def ? def.label : 'Goal type';
 }
 
 export interface GoalComputed {
@@ -158,7 +159,7 @@ export function computeGoal(
   horizons?: HorizonDef[],
 ): GoalComputed {
   const eff = effectiveReturns(assumptions, horizons);
-  const horizon = horizonFor(num(goal.yearsLeft), horizons);
+  const horizon = goalTypeIdOf(goal, horizons);
   const effReturn = eff[horizon] ?? 0;
   const fv = amountRequiredFuture(goal, effReturn);
   const sip = sipRequired(fv, num(goal.yearsLeft), effReturn, num(goal.stepUpPct));

@@ -220,21 +220,24 @@ export type AssetClassKey =
   | 'real_estate';
 
 /**
- * A goal time-horizon bucket. Goals fall into the first horizon (ordered by
- * `maxYears` ascending) whose `maxYears` exceeds their years-left; the last one
- * is the catch-all. Short/Medium/Long are built in but the user can add more.
+ * A goal TYPE — a user-defined bucket you assign goals to (e.g. Short, Medium,
+ * Retirement, Wealth). Each type just carries a heading and a one-line
+ * description; it is NOT derived from a time horizon. Its per-class allocation
+ * weights live on the {@link AssetClassAssumption} rows (keyed by this id).
+ * (`maxYears` is legacy — only used to migrate pre-goal-type plans; not shown.)
  */
 export interface HorizonDef {
-  id: string; // 'short' | 'medium' | 'long' | a uuid for custom horizons
+  id: string; // 'short' | 'medium' | 'long' | a uuid for custom types
   label: string;
-  maxYears: number; // goals with yearsLeft < maxYears fall here (999 = catch-all)
+  description?: string; // one-line description of what this goal type means
+  maxYears?: number; // legacy: old time-horizon cut-off (migration only)
 }
 
-/** The three horizons every plan starts with (mirrors the spreadsheet). */
+/** The goal types every plan starts with (rename/edit/remove them freely). */
 export const DEFAULT_HORIZONS: HorizonDef[] = [
-  { id: 'short', label: 'Short', maxYears: 3 },
-  { id: 'medium', label: 'Medium', maxYears: 7 },
-  { id: 'long', label: 'Long', maxYears: 999 },
+  { id: 'short', label: 'Short term', description: 'Goals within the next few years', maxYears: 3 },
+  { id: 'medium', label: 'Medium term', description: 'Goals a handful of years out', maxYears: 7 },
+  { id: 'long', label: 'Long term', description: 'Distant, long-horizon goals', maxYears: 999 },
 ];
 
 /** Expected return + per-horizon allocation weights for one asset class. The
@@ -312,6 +315,7 @@ export interface FinancialGoalRow {
   id: ID;
   name: string;
   priority?: GoalPriority; // 5-level scale (Very Low … Very High)
+  goalTypeId?: string; // which goal type (its allocation weights drive the SIP split)
   yearsLeft: number;
   amountRequiredToday: number;
   amountAvailableToday: number;
