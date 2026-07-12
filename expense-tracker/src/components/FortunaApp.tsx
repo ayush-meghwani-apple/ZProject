@@ -9,6 +9,7 @@ import CashFlowTab from './fortuna/CashFlowTab';
 import PortfolioTab from './fortuna/PortfolioTab';
 import GoalsTab from './fortuna/GoalsTab';
 import AssumptionsTab from './fortuna/AssumptionsTab';
+import SettingsTab from './fortuna/SettingsTab';
 
 /**
  * A draft-mutator update: receives a mutable clone of the plan, mutates it in
@@ -164,6 +165,18 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     });
   }, []);
 
+  // Re-load the plan from storage, cancelling any pending save so an in-flight
+  // debounce can't clobber freshly-imported/restored data.
+  const reload = useCallback(async () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    pendingSave.current = null;
+    const p = await PlannerRepository.load();
+    setPlan(p);
+  }, []);
+
   if (!plan) {
     return (
       <main className="app__body">
@@ -182,7 +195,8 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     { id: 'cashflow', label: 'Cash Flow', icon: <AppIcon name="cashflow" size={20} />, render: () => <CashFlowTab {...props} /> },
     { id: 'portfolio', label: 'Portfolio', icon: <AppIcon name="portfolio" size={20} />, render: () => <PortfolioTab {...props} /> },
     { id: 'goals', label: 'Goals', icon: <AppIcon name="goals" size={20} />, render: () => <GoalsTab {...props} /> },
-    { id: 'assumptions', label: 'Assumptions', icon: <AppIcon name="assumptions" size={20} />, render: () => <AssumptionsTab {...props} onLock={() => { flush(); onLock(); }} /> },
+    { id: 'assumptions', label: 'Returns', icon: <AppIcon name="assumptions" size={20} />, render: () => <AssumptionsTab {...props} /> },
+    { id: 'settings', label: 'Settings', icon: <AppIcon name="settings" size={20} />, render: () => <SettingsTab {...props} reload={reload} onLock={() => { flush(); onLock(); }} /> },
   ];
 
   return <TabbedApp tabs={tabs} initialId="networth" />;

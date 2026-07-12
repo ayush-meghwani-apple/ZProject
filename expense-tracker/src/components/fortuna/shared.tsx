@@ -1,19 +1,47 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import AmountInput from '../AmountInput';
+import AppIcon from '../AppIcon';
 import { formatINR } from '../../core/util';
 
-/** A titled card section used across Fortuna tabs. */
+/** A titled card section used across Fortuna tabs. When `collapsible` is set the
+ *  header becomes a toggle and the body hides when collapsed — so a long tab
+ *  (e.g. Portfolio) can show just headings + amounts until you tap to expand. */
 export function Section({
   title,
   subtitle,
   right,
   children,
+  collapsible,
+  defaultOpen = true,
 }: {
   title: string;
   subtitle?: string;
   right?: ReactNode;
   children: ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const showBody = !collapsible || open;
+
+  if (collapsible) {
+    return (
+      <section className={`ft-section ft-section--collapsible ${open ? 'ft-section--open' : ''}`}>
+        <button className="ft-section__toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          <span className="ft-section__togglehead">
+            <span>
+              <span className="ft-section__title">{title}</span>
+              {subtitle && <span className="ft-section__sub">{subtitle}</span>}
+            </span>
+            {right}
+          </span>
+          <AppIcon name={open ? 'chevronUp' : 'chevronDown'} size={18} />
+        </button>
+        {showBody && <div className="ft-section__body">{children}</div>}
+      </section>
+    );
+  }
+
   return (
     <section className="ft-section">
       <div className="ft-section__head">

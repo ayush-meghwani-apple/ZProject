@@ -84,16 +84,17 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
     <main className="app__body">
       <div className="page ft-page">
         <p className="ft-note ft-note--top">
-          Enter the current value of everything you own. Totals roll up into your Net Worth automatically.
+          Enter the current value of everything you own. Tap a section to expand it; totals roll up into your Net
+          Worth automatically.
         </p>
 
-        <Section title="Real Estate & REITs" right={<Chip value={totals.real_estate} />}>
+        <Section title="Real Estate & REITs" right={<Chip value={totals.real_estate} />} collapsible defaultOpen={false}>
           <MoneyRow label="Home" value={a.realEstate.home} onChange={(v) => update((d) => { d.assets.realEstate.home = v; })} />
           <MoneyRow label="Other real estate" value={a.realEstate.otherRealEstate} onChange={(v) => update((d) => { d.assets.realEstate.otherRealEstate = v; })} />
           <MoneyRow label="REITs" value={a.realEstate.reits} onChange={(v) => update((d) => { d.assets.realEstate.reits = v; })} />
         </Section>
 
-        <Section title="Domestic Equity" subtitle="Stocks & mutual funds" right={<Chip value={totals.domestic_equity} />}>
+        <Section title="Domestic Equity" subtitle="Stocks & mutual funds" right={<Chip value={totals.domestic_equity} />} collapsible defaultOpen={false}>
           <div className="ft-sublabel">Stocks</div>
           <HoldingList
             rows={a.domesticEquity.stocks}
@@ -110,14 +111,14 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
           />
         </Section>
 
-        <Section title="US Equity" right={<Chip value={totals.us_equity} />}>
+        <Section title="US Equity" right={<Chip value={totals.us_equity} />} collapsible defaultOpen={false}>
           <MoneyRow label="S&P 500 ETF" value={a.usEquity.sp500Etf} onChange={(v) => update((d) => { d.assets.usEquity.sp500Etf = v; })} />
           <MoneyRow label="Other ETFs" value={a.usEquity.otherEtfs} onChange={(v) => update((d) => { d.assets.usEquity.otherEtfs = v; })} />
           <MoneyRow label="US mutual funds" value={a.usEquity.mutualFunds} onChange={(v) => update((d) => { d.assets.usEquity.mutualFunds = v; })} />
           <MoneyRow label="Smallcase" value={a.misc.smallcase} onChange={(v) => update((d) => { d.assets.misc.smallcase = v; })} />
         </Section>
 
-        <Section title="Debt" subtitle="Cash, FDs, debt funds, EPF/PPF/VPF" right={<Chip value={totals.debt} />}>
+        <Section title="Debt" subtitle="Cash, FDs, debt funds, EPF/PPF/VPF" right={<Chip value={totals.debt} />} collapsible defaultOpen={false}>
           <MoneyRow label="Liquid (savings, cash, liquid fund)" value={a.debt.liquidCash} onChange={(v) => update((d) => { d.assets.debt.liquidCash = v; })} />
           <div className="ft-sublabel">Fixed deposits</div>
           <HoldingList rows={a.debt.fds} namePlaceholder="Bank name" onChange={(m) => update((d) => m(d.assets.debt.fds))} />
@@ -128,13 +129,13 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
           <MoneyRow label="ULIPs / other insurance" value={a.misc.ulips} onChange={(v) => update((d) => { d.assets.misc.ulips = v; })} />
         </Section>
 
-        <Section title="Gold" right={<Chip value={totals.gold} />}>
+        <Section title="Gold" right={<Chip value={totals.gold} />} collapsible defaultOpen={false}>
           <MoneyRow label="Jewellery" value={a.gold.jewellery} onChange={(v) => update((d) => { d.assets.gold.jewellery = v; })} />
           <MoneyRow label="SGB" value={a.gold.sgb} onChange={(v) => update((d) => { d.assets.gold.sgb = v; })} />
           <MoneyRow label="Gold ETF / digital gold" value={a.gold.goldEtf} onChange={(v) => update((d) => { d.assets.gold.goldEtf = v; })} />
         </Section>
 
-        <Section title="Crypto" right={<Chip value={totals.crypto} />}>
+        <Section title="Crypto" right={<Chip value={totals.crypto} />} collapsible defaultOpen={false}>
           <MoneyRow label="Crypto" value={a.crypto.crypto} onChange={(v) => update((d) => { d.assets.crypto.crypto = v; })} />
         </Section>
 

@@ -2,11 +2,6 @@ import { useMemo } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import { effectiveReturns } from '../../core/plannerMath';
 import { Section } from './shared';
-import AppIcon from '../AppIcon';
-
-interface Props extends FortunaTabProps {
-  onLock: () => void;
-}
 
 const HORIZONS = [
   { key: 'shortPct', label: 'Short', note: '< 3y' },
@@ -14,7 +9,7 @@ const HORIZONS = [
   { key: 'longPct', label: 'Long', note: '> 6y' },
 ] as const;
 
-export default function AssumptionsTab({ plan, update, onLock }: Props) {
+export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
   const eff = useMemo(() => effectiveReturns(plan.assumptions), [plan.assumptions]);
 
   const shortSum = plan.assumptions.reduce((s, a) => s + (a.shortPct || 0), 0);
@@ -92,12 +87,6 @@ export default function AssumptionsTab({ plan, update, onLock }: Props) {
             </div>
           </div>
           <p className="ft-note">Allocation weights for each horizon should ideally add up to 100%.</p>
-        </Section>
-
-        <Section title="Privacy">
-          <button className="btn btn--ghost ft-lockbtn" onClick={onLock}>
-            <AppIcon name="vault" size={18} /> Lock financial plan
-          </button>
         </Section>
       </div>
     </main>

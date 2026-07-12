@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { AssetClassKey, FinancialGoalRow } from '../../types/models';
-import { computeGoal, horizonLabel, CLASS_LABEL } from '../../core/plannerMath';
+import { computeGoal, horizonLabel, CLASS_LABEL, computeCashFlow } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import { Section, MoneyRow, PercentRow, formatINR } from './shared';
@@ -28,6 +28,8 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
     () => plan.goals.reduce((s, g) => s + computeGoal(g, plan.assumptions).sipRequired, 0),
     [plan.goals, plan.assumptions],
   );
+  const surplus = useMemo(() => computeCashFlow(plan.cashFlow).investingSurplus, [plan.cashFlow]);
+  const overCommitted = totalSip > surplus && surplus > 0;
 
   function addGoal() {
     const g = newGoal();
@@ -43,6 +45,26 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
             <span className="ft-stat__label">Total monthly SIP required</span>
             <span className="ft-stat__val">{formatINR(totalSip)}</span>
           </div>
+          {surplus > 0 && (
+            <div className="ft-hero__split">
+              <div className="ft-hero__cell">
+                <span className="ft-hero__k">Monthly surplus</span>
+                <span className="ft-hero__v">{formatINR(surplus)}</span>
+              </div>
+              <div className="ft-hero__cell">
+                <span className="ft-hero__k">{overCommitted ? 'Shortfall' : 'Spare'}</span>
+                <span className={`ft-hero__v ${overCommitted ? 'ft-neg' : ''}`}>
+                  {formatINR(Math.abs(surplus - totalSip))}
+                </span>
+              </div>
+            </div>
+          )}
+          {overCommitted && (
+            <p className="ft-warnbanner">
+              ⚠️ Your goals need {formatINR(totalSip)}/mo but your investing surplus is only{' '}
+              {formatINR(surplus)}/mo. Consider extending timelines, trimming targets, or raising income.
+            </p>
+          )}
         </div>
 
         {plan.goals.length === 0 && (
