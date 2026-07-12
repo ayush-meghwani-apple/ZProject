@@ -11,6 +11,8 @@ _Nothing open right now._
 
 ## Done
 
+- ✅ **(2026-07-13)** **New goal types & asset categories open ready-to-edit (v1.26.0).** (1) **Adding a goal type** (Returns tab) now drops you straight into its **edit form** — name field focused, description + delete/done — instead of a read row you had to tap first. (2) **Adding an asset category** (Portfolio) now **opens the new section expanded** (name, liquid toggle, holdings, delete) so you can fill it in immediately.
+
 - ✅ **(2026-07-13)** **Asset-class matrix, editable emergency fund, cleaner add/edit affordances (v1.25.0).** Six items: (1) **Returns "Asset classes" is now a matrix** — goal types run down the left (rows, so they can grow), the asset classes run across the top (columns, fitting the screen width with no horizontal scroll), with a **Return** row up top. (2) **Net Worth got its own icon** — it was sharing Fortuna's chart icon; it now uses a **balance-scale** icon. (3) **Add button sits after the Total** — Cash Flow / Liabilities lists show the aligned **Total** line, then a **short "Add …" button** (the stray ₹ amount next to Add is gone), so all amounts line up. (4) **Emergency fund is editable** — the target defaults to 6× monthly outflows but you can set your own; a **"Use recommended"** button resets it, and the shortfall uses your target. (5) **Goal types use tap-to-edit** — they're clean read rows (name + description + ›) now; tap one to rename / edit its description / delete, instead of always showing input boxes. (6) **Shorter add buttons** — the "Add goal type"/"Add …" buttons only take the width they need.
 
 

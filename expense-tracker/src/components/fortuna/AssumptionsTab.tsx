@@ -19,6 +19,7 @@ const SHORT_CLASS: Record<string, string> = {
 
 export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
   const disabled = new Set(plan.disabledClasses ?? []);
+  const [newTypeId, setNewTypeId] = useState<string | null>(null);
   const goalTypes = useMemo(() => planHorizons(plan.horizons), [plan.horizons]);
   const active = useMemo(
     () => activeAssumptions(plan.assumptions, plan.disabledClasses ?? []),
@@ -47,10 +48,12 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
   }
 
   function addGoalType() {
+    const id = newId();
     update((d) => {
       const hs = d.horizons ?? (d.horizons = []);
-      hs.push({ id: newId(), label: 'New goal type', description: '' });
+      hs.push({ id, label: 'New goal type', description: '' });
     });
+    setNewTypeId(id);
   }
   function setGoalType(id: string, patch: Partial<HorizonDef>) {
     update((d) => {
@@ -95,6 +98,7 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
               key={h.id}
               def={h}
               canDelete={goalTypes.length > 1}
+              startEditing={h.id === newTypeId}
               onChange={(patch) => setGoalType(h.id, patch)}
               onRemove={() => removeGoalType(h.id)}
             />
@@ -168,15 +172,17 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
 function GoalTypeRow({
   def,
   canDelete,
+  startEditing = false,
   onChange,
   onRemove,
 }: {
   def: HorizonDef;
   canDelete: boolean;
+  startEditing?: boolean;
   onChange: (patch: Partial<HorizonDef>) => void;
   onRemove: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
 
   if (editing) {
     return (

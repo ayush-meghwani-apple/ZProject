@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { AssetClassKey, CustomAssetClass } from '../../types/models';
 import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION } from '../../core/plannerMath';
@@ -24,6 +24,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
   const caps = useMemo(() => capBreakdown(plan.assets), [plan.assets]);
   const a = plan.assets;
   const capTotal = caps.reduce((s, c) => s + c.value, 0);
+  const [newClassId, setNewClassId] = useState<string | null>(null);
 
   const customClasses = plan.customClasses ?? [];
   const disabledList = plan.disabledClasses ?? [];
@@ -60,6 +61,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
       cc.push({ id, label: '', liquid: true, holdings: [] });
       d.assumptions.push({ key: id, label: '', expectedReturnPct: 8, weights: {} });
     });
+    setNewClassId(id);
   }
   function removeCustomClass(id: string) {
     update((d) => {
@@ -218,7 +220,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
             title={c.label.trim() || 'Custom category'}
             right={<HeadRight k={c.id} value={customTotal(c)} />}
             collapsible
-            defaultOpen={false}
+            defaultOpen={c.id === newClassId}
           >
             <label className="ft-row">
               <span className="ft-row__label">Category name</span>
