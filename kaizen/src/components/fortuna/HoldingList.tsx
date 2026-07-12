@@ -76,6 +76,7 @@ export default function HoldingList({
               className="iconbtn ft-holding__del"
               aria-label="Remove"
               title="Remove"
+              onPointerDown={(e) => e.preventDefault()}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => { setEditingId(null); onChange((rs) => { rs.splice(i, 1); }); }}
             >
@@ -85,6 +86,7 @@ export default function HoldingList({
               className="iconbtn ft-holding__done"
               aria-label="Done"
               title="Done"
+              onPointerDown={(e) => e.preventDefault()}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => setEditingId(null)}
             >

@@ -9,3 +9,7 @@ dist-ssr
 # Copyrighted reference material (The 1% Club planner) — must never be published
 *.xlsx
 _xlsx_extract/
+
+# Local-only issue tracker & screenshots — not part of the published repo
+Issues.md
+_issues-local/

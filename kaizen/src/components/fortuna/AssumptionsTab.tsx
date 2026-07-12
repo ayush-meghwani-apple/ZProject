@@ -207,6 +207,7 @@ function GoalTypeRow({
             className="iconbtn ft-gtype__del"
             aria-label="Remove goal type"
             title="Remove"
+            onPointerDown={(e) => e.preventDefault()}
             onMouseDown={(e) => e.preventDefault()}
             onClick={onRemove}
           >
@@ -217,6 +218,7 @@ function GoalTypeRow({
           className="iconbtn ft-gtype__done"
           aria-label="Done"
           title="Done"
+          onPointerDown={(e) => e.preventDefault()}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setEditing(false)}
         >
