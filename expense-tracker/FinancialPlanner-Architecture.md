@@ -191,3 +191,32 @@ src/
   App.tsx                              # register the app tile (Planning section)
   style.css                            # Fortuna styles
 ```
+
+## 7. Recurring investments (SIPs)
+
+SIPs live inside the plan document (`FinancialPlan.recurringInvestments[]`) so
+they're atomic + backed up. Logic in `core/recurringInvestments.ts` (pure):
+`newSip`, `firstSipDate`/`advanceSip` (weekly/monthly/quarterly, day-of-month
+clamped), and `applyDueRecurringInvestments(plan)` which, for each active SIP,
+credits `amount` to its destination for every due period (catch-up loop, guard
+120), advancing `nextDate` and setting `lastRunAt`. List destinations
+(stocks/MFs/FDs/debt funds/EPF) maintain their own holding row `sip-<id>`;
+single-value lines top up the field. `FortunaApp` runs `applyDue` on load and
+after a backup restore, persisting only if something changed.
+
+## 8. Fidelity notes vs the spreadsheet
+
+- **Asset-mix bucketing** mirrors the sheet's "Current Investable Asset
+  Allocation" (Net worth F14:F19): ULIPs and Smallcase are **Domestic Equity**;
+  US Equity is only S&P/ETF/US-MF; Debt excludes ULIPs. This is separate from the
+  illiquid/liquid split (ULIPs illiquid, Smallcase liquid). Portfolio section
+  chips use `sectionTotals` (data-entry grouping) — deliberately different.
+- **Cap breakdown** + **age-based equity allocation** (sheet O21:S25) surfaced in
+  the Domestic Equity section. **Emergency-fund** recommended (6× outflows) vs
+  actual liquid shown in Cash Flow.
+- **Deferred (intentionally):** the Debt sheet's *duration sub-allocation*
+  (FD/RD/Arbitrage · Banking PSUs/Corporate · Gov securities/Equity-saver, with
+  required-vs-current contribution from goals). It's an advanced optimisation
+  view; holdings are fully captured, just not duration-bucketed. Revisit if the
+  user wants debt-timeline matching.
+

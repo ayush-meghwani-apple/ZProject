@@ -87,6 +87,20 @@ export default function CashFlowTab({ plan, update }: FortunaTabProps) {
             Recommended emergency fund (6 months of outflows): <strong>{formatINR(cf.recommendedEmergencyFund)}</strong>
           </p>
         </Section>
+
+        <Section title="Emergency fund" subtitle="6 months of outflows, held as liquid cash">
+          <TotalRow label="Recommended" value={cf.recommendedEmergencyFund} />
+          <TotalRow label="You have (liquid cash)" value={plan.assets.debt.liquidCash} />
+          {cf.recommendedEmergencyFund > 0 &&
+            (plan.assets.debt.liquidCash >= cf.recommendedEmergencyFund ? (
+              <p className="ft-note ft-ok">✓ Your liquid cash covers your emergency fund.</p>
+            ) : (
+              <p className="ft-note">
+                Shortfall: <strong>{formatINR(cf.recommendedEmergencyFund - plan.assets.debt.liquidCash)}</strong> — top
+                up your liquid savings before locking money into long-term investments.
+              </p>
+            ))}
+        </Section>
       </div>
     </main>
   );

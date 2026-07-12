@@ -218,15 +218,23 @@ export function computeNetWorth(assets: PlanAssets, liabilities: Liabilities): N
   const debt = assets.debt;
   const gold = assets.gold;
 
-  const domesticEquityTotal = sumRows(de.stocks) + sumRows(de.mutualFunds);
-  const usEquityTotal = num(us.sp500Etf) + num(us.otherEtfs) + num(us.mutualFunds) + num(assets.misc.smallcase);
-  const debtTotal =
-    num(debt.liquidCash) + sumRows(debt.fds) + sumRows(debt.debtFunds) + sumRows(debt.epfPpfVpf) + num(assets.misc.ulips);
+  const domesticStocksMF = sumRows(de.stocks) + sumRows(de.mutualFunds);
+
+  // Asset-CLASS buckets — mirrors the sheet's "Current Investable Asset
+  // Allocation" (Net worth F14:F19): ULIPs and Smallcase are classed as
+  // DOMESTIC EQUITY (not debt / US equity), US equity is only S&P/ETF/US MF, and
+  // debt excludes ULIPs. This is used for the asset-mix pie, and is deliberately
+  // independent of the illiquid/liquid split below.
+  const domesticEquityTotal = domesticStocksMF + num(assets.misc.ulips) + num(assets.misc.smallcase);
+  const usEquityTotal = num(us.sp500Etf) + num(us.otherEtfs) + num(us.mutualFunds);
+  const debtTotal = num(debt.liquidCash) + sumRows(debt.fds) + sumRows(debt.debtFunds) + sumRows(debt.epfPpfVpf);
   const goldTotal = num(gold.jewellery) + num(gold.sgb) + num(gold.goldEtf);
   const cryptoTotal = num(assets.crypto.crypto);
   const realEstateTotal = num(re.home) + num(re.otherRealEstate) + num(re.reits);
 
-  // Illiquid vs liquid split (mirrors the Net worth sheet).
+  // Illiquid vs liquid split (mirrors the Net worth sheet C21 / C33). Note this
+  // is a DIFFERENT grouping from the asset classes above: ULIPs are illiquid,
+  // Smallcase is liquid.
   const illiquid =
     num(re.home) +
     num(re.otherRealEstate) +
@@ -237,7 +245,7 @@ export function computeNetWorth(assets: PlanAssets, liabilities: Liabilities): N
   const liquid =
     sumRows(debt.fds) +
     sumRows(debt.debtFunds) +
-    domesticEquityTotal +
+    domesticStocksMF +
     num(us.sp500Etf) +
     num(us.otherEtfs) +
     num(us.mutualFunds) +
@@ -288,6 +296,84 @@ export function assetClassTotals(assets: PlanAssets): Record<AssetClassKey, numb
 }
 
 export const CLASS_LABEL = CLASS_LABELS;
+
+/**
+ * Per-SECTION totals for the Portfolio tab — grouped the way the data-entry
+ * sections are laid out (Smallcase sits under the US Equity section, ULIPs under
+ * the Debt section), NOT by asset class. Keep this distinct from the asset-mix
+ * buckets so each Portfolio card's chip shows exactly what's entered in it.
+ */
+export interface SectionTotals {
+  realEstate: number;
+  domesticEquity: number;
+  usEquity: number;
+  debt: number;
+  gold: number;
+  crypto: number;
+  total: number;
+}
+
+export function sectionTotals(assets: PlanAssets): SectionTotals {
+  const realEstate = num(assets.realEstate.home) + num(assets.realEstate.otherRealEstate) + num(assets.realEstate.reits);
+  const domesticEquity = sumRows(assets.domesticEquity.stocks) + sumRows(assets.domesticEquity.mutualFunds);
+  const usEquity = num(assets.usEquity.sp500Etf) + num(assets.usEquity.otherEtfs) + num(assets.usEquity.mutualFunds) + num(assets.misc.smallcase);
+  const debt =
+    num(assets.debt.liquidCash) +
+    sumRows(assets.debt.fds) +
+    sumRows(assets.debt.debtFunds) +
+    sumRows(assets.debt.epfPpfVpf) +
+    num(assets.misc.ulips);
+  const gold = num(assets.gold.jewellery) + num(assets.gold.sgb) + num(assets.gold.goldEtf);
+  const crypto = num(assets.crypto.crypto);
+  return {
+    realEstate,
+    domesticEquity,
+    usEquity,
+    debt,
+    gold,
+    crypto,
+    total: realEstate + domesticEquity + usEquity + debt + gold + crypto,
+  };
+}
+
+export type EquityCap = 'Largecap' | 'Midcap' | 'Smallcap' | 'Flexi/Multi cap';
+export const EQUITY_CAPS: EquityCap[] = ['Largecap', 'Midcap', 'Smallcap', 'Flexi/Multi cap'];
+
+/** Domestic-equity value split by market-cap category (stocks + mutual funds),
+ *  mirroring the sheet's cap-size aggregation. Uncategorised rows fall under the
+ *  first bucket the row's `category` matches, else are ignored from the split. */
+export function capBreakdown(assets: PlanAssets): { cap: EquityCap; value: number }[] {
+  const rows = [...assets.domesticEquity.stocks, ...assets.domesticEquity.mutualFunds];
+  const totals: Record<string, number> = {};
+  for (const cap of EQUITY_CAPS) totals[cap] = 0;
+  for (const r of rows) {
+    const cap = normaliseCap(r.category);
+    if (cap) totals[cap] += num(r.value);
+  }
+  return EQUITY_CAPS.map((cap) => ({ cap, value: totals[cap] }));
+}
+
+function normaliseCap(c: string | undefined): EquityCap | null {
+  if (!c) return null;
+  const s = c.toLowerCase().replace(/\s/g, '');
+  if (s.startsWith('large')) return 'Largecap';
+  if (s.startsWith('mid')) return 'Midcap';
+  if (s.startsWith('small')) return 'Smallcap';
+  if (s.startsWith('flexi') || s.startsWith('multi')) return 'Flexi/Multi cap';
+  return null;
+}
+
+/** Age-based recommended domestic-equity cap allocation (the sheet's O21:S25
+ *  reference table). Values are whole-number %. */
+export const AGE_EQUITY_ALLOCATION: {
+  cap: EquityCap;
+  byAge: { '20-30': number; '30-45': number; '45-65': number; '>65': number };
+}[] = [
+  { cap: 'Largecap', byAge: { '20-30': 20, '30-45': 30, '45-65': 40, '>65': 60 } },
+  { cap: 'Midcap', byAge: { '20-30': 30, '30-45': 20, '45-65': 20, '>65': 20 } },
+  { cap: 'Smallcap', byAge: { '20-30': 20, '30-45': 20, '45-65': 10, '>65': 0 } },
+  { cap: 'Flexi/Multi cap', byAge: { '20-30': 30, '30-45': 30, '45-65': 30, '>65': 20 } },
+];
 
 /** Convenience: everything the Net Worth dashboard needs in one call. */
 export function computePlanSummary(plan: FinancialPlan) {

@@ -3901,3 +3901,141 @@ svg.lucide {
   font-size: 12.5px;
   line-height: 1.5;
 }
+
+/* Cap-mix bar (Domestic Equity) */
+.ft-capbar {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 8px;
+  width: 64px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.ft-capbar__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent-strong);
+}
+
+/* Age-allocation reference table */
+.ft-agetable {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.ft-agetable__head,
+.ft-agetable__row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 0.8fr 0.8fr 0.8fr;
+  gap: 4px;
+  align-items: center;
+}
+.ft-agetable__head {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.ft-agetable__head span:not(:first-child),
+.ft-agetable__row span:not(.ft-agetable__cap) {
+  text-align: center;
+}
+.ft-agetable__row {
+  font-size: 12.5px;
+}
+.ft-agetable__cap {
+  color: var(--muted);
+}
+
+/* Recurring investments (SIP cards) */
+.ft-addrow--full {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+.ft-sip {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ft-sip--open {
+  border-color: var(--accent);
+}
+.ft-sip--paused {
+  opacity: 0.66;
+}
+.ft-sip__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 11px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.ft-sip__title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ft-sip__name {
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ft-sip__meta {
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ft-sip__amtv {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.ft-sip__body {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.ft-sip__info {
+  background: rgba(11, 16, 32, 0.35);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ft-sip__inforow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.ft-sip__inforow span:last-child {
+  color: var(--text);
+  font-weight: 600;
+}
+.ft-sip__actions {
+  display: flex;
+  gap: 8px;
+}
+.ft-sip__actions .ft-btn {
+  flex: 1;
+}

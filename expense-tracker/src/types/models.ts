@@ -291,6 +291,48 @@ export interface FinancialGoalRow {
   stepUpPct: number; // annual SIP step-up, whole number %
 }
 
+export type SipFrequency = 'weekly' | 'monthly' | 'quarterly';
+
+/** Where a recurring investment's contribution lands in the portfolio. */
+export type SipDestination =
+  | 'domesticStock'
+  | 'domesticMF'
+  | 'usSp500'
+  | 'usEtf'
+  | 'usMf'
+  | 'smallcase'
+  | 'fd'
+  | 'debtFund'
+  | 'epf'
+  | 'liquid'
+  | 'goldEtf'
+  | 'sgb'
+  | 'crypto'
+  | 'reits'
+  | 'ulips';
+
+/**
+ * A recurring investment (SIP): on its schedule it adds `amount` to a chosen
+ * portfolio destination, so the portfolio grows automatically without manual
+ * entry. For list destinations (stocks/MFs/FDs/debt funds/EPF) it maintains its
+ * own holding row (id `sip-<id>`); for single-value lines it tops up that field.
+ */
+export interface RecurringInvestment {
+  id: ID;
+  label: string;
+  amount: number; // per period
+  destination: SipDestination;
+  category?: string; // equity only: Largecap/Midcap/Smallcap/Flexi
+  frequency: SipFrequency;
+  dayOfMonth?: number; // monthly / quarterly (1–31, clamped)
+  dayOfWeek?: number; // weekly (0–6)
+  nextDate: ISODate; // next local-midnight the contribution is due
+  lastRunAt?: ISODate; // when it last added to the portfolio
+  active: boolean;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
 /**
  * The one-and-only Fortuna document. `v` is an internal version used to migrate
  * an older document forward in memory on load (never destructively).
@@ -303,6 +345,7 @@ export interface FinancialPlan {
   assets: PlanAssets;
   liabilities: Liabilities;
   goals: FinancialGoalRow[];
+  recurringInvestments: RecurringInvestment[];
   updatedAt: ISODate;
 }
 

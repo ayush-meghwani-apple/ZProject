@@ -6,6 +6,19 @@ When it's fixed, I'll move it to **Done** with the date and a short fix note.
 Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
+Fortuna:
+-> I can't edit, inflows and outflows and liabilities section, having my own app gives me benefit to add my custom values and can update them time to time as well.
+
+-> On click of rreset financial plan, it should ask for pin and a pop-up saying are you sre, if i say yes and then it should ask for pin and then it should reset it as its a very dangerous operation.
+
+Expensify:
+-> Cycle start date should be automatically detected as 28th of the month, and if 28th of that month is on saturday or sunday then it will become date of Friday.
+Ex-1: 28 is on Mon-Frid, next cycle start date is on 28th only
+Ex-1: 28 is on Saturday, next cycle start date is on 27th
+Ex-1: 28 is on Sunday, next cycle start date is on 26th
+Core logic is cycle start date is 28th and if its on weekend then closes working day date which is Friday.
+
+But keep cycle start date or other things as same and make sure that lets say default logic runs and make 27 as start date and  i come after 2 days on 29th and make it 26 then 26 should be come start day instead of 27, without affecting anything else in  the expenses and cycles, just start date is changed for this cycle - this scenario happens when on 27th there is some holiday which can't be tracked on the app.
 
 ## Done
 

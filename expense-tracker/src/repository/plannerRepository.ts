@@ -44,6 +44,7 @@ function defaultPlan(): FinancialPlan {
     },
     liabilities: { homeLoan: 0, educationLoan: 0, carLoan: 0, personalGoldLoan: 0, creditCard: 0, other: 0 },
     goals: [],
+    recurringInvestments: [],
     updatedAt: now(),
   };
 }
@@ -90,6 +91,7 @@ function migrate(raw: Partial<FinancialPlan> | undefined | null): FinancialPlan 
     },
     liabilities: { ...base.liabilities, ...raw.liabilities },
     goals: Array.isArray(raw.goals) ? raw.goals : [],
+    recurringInvestments: Array.isArray(raw.recurringInvestments) ? raw.recurringInvestments : [],
     updatedAt: raw.updatedAt ?? now(),
   };
 }
