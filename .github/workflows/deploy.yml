@@ -47,15 +47,22 @@ jobs:
 
           for pkg in */package.json; do
             name="$(dirname "$pkg")"
-            echo "::group::Building $name"
+            # Public sub-path (the URL). Normally the folder name, but PINNED for
+            # folders that were renamed, so already-installed PWAs / bookmarks and
+            # their on-device (per-origin) data keep working at the old URL.
+            subpath="$name"
+            case "$name" in
+              kaizen) subpath="expense-tracker" ;;
+            esac
+            echo "::group::Building $name -> /$REPO/$subpath/"
             (
               cd "$name"
               npm ci
-              # Each project is served from /<repo>/<project>/ on GitHub Pages.
-              VITE_BASE="/$REPO/$name/" npm run build
+              # Each project is served from /<repo>/<subpath>/ on GitHub Pages.
+              VITE_BASE="/$REPO/$subpath/" npm run build
             )
-            mkdir -p "_site/$name"
-            cp -r "$name/dist/." "_site/$name/"
+            mkdir -p "_site/$subpath"
+            cp -r "$name/dist/." "_site/$subpath/"
             echo "::endgroup::"
           done
 
