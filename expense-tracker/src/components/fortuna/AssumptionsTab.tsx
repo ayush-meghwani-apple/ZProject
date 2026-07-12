@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
-import { effectiveReturns } from '../../core/plannerMath';
+import { effectiveReturns, activeAssumptions } from '../../core/plannerMath';
 import { Section } from './shared';
 
 const HORIZONS = [
@@ -10,11 +10,16 @@ const HORIZONS = [
 ] as const;
 
 export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
-  const eff = useMemo(() => effectiveReturns(plan.assumptions), [plan.assumptions]);
+  const disabled = new Set(plan.disabledClasses ?? []);
+  const active = useMemo(
+    () => activeAssumptions(plan.assumptions, plan.disabledClasses ?? []),
+    [plan.assumptions, plan.disabledClasses],
+  );
+  const eff = useMemo(() => effectiveReturns(active), [active]);
 
-  const shortSum = plan.assumptions.reduce((s, a) => s + (a.shortPct || 0), 0);
-  const medSum = plan.assumptions.reduce((s, a) => s + (a.mediumPct || 0), 0);
-  const longSum = plan.assumptions.reduce((s, a) => s + (a.longPct || 0), 0);
+  const shortSum = active.reduce((s, a) => s + (a.shortPct || 0), 0);
+  const medSum = active.reduce((s, a) => s + (a.mediumPct || 0), 0);
+  const longSum = active.reduce((s, a) => s + (a.longPct || 0), 0);
 
   function setField(i: number, key: 'expectedReturnPct' | 'shortPct' | 'mediumPct' | 'longPct', raw: string) {
     const cleaned = raw.replace(/[^0-9.]/g, '');
@@ -58,26 +63,28 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
                 <span key={h.key}>{h.label}</span>
               ))}
             </div>
-            {plan.assumptions.map((a, i) => (
-              <div className="ft-assum__row" key={a.key}>
-                <span className="ft-assum__name">{a.label}</span>
-                <input
-                  className="input ft-assum__inp"
-                  inputMode="decimal"
-                  value={String(a.expectedReturnPct)}
-                  onChange={(e) => setField(i, 'expectedReturnPct', e.target.value)}
-                />
-                {HORIZONS.map((h) => (
+            {plan.assumptions.map((a, i) =>
+              disabled.has(a.key) ? null : (
+                <div className="ft-assum__row" key={a.key}>
+                  <span className="ft-assum__name">{a.label}</span>
                   <input
-                    key={h.key}
                     className="input ft-assum__inp"
                     inputMode="decimal"
-                    value={String(a[h.key])}
-                    onChange={(e) => setField(i, h.key, e.target.value)}
+                    value={String(a.expectedReturnPct)}
+                    onChange={(e) => setField(i, 'expectedReturnPct', e.target.value)}
                   />
-                ))}
-              </div>
-            ))}
+                  {HORIZONS.map((h) => (
+                    <input
+                      key={h.key}
+                      className="input ft-assum__inp"
+                      inputMode="decimal"
+                      value={String(a[h.key])}
+                      onChange={(e) => setField(i, h.key, e.target.value)}
+                    />
+                  ))}
+                </div>
+              ),
+            )}
             <div className="ft-assum__row ft-assum__row--sum">
               <span className="ft-assum__name">Total weight</span>
               <span />
@@ -87,6 +94,12 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
             </div>
           </div>
           <p className="ft-note">Allocation weights for each horizon should ideally add up to 100%.</p>
+          {disabled.size > 0 && (
+            <p className="ft-note">
+              {disabled.size} category{disabled.size > 1 ? 'ies' : ''} disabled — hidden here and excluded from the
+              effective returns and goal allocations. Re-enable from the Portfolio tab.
+            </p>
+          )}
         </Section>
       </div>
     </main>

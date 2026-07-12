@@ -343,6 +343,10 @@ export interface FinancialPlan {
   liabilities: Liabilities;
   goals: FinancialGoalRow[];
   recurringInvestments: RecurringInvestment[];
+  /** Asset classes the user has turned off — excluded from net worth, the asset
+   *  mix, the Returns table and goal allocations, and shown collapsed at the
+   *  bottom of the Portfolio tab. */
+  disabledClasses?: AssetClassKey[];
   updatedAt: ISODate;
 }
 

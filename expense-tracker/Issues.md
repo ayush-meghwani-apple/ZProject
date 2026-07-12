@@ -7,8 +7,15 @@ Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
 
+-> I still can't edit the options in "portfolio" tab (rename the fixed lines like Home / REITs / S&P 500 ETF): image-35 — needs the Portfolio redesign (turn each class's fixed lines into editable instruments); planned next.
+
+-> add a new goal time-horizon category beyond short / medium / long in the Returns table: image-38 — planned (custom horizons).
+
+-> add a new custom asset category (class) in Portfolio: image-39 — planned (custom classes).
 
 ## Done
+
+- ✅ **(2026-07-12)** **Cleaner edit-on-click lists, fixed priority dropdown, and disable-a-category (v1.21.0).** (1) **No more wall of input boxes** — Cash Flow, Liabilities and the Portfolio holdings now show a **clean read-only view** with an **Edit** button; tap it to rename / re-value / remove / add, then Done. (2) **Goal priority dropdown fixed** — the options were invisible (light text on white); they're now dark and readable. (3) **Disable an asset category in one tap** — e.g. if you don't hold Crypto, tap **Disable this category** and it drops out of **net worth, the asset mix, the Returns table and goal allocations**, and moves to a **“Disabled” collapsible at the bottom** of Portfolio with a one-tap **Enable** to bring it back.
 
 - ✅ **(2026-07-12)** **Fully editable Fortuna inputs + goal priority scale (v1.20.0).** (1) **Cash Flow and Liabilities are now fully editable lists** — every line (Inflows, Outflows, Liabilities) can be **renamed, re-valued, removed, or added**, not just the custom ones; they come seeded with the usual defaults (Post-tax salary, Loan EMIs, Home loan…) which you can now edit freely. (2) **Portfolio: add your own instruments per class** — Real Estate, US Equity, Gold and Crypto each got an **“Other holdings”** list so you can add named instruments (e.g. **BTC / ETH** under Crypto, **VOO / QQQ** under US Equity) and edit them, on top of the fixed lines; they roll up into the class total, net worth and asset mix. (Domestic Equity and Debt already had these lists.) (3) **Goal priority is now a 5-level dropdown** — Very Low → Low → Medium → High → Very High — instead of a free-text box. Your existing plan migrates automatically with all values preserved.
 

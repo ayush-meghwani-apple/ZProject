@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
-import { computeNetWorth, targetAllocation, assetClassTotals, CLASS_LABEL } from '../../core/plannerMath';
+import { computeNetWorth, targetAllocation, assetClassTotals, activeAssumptions, CLASS_LABEL } from '../../core/plannerMath';
 import type { AssetClassKey } from '../../types/models';
 import HoldingList from './HoldingList';
 import { Section, TotalRow, Stat, formatINR } from './shared';
@@ -24,9 +24,13 @@ const CLASS_COLOR: Record<AssetClassKey, string> = {
 };
 
 export default function NetWorthTab({ plan, update }: FortunaTabProps) {
-  const nw = useMemo(() => computeNetWorth(plan.assets, plan.liabilities), [plan.assets, plan.liabilities]);
-  const totals = useMemo(() => assetClassTotals(plan.assets), [plan.assets]);
-  const target = useMemo(() => targetAllocation(plan.goals, plan.assumptions), [plan.goals, plan.assumptions]);
+  const disabled = plan.disabledClasses ?? [];
+  const nw = useMemo(() => computeNetWorth(plan.assets, plan.liabilities, disabled), [plan.assets, plan.liabilities, disabled]);
+  const totals = useMemo(() => assetClassTotals(plan.assets, disabled), [plan.assets, disabled]);
+  const target = useMemo(
+    () => targetAllocation(plan.goals, activeAssumptions(plan.assumptions, disabled)),
+    [plan.goals, plan.assumptions, disabled],
+  );
 
   const targetTotal = CLASS_ORDER.reduce((s, k) => s + target[k], 0);
 

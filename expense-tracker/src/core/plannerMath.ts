@@ -203,71 +203,46 @@ export function totalLiabilities(l: Liabilities): number {
   return sumRows(l.items);
 }
 
-export function computeNetWorth(assets: PlanAssets, liabilities: Liabilities): NetWorthResult {
+export function computeNetWorth(
+  assets: PlanAssets,
+  liabilities: Liabilities,
+  disabled: AssetClassKey[] = [],
+): NetWorthResult {
   const re = assets.realEstate;
   const de = assets.domesticEquity;
   const us = assets.usEquity;
   const debt = assets.debt;
   const gold = assets.gold;
+  const off = new Set(disabled);
 
   const domesticStocksMF = sumRows(de.stocks) + sumRows(de.mutualFunds);
 
-  // Custom "other holdings" added under each fixed-field class.
-  const reOthers = sumRows(re.others);
-  const usOthers = sumRows(us.others);
-  const goldOthers = sumRows(gold.others);
-  const cryptoOthers = sumRows(assets.crypto.others);
+  // Each class split into its liquid and illiquid parts (mirrors the sheet's
+  // C21/C33 split): ULIPs illiquid + Smallcase liquid both class as domestic
+  // equity; EPF illiquid within debt; jewellery/SGB illiquid within gold; home /
+  // other real estate (and custom "others") illiquid within real estate.
+  const parts: Record<AssetClassKey, { liquid: number; illiquid: number }> = {
+    domestic_equity: { liquid: domesticStocksMF + num(assets.misc.smallcase), illiquid: num(assets.misc.ulips) },
+    us_equity: { liquid: num(us.sp500Etf) + num(us.otherEtfs) + num(us.mutualFunds) + sumRows(us.others), illiquid: 0 },
+    debt: { liquid: num(debt.liquidCash) + sumRows(debt.fds) + sumRows(debt.debtFunds), illiquid: sumRows(debt.epfPpfVpf) },
+    gold: { liquid: num(gold.goldEtf) + sumRows(gold.others), illiquid: num(gold.jewellery) + num(gold.sgb) },
+    crypto: { liquid: num(assets.crypto.crypto) + sumRows(assets.crypto.others), illiquid: 0 },
+    real_estate: { liquid: num(re.reits), illiquid: num(re.home) + num(re.otherRealEstate) + sumRows(re.others) },
+  };
 
-  // Asset-CLASS buckets — mirrors the sheet's "Current Investable Asset
-  // Allocation" (Net worth F14:F19): ULIPs and Smallcase are classed as
-  // DOMESTIC EQUITY (not debt / US equity), US equity is only S&P/ETF/US MF, and
-  // debt excludes ULIPs. This is used for the asset-mix pie, and is deliberately
-  // independent of the illiquid/liquid split below.
-  const domesticEquityTotal = domesticStocksMF + num(assets.misc.ulips) + num(assets.misc.smallcase);
-  const usEquityTotal = num(us.sp500Etf) + num(us.otherEtfs) + num(us.mutualFunds) + usOthers;
-  const debtTotal = num(debt.liquidCash) + sumRows(debt.fds) + sumRows(debt.debtFunds) + sumRows(debt.epfPpfVpf);
-  const goldTotal = num(gold.jewellery) + num(gold.sgb) + num(gold.goldEtf) + goldOthers;
-  const cryptoTotal = num(assets.crypto.crypto) + cryptoOthers;
-  const realEstateTotal = num(re.home) + num(re.otherRealEstate) + num(re.reits) + reOthers;
-
-  // Illiquid vs liquid split (mirrors the Net worth sheet C21 / C33). Note this
-  // is a DIFFERENT grouping from the asset classes above: ULIPs are illiquid,
-  // Smallcase is liquid. Custom "others": real-estate treated as illiquid
-  // (property), the rest (US/gold/crypto) as liquid/investable.
-  const illiquid =
-    num(re.home) +
-    num(re.otherRealEstate) +
-    reOthers +
-    num(gold.jewellery) +
-    num(gold.sgb) +
-    num(assets.misc.ulips) +
-    sumRows(debt.epfPpfVpf);
-  const liquid =
-    sumRows(debt.fds) +
-    sumRows(debt.debtFunds) +
-    domesticStocksMF +
-    num(us.sp500Etf) +
-    num(us.otherEtfs) +
-    num(us.mutualFunds) +
-    usOthers +
-    num(assets.misc.smallcase) +
-    num(debt.liquidCash) +
-    num(gold.goldEtf) +
-    goldOthers +
-    cryptoTotal +
-    num(re.reits);
+  let illiquid = 0;
+  let liquid = 0;
+  const byClass: AssetClassValue[] = [];
+  for (const key of CLASS_ORDER) {
+    if (off.has(key)) continue; // disabled classes count nowhere
+    const p = parts[key];
+    illiquid += p.illiquid;
+    liquid += p.liquid;
+    byClass.push({ key, label: CLASS_LABELS[key], value: p.liquid + p.illiquid });
+  }
 
   const totalAssets = illiquid + liquid;
   const liab = totalLiabilities(liabilities);
-
-  const byClass: AssetClassValue[] = [
-    { key: 'domestic_equity', label: CLASS_LABELS.domestic_equity, value: domesticEquityTotal },
-    { key: 'us_equity', label: CLASS_LABELS.us_equity, value: usEquityTotal },
-    { key: 'debt', label: CLASS_LABELS.debt, value: debtTotal },
-    { key: 'gold', label: CLASS_LABELS.gold, value: goldTotal },
-    { key: 'crypto', label: CLASS_LABELS.crypto, value: cryptoTotal },
-    { key: 'real_estate', label: CLASS_LABELS.real_estate, value: realEstateTotal },
-  ];
 
   return {
     illiquid,
@@ -279,15 +254,23 @@ export function computeNetWorth(assets: PlanAssets, liabilities: Liabilities): N
   };
 }
 
+const CLASS_ORDER: AssetClassKey[] = ['domestic_equity', 'us_equity', 'debt', 'gold', 'crypto', 'real_estate'];
+
 /** Per-asset-class value totals used by both Net Worth and Portfolio views. */
-export function assetClassTotals(assets: PlanAssets): Record<AssetClassKey, number> {
-  return computeNetWorth(assets, { items: [] }).byClass.reduce(
+export function assetClassTotals(assets: PlanAssets, disabled: AssetClassKey[] = []): Record<AssetClassKey, number> {
+  return computeNetWorth(assets, { items: [] }, disabled).byClass.reduce(
     (acc, c) => {
       acc[c.key] = c.value;
       return acc;
     },
     emptyAllocation(),
   );
+}
+
+/** The assumptions rows for classes that are currently enabled. */
+export function activeAssumptions(assumptions: AssetClassAssumption[], disabled: AssetClassKey[] = []): AssetClassAssumption[] {
+  const off = new Set(disabled);
+  return assumptions.filter((a) => !off.has(a.key));
 }
 
 export const CLASS_LABEL = CLASS_LABELS;

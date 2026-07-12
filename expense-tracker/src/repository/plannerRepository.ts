@@ -74,6 +74,7 @@ function defaultPlan(): FinancialPlan {
     liabilities: { items: defaultLiabilities() },
     goals: [],
     recurringInvestments: [],
+    disabledClasses: [],
     updatedAt: now(),
   };
 }
@@ -194,6 +195,9 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
     goals: Array.isArray(raw.goals) ? (raw.goals as FinancialPlan['goals']) : [],
     recurringInvestments: Array.isArray(raw.recurringInvestments)
       ? (raw.recurringInvestments as FinancialPlan['recurringInvestments'])
+      : [],
+    disabledClasses: Array.isArray(raw.disabledClasses)
+      ? (raw.disabledClasses as FinancialPlan['disabledClasses'])
       : [],
     updatedAt: (raw.updatedAt as string) ?? now(),
   };

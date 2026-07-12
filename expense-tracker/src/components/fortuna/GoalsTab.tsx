@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { AssetClassKey, FinancialGoalRow, GoalPriority } from '../../types/models';
 import { GOAL_PRIORITIES } from '../../types/models';
-import { computeGoal, horizonLabel, CLASS_LABEL, computeCashFlow } from '../../core/plannerMath';
+import { computeGoal, horizonLabel, CLASS_LABEL, computeCashFlow, activeAssumptions } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import { Section, MoneyRow, PercentRow, formatINR } from './shared';
@@ -24,10 +24,11 @@ function newGoal(): FinancialGoalRow {
 
 export default function GoalsTab({ plan, update }: FortunaTabProps) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const assumptions = activeAssumptions(plan.assumptions, plan.disabledClasses ?? []);
 
   const totalSip = useMemo(
-    () => plan.goals.reduce((s, g) => s + computeGoal(g, plan.assumptions).sipRequired, 0),
-    [plan.goals, plan.assumptions],
+    () => plan.goals.reduce((s, g) => s + computeGoal(g, assumptions).sipRequired, 0),
+    [plan.goals, assumptions],
   );
   const surplus = useMemo(() => computeCashFlow(plan.cashFlow).investingSurplus, [plan.cashFlow]);
   const overCommitted = totalSip > surplus && surplus > 0;
@@ -73,7 +74,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
         )}
 
         {plan.goals.map((g, i) => {
-          const c = computeGoal(g, plan.assumptions);
+          const c = computeGoal(g, assumptions);
           const open = openId === g.id;
           return (
             <div className={`ft-goal ${open ? 'ft-goal--open' : ''}`} key={g.id}>
