@@ -32,6 +32,8 @@ function defaultPlan(): FinancialPlan {
     cashFlow: {
       inflows: { salary: 0, business: 0, rental: 0, others: 0 },
       outflows: { expenses: 0, compulsoryInvestments: 0, loanEmis: 0, insurance: 0, others: 0 },
+      customInflows: [],
+      customOutflows: [],
     },
     assets: {
       realEstate: { home: 0, otherRealEstate: 0, reits: 0 },
@@ -42,7 +44,7 @@ function defaultPlan(): FinancialPlan {
       crypto: { crypto: 0 },
       misc: { ulips: 0, smallcase: 0 },
     },
-    liabilities: { homeLoan: 0, educationLoan: 0, carLoan: 0, personalGoldLoan: 0, creditCard: 0, other: 0 },
+    liabilities: { homeLoan: 0, educationLoan: 0, carLoan: 0, personalGoldLoan: 0, creditCard: 0, other: 0, custom: [] },
     goals: [],
     recurringInvestments: [],
     updatedAt: now(),
@@ -70,6 +72,8 @@ function migrate(raw: Partial<FinancialPlan> | undefined | null): FinancialPlan 
     cashFlow: {
       inflows: { ...base.cashFlow.inflows, ...(cf as FinancialPlan['cashFlow']).inflows },
       outflows: { ...base.cashFlow.outflows, ...(cf as FinancialPlan['cashFlow']).outflows },
+      customInflows: cleanRows((cf as FinancialPlan['cashFlow']).customInflows),
+      customOutflows: cleanRows((cf as FinancialPlan['cashFlow']).customOutflows),
     },
     assets: {
       realEstate: { ...base.assets.realEstate, ...(a as FinancialPlan['assets']).realEstate },
@@ -89,7 +93,7 @@ function migrate(raw: Partial<FinancialPlan> | undefined | null): FinancialPlan 
       crypto: { ...base.assets.crypto, ...(a as FinancialPlan['assets']).crypto },
       misc: { ...base.assets.misc, ...(a as FinancialPlan['assets']).misc },
     },
-    liabilities: { ...base.liabilities, ...raw.liabilities },
+    liabilities: { ...base.liabilities, ...raw.liabilities, custom: cleanRows(raw.liabilities?.custom) },
     goals: Array.isArray(raw.goals) ? raw.goals : [],
     recurringInvestments: Array.isArray(raw.recurringInvestments) ? raw.recurringInvestments : [],
     updatedAt: raw.updatedAt ?? now(),

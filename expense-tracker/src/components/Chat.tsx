@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { parseInput } from '../core/parser';
-import { formatINR } from '../core/util';
+import { formatINR, formatDate } from '../core/util';
 import { playSound } from '../core/sound';
 import { getPrefs, setPrefs } from '../core/preferences';
 import { CategoryRepository } from '../repository/categoryRepository';
@@ -298,8 +298,8 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
     }
 
     if (cmd.kind === 'startCycle') {
-      await SalaryCycleRepository.startCycle();
-      pushBot('🔄 New cycle started from now ✅');
+      const c = await SalaryCycleRepository.startCycle();
+      pushBot(`\uD83D\uDD04 New cycle started from ${formatDate(c.startDate)} \u2705`);
       onChange();
       return;
     }

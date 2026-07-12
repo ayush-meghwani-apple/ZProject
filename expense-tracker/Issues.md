@@ -6,21 +6,10 @@ When it's fixed, I'll move it to **Done** with the date and a short fix note.
 Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
-Fortuna:
--> I can't edit, inflows and outflows and liabilities section, having my own app gives me benefit to add my custom values and can update them time to time as well.
-
--> On click of rreset financial plan, it should ask for pin and a pop-up saying are you sre, if i say yes and then it should ask for pin and then it should reset it as its a very dangerous operation.
-
-Expensify:
--> Cycle start date should be automatically detected as 28th of the month, and if 28th of that month is on saturday or sunday then it will become date of Friday.
-Ex-1: 28 is on Mon-Frid, next cycle start date is on 28th only
-Ex-1: 28 is on Saturday, next cycle start date is on 27th
-Ex-1: 28 is on Sunday, next cycle start date is on 26th
-Core logic is cycle start date is 28th and if its on weekend then closes working day date which is Friday.
-
-But keep cycle start date or other things as same and make sure that lets say default logic runs and make 27 as start date and  i come after 2 days on 29th and make it 26 then 26 should be come start day instead of 27, without affecting anything else in  the expenses and cycles, just start date is changed for this cycle - this scenario happens when on 27th there is some holiday which can't be tracked on the app.
 
 ## Done
+
+- ✅ **(2026-07-12)** **Fortuna custom lines, safer reset, and payday-based cycles (v1.19.0).** Three things: (1) **Add your own line items** in Fortuna — Cash Flow's **Inflows** and **Outflows**, and Net Worth's **Liabilities**, now have an *“add your own”* list (name + amount) alongside the fixed rows, so you can capture anything custom and update it over time; the totals roll up automatically. (The fixed rows were already editable — this adds the flexibility to go beyond them.) (2) **Reset is now PIN-gated** — tapping **Reset financial plan** shows an *“are you sure?”* warning, and only after you confirm **and enter your PIN** does it reset. A wrong PIN is rejected, so this dangerous action can't happen by accident. (3) **Cycles auto-start on payday (the 28th)** — starting a new cycle (via **“start cycle”** or Settings) now dates it to the **28th of the month**, or the **Friday before** if the 28th is a weekend (Sat → 27th, Sun → 26th). You can still set a different start date in **Settings → Set Cycle Start Date** for a month where payday shifted (e.g. a holiday) — that only moves this cycle's start, nothing else — and a **“Reset to payday (28th)”** button fills the computed date for you.
 
 - ✅ **(2026-07-12)** **Fortuna refinements — Settings tab, collapsible Portfolio, affordability check (v1.17.0).** (1) New **Settings** tab in Fortuna: **export/import/restore** the whole app backup (one `kaizen-backup.json`), see the **app version & last-updated** time, **lock** the plan, and **reset** the plan (Fortuna-only) — all in one place. (2) **Portfolio sections are now collapsible** — each asset class shows just its **heading + amount invested**, and you tap to expand and edit; keeps the long portfolio scannable at a glance. (3) **Goals affordability check** — mirroring the spreadsheet, Goals now compares your **total required SIP against your monthly investing surplus** and warns if your goals need more than you have spare. (Also renamed the "Assumptions" tab to **Returns** so all six tabs fit the bar.)
 

@@ -3,6 +3,7 @@ import type { FortunaTabProps } from '../FortunaApp';
 import { BackupRepository } from '../../repository/backupRepository';
 import { defaultPlan } from '../../repository/plannerRepository';
 import { saveBackupFile } from '../../core/backupFile';
+import { unlock } from '../../core/vaultLock';
 import AppIcon from '../AppIcon';
 import { Section } from './shared';
 
@@ -27,6 +28,47 @@ export default function SettingsTab({ update, onLock, reload }: Props) {
   const restoreRef = useRef<HTMLInputElement>(null);
   const [lastBackup, setLastBackup] = useState<string | null>(BackupRepository.getLastBackupAt());
   const [busy, setBusy] = useState(false);
+  // Reset is dangerous, so it's gated: confirm → enter PIN → reset.
+  const [resetStage, setResetStage] = useState<'idle' | 'confirm' | 'pin'>('idle');
+  const [pin, setPin] = useState('');
+  const [pinErr, setPinErr] = useState('');
+  const [resetting, setResetting] = useState(false);
+
+  function applyReset() {
+    update((d) => {
+      const fresh = defaultPlan();
+      d.assumptions = fresh.assumptions;
+      d.cashFlow = fresh.cashFlow;
+      d.assets = fresh.assets;
+      d.liabilities = fresh.liabilities;
+      d.goals = fresh.goals;
+      d.recurringInvestments = fresh.recurringInvestments;
+    });
+  }
+
+  async function confirmResetPin(e: React.FormEvent) {
+    e.preventDefault();
+    if (resetting) return;
+    setPinErr('');
+    setResetting(true);
+    const key = await unlock(pin);
+    setResetting(false);
+    if (!key) {
+      setPinErr('Wrong PIN.');
+      setPin('');
+      return;
+    }
+    applyReset();
+    setResetStage('idle');
+    setPin('');
+    alert('Financial plan reset ✅');
+  }
+
+  function closeReset() {
+    setResetStage('idle');
+    setPin('');
+    setPinErr('');
+  }
 
   async function exportBackup() {
     if (busy) return;
@@ -77,21 +119,9 @@ export default function SettingsTab({ update, onLock, reload }: Props) {
   }
 
   function resetPlan() {
-    if (
-      !confirm(
-        'Reset your financial plan to empty?\n\nThis clears all your Fortuna data (cash flow, portfolio, goals, liabilities) back to zero. It does NOT touch the rest of the app. This can’t be undone — export a backup first if unsure.',
-      )
-    ) {
-      return;
-    }
-    update((d) => {
-      const fresh = defaultPlan();
-      d.assumptions = fresh.assumptions;
-      d.cashFlow = fresh.cashFlow;
-      d.assets = fresh.assets;
-      d.liabilities = fresh.liabilities;
-      d.goals = fresh.goals;
-    });
+    setPin('');
+    setPinErr('');
+    setResetStage('confirm');
   }
 
   return (
@@ -165,6 +195,63 @@ export default function SettingsTab({ update, onLock, reload }: Props) {
           <p className="ft-note">Clears only your Fortuna data. Export a backup first if you’re unsure.</p>
         </Section>
       </div>
+
+      {resetStage === 'confirm' && (
+        <div className="modal__backdrop" onClick={closeReset}>
+          <div className="modal__card ft-resetmodal" onClick={(e) => e.stopPropagation()}>
+            <div className="ft-resetmodal__icon ft-resetmodal__icon--warn">
+              <AppIcon name="trash" size={26} />
+            </div>
+            <h3>Reset financial plan?</h3>
+            <p className="muted">
+              This permanently clears <strong>all your Fortuna data</strong> — cash flow, portfolio, goals,
+              liabilities and SIPs — back to zero. It can’t be undone. The rest of the app is untouched.
+            </p>
+            <div className="ft-btnrow">
+              <button className="btn btn--ghost ft-btn" onClick={closeReset}>
+                Cancel
+              </button>
+              <button className="btn btn--danger ft-btn" onClick={() => { setPinErr(''); setResetStage('pin'); }}>
+                Yes, continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resetStage === 'pin' && (
+        <div className="modal__backdrop" onClick={closeReset}>
+          <div className="modal__card ft-resetmodal" onClick={(e) => e.stopPropagation()}>
+            <div className="ft-resetmodal__icon">
+              <AppIcon name="vault" size={26} />
+            </div>
+            <h3>Enter your PIN</h3>
+            <p className="muted">Confirm your PIN to reset the plan — this is a safety check for a dangerous action.</p>
+            <form onSubmit={confirmResetPin} className="vaultlock__form">
+              <input
+                className="input vaultlock__pin"
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="PIN"
+                autoFocus
+              />
+              {pinErr && <div className="vaultlock__err">{pinErr}</div>}
+              <div className="ft-btnrow">
+                <button type="button" className="btn btn--ghost ft-btn" onClick={closeReset}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn--danger ft-btn" disabled={resetting}>
+                  {resetting ? 'Working…' : 'Reset plan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

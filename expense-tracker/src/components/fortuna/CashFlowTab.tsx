@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import { computeCashFlow } from '../../core/plannerMath';
+import HoldingList from './HoldingList';
 import { Section, MoneyRow, TotalRow, Stat, formatINR } from './shared';
 
 export default function CashFlowTab({ plan, update }: FortunaTabProps) {
@@ -48,6 +49,13 @@ export default function CashFlowTab({ plan, update }: FortunaTabProps) {
             value={plan.cashFlow.inflows.others}
             onChange={(v) => update((d) => { d.cashFlow.inflows.others = v; })}
           />
+          <div className="ft-sublabel">Your own inflows</div>
+          <HoldingList
+            rows={plan.cashFlow.customInflows ?? []}
+            namePlaceholder="e.g. Freelance, Dividends"
+            addLabel="Add inflow"
+            onChange={(m) => update((d) => m(d.cashFlow.customInflows ?? (d.cashFlow.customInflows = [])))}
+          />
           <TotalRow label="Total inflows" value={cf.totalInflows} strong />
         </Section>
 
@@ -77,6 +85,13 @@ export default function CashFlowTab({ plan, update }: FortunaTabProps) {
             label="Others"
             value={plan.cashFlow.outflows.others}
             onChange={(v) => update((d) => { d.cashFlow.outflows.others = v; })}
+          />
+          <div className="ft-sublabel">Your own outflows</div>
+          <HoldingList
+            rows={plan.cashFlow.customOutflows ?? []}
+            namePlaceholder="e.g. School fees, Subscriptions"
+            addLabel="Add outflow"
+            onChange={(m) => update((d) => m(d.cashFlow.customOutflows ?? (d.cashFlow.customOutflows = [])))}
           />
           <TotalRow label="Total outflows" value={cf.totalOutflows} strong />
         </Section>

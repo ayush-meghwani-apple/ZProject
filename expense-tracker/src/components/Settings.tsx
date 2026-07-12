@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cycleName, cycleLabel } from '../core/salaryCycle';
+import { currentCycleStart } from '../core/cycleDate';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import { BackupRepository } from '../repository/backupRepository';
 import { getPrefs, setPrefs } from '../core/preferences';
@@ -78,7 +79,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
   }
 
   async function startNow() {
-    if (!confirm('Start a new cycle from now? The current one will be closed.')) return;
+    if (!confirm('Start a new cycle dated to this period\u2019s payday (28th)? The current one will be closed.')) return;
     await SalaryCycleRepository.startCycle();
     await load();
     onChange();
@@ -260,8 +261,9 @@ export default function Settings({ version, onChange, global = false }: Props) {
           <div className="card">
             <h3>Set Cycle Start Date</h3>
             <div className="muted" style={{ marginBottom: 12 }}>
-              The cycle is named after the month holding the most days, e.g. a cycle
-              starting 24 Jun becomes <strong>Jul-26</strong>.
+              Cycles start on <strong>payday — the 28th</strong>, or the Friday before if the 28th is a weekend
+              (Sat → 27th, Sun → 26th). New cycles use this automatically; set a different date here for a month
+              where payday shifted (e.g. a holiday). The cycle is named after the month holding the most days.
             </div>
             <div className="inline">
               <input
@@ -274,16 +276,23 @@ export default function Settings({ version, onChange, global = false }: Props) {
                 Save
               </button>
             </div>
+            <button
+              className="btn btn--ghost"
+              style={{ marginTop: 8 }}
+              onClick={() => setDateValue(toDateInput(currentCycleStart().toISOString()))}
+            >
+              Reset to payday (28th)
+            </button>
           </div>
 
           <div className="card">
             <h3>New Cycle</h3>
             <div className="muted" style={{ marginBottom: 12 }}>
-              Start a fresh cycle from this instant. You can also type{' '}
-              <strong>"start cycle"</strong> in the Add tab.
+              Starts a fresh cycle dated to this period's <strong>payday (28th)</strong> automatically. You can also
+              type <strong>"start cycle"</strong> in the Add tab.
             </div>
             <button className="btn btn--ghost" onClick={startNow}>
-              Start cycle now
+              Start new cycle
             </button>
           </div>
 

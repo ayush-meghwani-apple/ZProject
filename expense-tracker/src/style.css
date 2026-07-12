@@ -4039,3 +4039,37 @@ svg.lucide {
 .ft-sip__actions .ft-btn {
   flex: 1;
 }
+
+/* Reset confirmation / PIN modal */
+.ft-resetmodal {
+  text-align: center;
+}
+.ft-resetmodal h3 {
+  margin: 4px 0 6px;
+}
+.ft-resetmodal .muted {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+.ft-resetmodal .ft-btnrow {
+  margin-top: 4px;
+}
+.ft-resetmodal .vaultlock__form {
+  gap: 12px;
+}
+.ft-resetmodal__icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 8px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.22));
+  color: var(--accent);
+}
+.ft-resetmodal__icon--warn {
+  background: rgba(248, 113, 113, 0.16);
+  color: var(--bad);
+}

@@ -243,6 +243,10 @@ export interface CashFlow {
     insurance: number;
     others: number;
   };
+  /** User-defined extra inflow lines (name + amount). */
+  customInflows?: HoldingRow[];
+  /** User-defined extra outflow lines (name + amount). */
+  customOutflows?: HoldingRow[];
 }
 
 /** A single line item inside a multi-row holdings list (a stock, MF, FD…). */
@@ -276,6 +280,8 @@ export interface Liabilities {
   personalGoldLoan: number;
   creditCard: number;
   other: number;
+  /** User-defined extra liability lines (name + amount). */
+  custom?: HoldingRow[];
 }
 
 /** One financial goal. Derived fields (horizon, future value, SIP, allocation)

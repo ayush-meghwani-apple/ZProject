@@ -1,5 +1,6 @@
 import { storage } from '../storage';
-import { newId, now } from '../core/util';
+import { newId } from '../core/util';
+import { currentCycleStart } from '../core/cycleDate';
 import { ActivityRepository } from './activityRepository';
 import type { SalaryCycle } from '../types/models';
 
@@ -20,15 +21,16 @@ export const SalaryCycleRepository = {
   },
 
   /**
-   * Closes the currently-open cycle (if any) and opens a new one starting at
-   * `startDate` (default now). Income is optional — this app primarily tracks
-   * expenses, so a cycle is just a time period.
+   * Closes the currently-open cycle (if any) and opens a new one. When no start
+   * date is given it defaults to the current salary period's start — the 28th of
+   * the month, or the preceding Friday if that's a weekend — so cycles line up
+   * with payday automatically. Income is optional; a cycle is just a period.
    */
   async startCycle(
     startDate?: string,
     opts?: { amount?: number; note?: string },
   ): Promise<SalaryCycle> {
-    const ts = startDate ?? now();
+    const ts = startDate ?? currentCycleStart(new Date()).toISOString();
 
     const previous = await this.getOpenCycle();
     if (previous) {
@@ -50,9 +52,9 @@ export const SalaryCycleRepository = {
     return cycle;
   },
 
-  /** Convenience: start a cycle now and record an income amount. */
+  /** Convenience: start a cycle (defaults to payday) and record an income amount. */
   receiveSalary(amount: number, note?: string): Promise<SalaryCycle> {
-    return this.startCycle(now(), { amount, note });
+    return this.startCycle(undefined, { amount, note });
   },
 
   /**

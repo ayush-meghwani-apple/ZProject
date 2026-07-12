@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import { computeNetWorth, targetAllocation, assetClassTotals, CLASS_LABEL } from '../../core/plannerMath';
 import type { AssetClassKey } from '../../types/models';
+import HoldingList from './HoldingList';
 import { Section, MoneyRow, TotalRow, Stat, formatINR } from './shared';
 
 const CLASS_ORDER: AssetClassKey[] = [
@@ -136,6 +137,13 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
             label="Other liabilities"
             value={plan.liabilities.other}
             onChange={(v) => update((d) => { d.liabilities.other = v; })}
+          />
+          <div className="ft-sublabel">Your own liabilities</div>
+          <HoldingList
+            rows={plan.liabilities.custom ?? []}
+            namePlaceholder="e.g. Loan from family"
+            addLabel="Add liability"
+            onChange={(m) => update((d) => m(d.liabilities.custom ?? (d.liabilities.custom = [])))}
           />
           <TotalRow label="Total liabilities" value={nw.totalLiabilities} strong />
         </Section>

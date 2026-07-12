@@ -34,13 +34,18 @@ export interface CashFlowResult {
 
 export function computeCashFlow(cf: CashFlow): CashFlowResult {
   const totalInflows =
-    num(cf.inflows.salary) + num(cf.inflows.business) + num(cf.inflows.rental) + num(cf.inflows.others);
+    num(cf.inflows.salary) +
+    num(cf.inflows.business) +
+    num(cf.inflows.rental) +
+    num(cf.inflows.others) +
+    sumRows(cf.customInflows ?? []);
   const totalOutflows =
     num(cf.outflows.expenses) +
     num(cf.outflows.compulsoryInvestments) +
     num(cf.outflows.loanEmis) +
     num(cf.outflows.insurance) +
-    num(cf.outflows.others);
+    num(cf.outflows.others) +
+    sumRows(cf.customOutflows ?? []);
   return {
     totalInflows,
     totalOutflows,
@@ -207,7 +212,13 @@ const CLASS_LABELS: Record<AssetClassKey, string> = {
 
 export function totalLiabilities(l: Liabilities): number {
   return (
-    num(l.homeLoan) + num(l.educationLoan) + num(l.carLoan) + num(l.personalGoldLoan) + num(l.creditCard) + num(l.other)
+    num(l.homeLoan) +
+    num(l.educationLoan) +
+    num(l.carLoan) +
+    num(l.personalGoldLoan) +
+    num(l.creditCard) +
+    num(l.other) +
+    sumRows(l.custom ?? [])
   );
 }
 
