@@ -23,6 +23,16 @@ export default function PaymentMethodsManager() {
     load();
   }, []);
 
+  // Cancel an in-progress edit when tapping anywhere outside the editing row.
+  useEffect(() => {
+    if (!editingId) return;
+    function onDown(e: PointerEvent) {
+      if (!(e.target as Element)?.closest?.('.pmrow--editing')) setEditingId(null);
+    }
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [editingId]);
+
   async function add() {
     const n = name.trim();
     if (!n) return;
@@ -64,25 +74,31 @@ export default function PaymentMethodsManager() {
       <div className="pmlist">
         {methods.map((m) =>
           editingId === m.id ? (
-            <div className="pmrow" key={m.id}>
+            <div className="pmrow pmrow--editing" key={m.id}>
               <input
                 className="input pmrow__icon"
                 value={editIcon}
                 onChange={(e) => setEditIcon(e.target.value)}
                 placeholder="🙂"
                 maxLength={2}
+                aria-label="Emoji"
               />
               <input
-                className="input"
+                className="input pmrow__nameinput"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
+                placeholder="Name"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && saveEdit(m)}
               />
-              <button className="btn btn--sm" onClick={() => saveEdit(m)}>
-                Save
-              </button>
-              <button className="btn btn--ghost btn--sm" onClick={() => setEditingId(null)}>
-                Cancel
-              </button>
+              <div className="pmrow__editbtns">
+                <button className="btn btn--sm" onClick={() => saveEdit(m)}>
+                  Save
+                </button>
+                <button className="btn btn--ghost btn--sm" onClick={() => setEditingId(null)}>
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <div className="pmrow" key={m.id}>
@@ -101,24 +117,28 @@ export default function PaymentMethodsManager() {
         )}
       </div>
 
-      <div className="inline" style={{ marginTop: 10 }}>
-        <input
-          className="input pmrow__icon"
-          value={icon}
-          onChange={(e) => setIcon(e.target.value)}
-          placeholder="🙂"
-          maxLength={2}
-        />
-        <input
-          className="input"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. HDFC Card"
-          onKeyDown={(e) => e.key === 'Enter' && add()}
-        />
-        <button className="btn" onClick={add}>
-          Add
-        </button>
+      <div className="pmadd">
+        <div className="pmadd__label">Add a method</div>
+        <div className="pmadd__row">
+          <input
+            className="input pmrow__icon"
+            value={icon}
+            onChange={(e) => setIcon(e.target.value)}
+            placeholder="🙂"
+            maxLength={2}
+            aria-label="Emoji (optional)"
+          />
+          <input
+            className="input pmrow__nameinput"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. HDFC Card"
+            onKeyDown={(e) => e.key === 'Enter' && add()}
+          />
+          <button className="btn btn--sm" onClick={add}>
+            Add
+          </button>
+        </div>
       </div>
     </div>
   );

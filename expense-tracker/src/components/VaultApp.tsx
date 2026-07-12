@@ -3,6 +3,7 @@ import { VaultRepository } from '../repository/vaultRepository';
 import { hasPin, setPin as savePin, verifyPin, clearPin } from '../core/vaultLock';
 import { formatINR } from '../core/util';
 import AppIcon from './AppIcon';
+import AmountInput from './AmountInput';
 import type { VaultItem } from '../types/models';
 
 /**
@@ -94,7 +95,7 @@ function VaultLock({ onUnlock }: { onUnlock: () => void }) {
 function Vault({ onLock }: { onLock: () => void }) {
   const [items, setItems] = useState<VaultItem[]>([]);
   const [label, setLabel] = useState('');
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(0);
   const [note, setNote] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pinPanel, setPinPanel] = useState(false);
@@ -111,21 +112,20 @@ function Vault({ onLock }: { onLock: () => void }) {
   function reset() {
     setEditingId(null);
     setLabel('');
-    setAmount('');
+    setAmount(0);
     setNote('');
   }
 
   async function save() {
-    const amt = parseFloat(amount);
-    if (!label.trim() || isNaN(amt)) {
+    if (!label.trim() || !(amount > 0)) {
       alert('Enter a label and a valid amount.');
       return;
     }
     if (editingId) {
       const it = items.find((i) => i.id === editingId);
-      if (it) await VaultRepository.update({ ...it, label: label.trim(), amount: amt, note: note.trim() || undefined });
+      if (it) await VaultRepository.update({ ...it, label: label.trim(), amount, note: note.trim() || undefined });
     } else {
-      await VaultRepository.add(label, amt, note);
+      await VaultRepository.add(label, amount, note);
     }
     reset();
     load();
@@ -134,7 +134,7 @@ function Vault({ onLock }: { onLock: () => void }) {
   function startEdit(it: VaultItem) {
     setEditingId(it.id);
     setLabel(it.label);
-    setAmount(String(it.amount));
+    setAmount(it.amount);
     setNote(it.note ?? '');
   }
 
@@ -173,13 +173,7 @@ function Vault({ onLock }: { onLock: () => void }) {
           </label>
           <label className="field">
             <span>Amount (₹)</span>
-            <input
-              className="input"
-              type="number"
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+            <AmountInput value={amount} onChange={setAmount} inputMode="numeric" />
           </label>
           <label className="field">
             <span>Note (optional)</span>

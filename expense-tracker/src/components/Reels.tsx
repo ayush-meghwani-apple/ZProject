@@ -41,6 +41,7 @@ export default function Reels({ version, onChange }: Props) {
   const [cycles, setCycles] = useState<SalaryCycle[]>([]);
   const [cycleId, setCycleId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [methodMenuFor, setMethodMenuFor] = useState<string | null>(null);
   const [active, setActive] = useState(0);
   const [bigThreshold, setBigThreshold] = useState(0);
   const [remindExpense, setRemindExpense] = useState<Expense | null>(null);
@@ -87,6 +88,16 @@ export default function Reels({ version, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
+  // Close an open reel payment-method menu when tapping elsewhere.
+  useEffect(() => {
+    if (!methodMenuFor) return;
+    function onDown(e: PointerEvent) {
+      if (!(e.target as Element)?.closest?.('.reel__methodwrap')) setMethodMenuFor(null);
+    }
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [methodMenuFor]);
+
   const reels = useMemo(() => {
     const list = cycleId ? expenses.filter((e) => e.salaryCycleId === cycleId) : expenses;
     return [...list].sort((a, b) => b.date.localeCompare(a.date));
@@ -128,6 +139,14 @@ export default function Reels({ version, onChange }: Props) {
   }
   function methodOf(e: Expense): PaymentMethod | undefined {
     return e.paymentMethodId ? methods.find((m) => m.id === e.paymentMethodId) : undefined;
+  }
+
+  // Set/change the payment method straight from a reel (no need to open Edit).
+  async function setExpenseMethod(exp: Expense, methodId: string) {
+    await ExpenseRepository.updateExpense({ ...exp, paymentMethodId: methodId || undefined });
+    setMethodMenuFor(null);
+    await load();
+    onChange();
   }
 
   async function handleDelete(id: string) {
@@ -338,11 +357,43 @@ export default function Reels({ version, onChange }: Props) {
 
                   <div className="reel__date">{formatDate(e.date)}</div>
 
-                  {method && (
-                    <div className="reel__method">
-                      {method.icon ? `${method.icon} ` : ''}{method.name}
-                    </div>
-                  )}
+                  <div className="reel__methodwrap" data-noswipe>
+                    <button
+                      className={`reel__methodchip${method ? ' reel__methodchip--set' : ''}`}
+                      onClick={() => setMethodMenuFor(methodMenuFor === e.id ? null : e.id)}
+                    >
+                      {method ? (
+                        <>
+                          {method.icon ? `${method.icon} ` : ''}
+                          {method.name}
+                        </>
+                      ) : (
+                        <>
+                          <AppIcon name="plus" size={13} /> Payment method
+                        </>
+                      )}
+                    </button>
+                    {methodMenuFor === e.id && (
+                      <div className="methodmenu methodmenu--reel">
+                        <button
+                          className={!e.paymentMethodId ? 'is-on' : ''}
+                          onClick={() => setExpenseMethod(e, '')}
+                        >
+                          No method
+                        </button>
+                        {methods.map((m) => (
+                          <button
+                            key={m.id}
+                            className={m.id === e.paymentMethodId ? 'is-on' : ''}
+                            onClick={() => setExpenseMethod(e, m.id)}
+                          >
+                            {m.icon ? `${m.icon} ` : ''}
+                            {m.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   {isRecurring && (
                     <div className="reel__recurring" title="Created automatically from a recurring rule">
