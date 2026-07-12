@@ -13,6 +13,10 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
     () => activeAssumptions(plan.assumptions, plan.disabledClasses ?? []),
     [plan.assumptions, plan.disabledClasses],
   );
+  const activeWithIndex = useMemo(
+    () => plan.assumptions.map((a, i) => ({ a, i })).filter((x) => !disabled.has(x.a.key)),
+    [plan.assumptions, plan.disabledClasses],
+  );
   const eff = useMemo(() => effectiveReturns(active, goalTypes), [active, goalTypes]);
 
   const weightSum = (hid: string) => active.reduce((s, a) => s + (a.weights?.[hid] || 0), 0);
@@ -103,54 +107,52 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
           </button>
         </Section>
 
-        <Section title="Asset classes" subtitle="Expected return, and each goal type's split across classes">
-          {plan.assumptions.map((a, i) =>
-            disabled.has(a.key) ? null : (
-              <div className="ft-acls" key={a.key}>
-                <div className="ft-acls__head">
-                  <span className="ft-acls__name">{a.label || 'Custom'}</span>
-                  <span className="ft-acls__ret">
-                    <input
-                      className="input ft-acls__inp"
-                      inputMode="decimal"
-                      value={String(a.expectedReturnPct)}
-                      onChange={(e) => setReturn(i, e.target.value)}
-                    />
-                    <span className="ft-acls__unit">% return</span>
-                  </span>
+        <Section title="Asset classes" subtitle="Expected return, then each goal type's split across classes">
+          <div className="ft-sublabel">Expected annual return</div>
+          <div className="ft-agrid">
+            {activeWithIndex.map(({ a, i }) => (
+              <label className="ft-acell" key={a.key}>
+                <span className="ft-acell__name">{a.label || 'Custom'}</span>
+                <span className="ft-acell__inp">
+                  <input
+                    className="input ft-acell__input"
+                    inputMode="decimal"
+                    value={String(a.expectedReturnPct)}
+                    onChange={(e) => setReturn(i, e.target.value)}
+                  />
+                  <span className="ft-acell__unit">%</span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {goalTypes.map((h) => {
+            const s = weightSum(h.id);
+            return (
+              <div className="ft-gtblock" key={h.id}>
+                <div className="ft-gtblock__head">
+                  <span className="ft-gtblock__name">{h.label}</span>
+                  <span className={`ft-gtblock__sum ${s === 100 ? 'ft-ok' : 'ft-warn'}`}>{s}%</span>
                 </div>
-                <div className="ft-acls__weights">
-                  {goalTypes.map((h) => (
-                    <label className="ft-acls__wrow" key={h.id}>
-                      <span className="ft-acls__wlabel">{h.label}</span>
-                      <span className="ft-acls__winput">
+                <div className="ft-agrid">
+                  {activeWithIndex.map(({ a, i }) => (
+                    <label className="ft-acell" key={a.key}>
+                      <span className="ft-acell__name">{a.label || 'Custom'}</span>
+                      <span className="ft-acell__inp">
                         <input
-                          className="input ft-acls__inp"
+                          className="input ft-acell__input"
                           inputMode="decimal"
                           value={String(a.weights?.[h.id] ?? 0)}
                           onChange={(e) => setWeight(i, h.id, e.target.value)}
                         />
-                        <span className="ft-acls__unit">%</span>
+                        <span className="ft-acell__unit">%</span>
                       </span>
                     </label>
                   ))}
                 </div>
               </div>
-            ),
-          )}
-
-          <div className="ft-acls__totals">
-            <div className="ft-sublabel">Total weight per goal type</div>
-            {goalTypes.map((h) => {
-              const s = weightSum(h.id);
-              return (
-                <div className="ft-total" key={h.id}>
-                  <span>{h.label}</span>
-                  <span className={`ft-total__val ${s === 100 ? 'ft-ok' : 'ft-warn'}`}>{s}%</span>
-                </div>
-              );
-            })}
-          </div>
+            );
+          })}
           <p className="ft-note">Each goal type's weights should ideally add up to 100%.</p>
           {disabled.size > 0 && (
             <p className="ft-note">

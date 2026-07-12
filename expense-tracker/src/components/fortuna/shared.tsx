@@ -82,8 +82,11 @@ export function MoneyRow({
   );
 }
 
-/** Like {@link MoneyRow} but the label can be renamed via a pencil, so built-in
- *  fixed lines (Home, REITs, S&P 500 ETF…) can be given your own names. */
+/** Like {@link MoneyRow} but presented as a clean, tappable read row (matching
+ *  the holdings lists): shows the name + amount; tapping opens an inline editor
+ *  to rename it and change its value. Used for the built-in fixed Portfolio
+ *  lines (Home, REITs, S&P 500 ETF…) so they can be renamed without a permanent
+ *  pencil cluttering the row. */
 export function RenamableMoneyRow({
   label,
   value,
@@ -98,51 +101,46 @@ export function RenamableMoneyRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(label);
 
+  function open() {
+    setDraft(label);
+    setEditing(true);
+  }
   function commit() {
     onRename(draft.trim() || label);
     setEditing(false);
   }
 
+  if (editing) {
+    return (
+      <div className="ft-holding">
+        <input
+          className="input ft-holding__name"
+          value={draft}
+          autoFocus
+          placeholder="Name"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+        />
+        <span className="ft-holding__amt">
+          <span className="ft-row__cur">₹</span>
+          <AmountInput className="input ft-holding__val" value={value} onChange={onChange} placeholder="0" />
+        </span>
+        <button className="iconbtn ft-holding__done" aria-label="Done" title="Done" onClick={commit}>
+          <AppIcon name="done" size={16} />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <label className="ft-row">
-      {editing ? (
-        <span className="ft-row__label ft-row__label--edit">
-          <input
-            className="input ft-row__nameinp"
-            value={draft}
-            autoFocus
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commit();
-              if (e.key === 'Escape') setEditing(false);
-            }}
-          />
-          <button type="button" className="iconbtn" aria-label="Save name" onClick={commit}>
-            <AppIcon name="done" size={15} />
-          </button>
-        </span>
-      ) : (
-        <span className="ft-row__label">
-          {label}
-          <button
-            type="button"
-            className="iconbtn ft-row__rename"
-            aria-label="Rename"
-            title="Rename"
-            onClick={() => {
-              setDraft(label);
-              setEditing(true);
-            }}
-          >
-            <AppIcon name="edit" size={13} />
-          </button>
-        </span>
-      )}
-      <span className="ft-row__field">
-        <span className="ft-row__cur">₹</span>
-        <AmountInput className="input ft-row__input" value={value} onChange={onChange} placeholder="0" />
-      </span>
-    </label>
+    <button className="ft-readrow ft-readrow--tap" onClick={open}>
+      <span className="ft-readrow__name">{label.trim() || '—'}</span>
+      <span className="ft-readrow__val">{formatINR(value)}</span>
+      <AppIcon name="chevronRight" size={15} className="ft-readrow__chev" />
+    </button>
   );
 }
 

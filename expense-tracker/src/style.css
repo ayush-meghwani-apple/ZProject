@@ -3609,12 +3609,13 @@ svg.lucide {
 }
 /* Tappable read row (whole row opens the inline editor) */
 .ft-readrow--tap {
+  position: relative;
   width: 100%;
   background: transparent;
   border: none;
   border-radius: 10px;
-  padding: 9px 8px;
-  margin: 0 -8px;
+  padding: 10px 24px 10px 6px;
+  margin: 0;
   text-align: left;
   color: inherit;
   font: inherit;
@@ -3625,9 +3626,17 @@ svg.lucide {
   background: var(--surface-2);
 }
 .ft-readrow__chev {
-  flex: 0 0 auto;
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--muted);
-  opacity: 0.45;
+  opacity: 0.4;
+}
+/* Amounts on read rows and totals all line up on one right-hand column */
+.ft-total,
+.ft-holdings__foot {
+  padding-right: 24px;
 }
 .ft-readrow__name {
   color: var(--text);
@@ -4111,6 +4120,66 @@ svg.lucide {
 }
 .ft-acls__totals .ft-total {
   padding: 4px 0;
+}
+
+/* --- v1.24.0: Returns grouped by goal type (2-col grid, fits width) --- */
+.ft-agrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+.ft-acell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+.ft-acell__name {
+  font-size: 12.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ft-acell__inp {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+.ft-acell__input {
+  width: 48px;
+  text-align: center;
+  padding: 6px 4px;
+  font-size: 13px;
+}
+.ft-acell__unit {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.ft-gtblock {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: var(--surface-2);
+}
+.ft-gtblock__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.ft-gtblock__name {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.ft-gtblock__sum {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 

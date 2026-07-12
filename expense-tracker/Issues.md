@@ -11,6 +11,11 @@ _Nothing open right now._
 
 ## Done
 
+- ✅ **(2026-07-12)** **Returns grouped by goal type, tap-to-edit Portfolio lines, and aligned amounts (v1.24.0).** Three polish items: (1) **Returns "Asset classes" now reads top-to-bottom** — instead of a wide sideways-scrolling table, there's a compact **"Expected annual return"** grid, then **one card per goal type** (Short / Medium / Long…), each laying the asset classes out in a **2-column grid that fits the screen** — no horizontal scrolling. (2) **Portfolio's fixed lines use the same clean edit UI** — Home, REITs, S&P 500 ETF, etc. are now **tappable rows** (name + amount + ›); tap one to rename and re-value it inline, matching the holdings/cash-flow rows (the always-on pencil is gone). (3) **All amounts line up** — the ₹ values on tappable rows and the section totals now sit on **one straight right-hand column** (the › chevron sits in its own gutter beyond them), so nothing looks misaligned.
+
+
+## Done
+
 - ✅ **(2026-07-12)** **Goal types (not time horizons), vertical Returns table, and tap-to-edit rows (v1.23.0).** Three things: (1) **Goals are yours to categorise, not time-boxed** — the Returns tab's "Time horizons" is now **"Goal types"**: each type is just a **name + one-line description** (no year cut-offs), and you can **add, edit and delete** any of them (Short/Medium/Long are just editable starters). Each goal now **picks its type from a dropdown** in the Goals tab, and that type drives its expected return & SIP split. Your existing goals are auto-mapped to a matching type so nothing changes for them. (2) **Asset classes table is now vertical** — no more sideways scrolling: each asset class is a card showing its return with the per-goal-type weights **stacked underneath**, matching the rest of the app. (3) **Edit/delete only when you want them** — holding / cash-flow / liability rows no longer show a permanent pencil + trash; each row is a **clean tappable line**, and tapping it opens the inline editor (rename / re-value / **delete** / done). Much less visual clutter.
 
 
