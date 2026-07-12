@@ -1,10 +1,21 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { HorizonDef } from '../../types/models';
 import { effectiveReturns, activeAssumptions, planHorizons } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import { Section } from './shared';
+
+/** Short column headers for the asset-class matrix, so the 6 classes fit the
+ *  screen width without horizontal scrolling. */
+const SHORT_CLASS: Record<string, string> = {
+  domestic_equity: 'Dom. Eq',
+  us_equity: 'US Eq',
+  debt: 'Debt',
+  gold: 'Gold',
+  crypto: 'Crypto',
+  real_estate: 'RE',
+};
 
 export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
   const disabled = new Set(plan.disabledClasses ?? []);
@@ -20,6 +31,8 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
   const eff = useMemo(() => effectiveReturns(active, goalTypes), [active, goalTypes]);
 
   const weightSum = (hid: string) => active.reduce((s, a) => s + (a.weights?.[hid] || 0), 0);
+  const shortClass = (label: string, key: string) =>
+    SHORT_CLASS[key] ?? (label.length > 8 ? `${label.slice(0, 7)}…` : label || 'Custom');
 
   function setReturn(i: number, raw: string) {
     const val = clean(raw);
@@ -54,6 +67,9 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
     });
   }
 
+  // Matrix grid: a goal-type-label column + one column per (enabled) asset class.
+  const cols = `minmax(60px, 86px) repeat(${activeWithIndex.length}, minmax(0, 1fr))`;
+
   return (
     <main className="app__body">
       <div className="page ft-page">
@@ -73,87 +89,68 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
           </div>
         </Section>
 
-        <Section title="Goal types" subtitle="Your own goal buckets — a name and a one-line description">
+        <Section title="Goal types" subtitle="Your own goal buckets — tap a row to rename or edit it">
           {goalTypes.map((h) => (
-            <div className="ft-gtype" key={h.id}>
-              <div className="ft-gtype__main">
-                <input
-                  className="input ft-gtype__label"
-                  value={h.label}
-                  placeholder="Goal type name"
-                  onChange={(e) => setGoalType(h.id, { label: e.target.value })}
-                />
-                <input
-                  className="input ft-gtype__desc"
-                  value={h.description ?? ''}
-                  placeholder="One-line description"
-                  onChange={(e) => setGoalType(h.id, { description: e.target.value })}
-                />
-              </div>
-              {goalTypes.length > 1 && (
-                <button
-                  className="iconbtn ft-gtype__del"
-                  aria-label="Remove goal type"
-                  title="Remove"
-                  onClick={() => removeGoalType(h.id)}
-                >
-                  <AppIcon name="trash" size={16} />
-                </button>
-              )}
-            </div>
+            <GoalTypeRow
+              key={h.id}
+              def={h}
+              canDelete={goalTypes.length > 1}
+              onChange={(patch) => setGoalType(h.id, patch)}
+              onRemove={() => removeGoalType(h.id)}
+            />
           ))}
           <button className="ft-addrow" onClick={addGoalType}>
             <AppIcon name="plus" size={16} /> Add goal type
           </button>
         </Section>
 
-        <Section title="Asset classes" subtitle="Expected return, then each goal type's split across classes">
-          <div className="ft-sublabel">Expected annual return</div>
-          <div className="ft-agrid">
-            {activeWithIndex.map(({ a, i }) => (
-              <label className="ft-acell" key={a.key}>
-                <span className="ft-acell__name">{a.label || 'Custom'}</span>
-                <span className="ft-acell__inp">
-                  <input
-                    className="input ft-acell__input"
-                    inputMode="decimal"
-                    value={String(a.expectedReturnPct)}
-                    onChange={(e) => setReturn(i, e.target.value)}
-                  />
-                  <span className="ft-acell__unit">%</span>
-                </span>
-              </label>
-            ))}
-          </div>
-
-          {goalTypes.map((h) => {
-            const s = weightSum(h.id);
-            return (
-              <div className="ft-gtblock" key={h.id}>
-                <div className="ft-gtblock__head">
-                  <span className="ft-gtblock__name">{h.label}</span>
-                  <span className={`ft-gtblock__sum ${s === 100 ? 'ft-ok' : 'ft-warn'}`}>{s}%</span>
-                </div>
-                <div className="ft-agrid">
-                  {activeWithIndex.map(({ a, i }) => (
-                    <label className="ft-acell" key={a.key}>
-                      <span className="ft-acell__name">{a.label || 'Custom'}</span>
-                      <span className="ft-acell__inp">
-                        <input
-                          className="input ft-acell__input"
-                          inputMode="decimal"
-                          value={String(a.weights?.[h.id] ?? 0)}
-                          onChange={(e) => setWeight(i, h.id, e.target.value)}
-                        />
-                        <span className="ft-acell__unit">%</span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
+        <Section title="Asset classes" subtitle="Rows are goal types; columns are your asset classes">
+          <div className="ft-mx" style={{ gridTemplateColumns: cols }}>
+            <div className="ft-mx__corner" />
+            {activeWithIndex.map(({ a }) => (
+              <div className="ft-mx__ch" key={a.key} title={a.label}>
+                {shortClass(a.label, a.key)}
               </div>
-            );
-          })}
-          <p className="ft-note">Each goal type's weights should ideally add up to 100%.</p>
+            ))}
+
+            <div className="ft-mx__rh">
+              <span className="ft-mx__rhname">Return</span>
+              <span className="ft-mx__rhsub">% p.a.</span>
+            </div>
+            {activeWithIndex.map(({ a, i }) => (
+              <span className="ft-mx__cell" key={a.key}>
+                <input
+                  className="input ft-mx__inp"
+                  inputMode="decimal"
+                  value={String(a.expectedReturnPct)}
+                  onChange={(e) => setReturn(i, e.target.value)}
+                />
+              </span>
+            ))}
+
+            {goalTypes.map((h) => {
+              const s = weightSum(h.id);
+              return (
+                <Fragment key={h.id}>
+                  <div className="ft-mx__rh">
+                    <span className="ft-mx__rhname">{h.label}</span>
+                    <span className={`ft-mx__rhsum ${s === 100 ? 'ft-ok' : 'ft-warn'}`}>{s}%</span>
+                  </div>
+                  {activeWithIndex.map(({ a, i }) => (
+                    <span className="ft-mx__cell" key={a.key}>
+                      <input
+                        className="input ft-mx__inp"
+                        inputMode="decimal"
+                        value={String(a.weights?.[h.id] ?? 0)}
+                        onChange={(e) => setWeight(i, h.id, e.target.value)}
+                      />
+                    </span>
+                  ))}
+                </Fragment>
+              );
+            })}
+          </div>
+          <p className="ft-note">Each goal type's weights (its row) should ideally add up to 100%.</p>
           {disabled.size > 0 && (
             <p className="ft-note">
               {disabled.size} category{disabled.size > 1 ? 'ies' : ''} disabled — hidden here and excluded from the
@@ -163,6 +160,62 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
         </Section>
       </div>
     </main>
+  );
+}
+
+/** A goal type shown as a clean tappable read row (name + description + ›);
+ *  tapping opens an inline editor (name / description / delete). */
+function GoalTypeRow({
+  def,
+  canDelete,
+  onChange,
+  onRemove,
+}: {
+  def: HorizonDef;
+  canDelete: boolean;
+  onChange: (patch: Partial<HorizonDef>) => void;
+  onRemove: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <div className="ft-gtype">
+        <div className="ft-gtype__main">
+          <input
+            className="input ft-gtype__label"
+            value={def.label}
+            autoFocus
+            placeholder="Goal type name"
+            onChange={(e) => onChange({ label: e.target.value })}
+          />
+          <input
+            className="input ft-gtype__desc"
+            value={def.description ?? ''}
+            placeholder="One-line description"
+            onChange={(e) => onChange({ description: e.target.value })}
+          />
+        </div>
+        {canDelete && (
+          <button className="iconbtn ft-gtype__del" aria-label="Remove goal type" title="Remove" onClick={onRemove}>
+            <AppIcon name="trash" size={16} />
+          </button>
+        )}
+        <button className="iconbtn ft-gtype__done" aria-label="Done" title="Done" onClick={() => setEditing(false)}>
+          <AppIcon name="done" size={16} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button className="ft-readrow ft-readrow--tap ft-gtype__read" onClick={() => setEditing(true)}>
+      <span className="ft-gtype__readmain">
+        <span className="ft-gtype__readname">{def.label.trim() || 'Untitled goal type'}</span>
+        {def.description && <span className="ft-gtype__readdesc">{def.description}</span>}
+      </span>
+      <AppIcon name="chevronRight" size={15} className="ft-readrow__chev" />
+    </button>
   );
 }
 

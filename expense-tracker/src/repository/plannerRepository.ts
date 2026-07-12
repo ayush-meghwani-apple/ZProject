@@ -164,7 +164,11 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
     id: PLAN_ID,
     v: PLAN_VERSION,
     assumptions: migrateAssumptions(raw.assumptions, base.assumptions),
-    cashFlow: { inflows, outflows },
+    cashFlow: {
+      inflows,
+      outflows,
+      emergencyTarget: Number.isFinite(Number(cf.emergencyTarget)) ? Number(cf.emergencyTarget) : undefined,
+    },
     assets: {
       realEstate: {
         home: num(re.home),

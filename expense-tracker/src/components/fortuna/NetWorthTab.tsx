@@ -126,9 +126,10 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
             rows={plan.liabilities.items}
             namePlaceholder="Liability name"
             addLabel="Add liability"
+            total
+            totalLabel="Total liabilities"
             onChange={(m) => update((d) => m(d.liabilities.items))}
           />
-          <TotalRow label="Total liabilities" value={nw.totalLiabilities} strong />
         </Section>
       </div>
     </main>

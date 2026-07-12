@@ -2,10 +2,13 @@ import { useMemo } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import { computeCashFlow } from '../../core/plannerMath';
 import HoldingList from './HoldingList';
-import { Section, TotalRow, Stat, formatINR } from './shared';
+import { Section, MoneyRow, TotalRow, Stat, formatINR } from './shared';
 
 export default function CashFlowTab({ plan, update }: FortunaTabProps) {
   const cf = useMemo(() => computeCashFlow(plan.cashFlow), [plan.cashFlow]);
+  const emergencyTarget = plan.cashFlow.emergencyTarget ?? cf.recommendedEmergencyFund;
+  const hasOverride = typeof plan.cashFlow.emergencyTarget === 'number';
+  const liquidCash = plan.assets.debt.liquidCash;
 
   return (
     <main className="app__body">
@@ -33,9 +36,10 @@ export default function CashFlowTab({ plan, update }: FortunaTabProps) {
             rows={plan.cashFlow.inflows}
             namePlaceholder="Inflow name"
             addLabel="Add inflow"
+            total
+            totalLabel="Total inflows"
             onChange={(m) => update((d) => m(d.cashFlow.inflows))}
           />
-          <TotalRow label="Total inflows" value={cf.totalInflows} strong />
         </Section>
 
         <Section title="Outflows" subtitle="Money going out each month — rename, edit, remove or add lines">
@@ -43,28 +47,39 @@ export default function CashFlowTab({ plan, update }: FortunaTabProps) {
             rows={plan.cashFlow.outflows}
             namePlaceholder="Outflow name"
             addLabel="Add outflow"
+            total
+            totalLabel="Total outflows"
             onChange={(m) => update((d) => m(d.cashFlow.outflows))}
           />
-          <TotalRow label="Total outflows" value={cf.totalOutflows} strong />
         </Section>
 
         <Section title="Investing surplus" subtitle="What's left to invest">
           <TotalRow label="Inflows − Outflows" value={cf.investingSurplus} strong />
-          <p className="ft-note">
-            Recommended emergency fund (6 months of outflows): <strong>{formatINR(cf.recommendedEmergencyFund)}</strong>
-          </p>
         </Section>
 
-        <Section title="Emergency fund" subtitle="6 months of outflows, held as liquid cash">
-          <TotalRow label="Recommended" value={cf.recommendedEmergencyFund} />
-          <TotalRow label="You have (liquid cash)" value={plan.assets.debt.liquidCash} />
-          {cf.recommendedEmergencyFund > 0 &&
-            (plan.assets.debt.liquidCash >= cf.recommendedEmergencyFund ? (
+        <Section title="Emergency fund" subtitle="Set your target; default is 6 months of outflows">
+          <MoneyRow
+            label="Target"
+            hint={hasOverride ? `Recommended: ${formatINR(cf.recommendedEmergencyFund)}` : '6 × monthly outflows'}
+            value={emergencyTarget}
+            onChange={(v) => update((d) => { d.cashFlow.emergencyTarget = v; })}
+          />
+          {hasOverride && (
+            <button
+              className="ft-addrow"
+              onClick={() => update((d) => { delete d.cashFlow.emergencyTarget; })}
+            >
+              Use recommended ({formatINR(cf.recommendedEmergencyFund)})
+            </button>
+          )}
+          <TotalRow label="You have (liquid cash)" value={liquidCash} />
+          {emergencyTarget > 0 &&
+            (liquidCash >= emergencyTarget ? (
               <p className="ft-note ft-ok">✓ Your liquid cash covers your emergency fund.</p>
             ) : (
               <p className="ft-note">
-                Shortfall: <strong>{formatINR(cf.recommendedEmergencyFund - plan.assets.debt.liquidCash)}</strong> — top
-                up your liquid savings before locking money into long-term investments.
+                Shortfall: <strong>{formatINR(emergencyTarget - liquidCash)}</strong> — top up your liquid savings
+                before locking money into long-term investments.
               </p>
             ))}
         </Section>

@@ -198,7 +198,7 @@ function Fortuna({ onLock }: { onLock: () => void }) {
 
   const props: FortunaTabProps = { plan, update };
   const tabs: TabDef[] = [
-    { id: 'networth', label: 'Net Worth', icon: <AppIcon name="investments" size={20} />, render: () => <NetWorthTab {...props} /> },
+    { id: 'networth', label: 'Net Worth', icon: <AppIcon name="networth" size={20} />, render: () => <NetWorthTab {...props} /> },
     { id: 'cashflow', label: 'Cash Flow', icon: <AppIcon name="cashflow" size={20} />, render: () => <CashFlowTab {...props} /> },
     { id: 'portfolio', label: 'Portfolio', icon: <AppIcon name="portfolio" size={20} />, render: () => <PortfolioTab {...props} /> },
     { id: 'goals', label: 'Goals', icon: <AppIcon name="goals" size={20} />, render: () => <GoalsTab {...props} /> },

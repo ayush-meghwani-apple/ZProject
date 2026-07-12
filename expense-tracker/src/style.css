@@ -4182,6 +4182,94 @@ svg.lucide {
   font-variant-numeric: tabular-nums;
 }
 
+/* --- v1.25.0: asset-class matrix, goal-type read rows, short add btn --- */
+
+/* Short add buttons hug their content instead of stretching full width */
+.ft-addrow {
+  align-self: flex-start;
+}
+
+/* Asset-class matrix: rows = goal types (+ a Return row), columns = classes */
+.ft-mx {
+  display: grid;
+  gap: 5px 4px;
+  align-items: center;
+}
+.ft-mx__ch {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.15;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  overflow: hidden;
+  padding-bottom: 2px;
+}
+.ft-mx__rh {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: 4px;
+}
+.ft-mx__rhname {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ft-mx__rhsub {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.ft-mx__rhsum {
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ft-mx__cell {
+  display: block;
+  min-width: 0;
+}
+.ft-mx__inp {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+  padding: 6px 2px;
+  font-size: 12.5px;
+}
+
+/* Goal type — tappable read row + inline editor */
+.ft-gtype__done {
+  flex: 0 0 auto;
+  color: var(--accent);
+  margin-top: 2px;
+}
+.ft-gtype__readmain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+}
+.ft-gtype__readname {
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ft-gtype__readdesc {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 
 /* Goals */
 .ft-goal {

@@ -17,16 +17,20 @@ export default function HoldingList({
   categories,
   namePlaceholder,
   addLabel = 'Add',
+  total = false,
+  totalLabel = 'Total',
   onChange,
 }: {
   rows: HoldingRow[];
   categories?: string[];
   namePlaceholder: string;
   addLabel?: string;
+  total?: boolean;
+  totalLabel?: string;
   onChange: (mutate: (rows: HoldingRow[]) => void) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const total = rows.reduce((s, r) => s + (Number(r.value) || 0), 0);
+  const sum = rows.reduce((s, r) => s + (Number(r.value) || 0), 0);
 
   function addRow() {
     const id = newId();
@@ -92,11 +96,16 @@ export default function HoldingList({
         ),
       )}
 
+      {total && rows.length > 0 && (
+        <div className="ft-total ft-total--strong">
+          <span>{totalLabel}</span>
+          <span className="ft-total__val">{formatINR(sum)}</span>
+        </div>
+      )}
       <div className="ft-holdings__foot">
         <button className="ft-addrow" onClick={addRow}>
           <AppIcon name="plus" size={16} /> {addLabel}
         </button>
-        {rows.length > 0 && <span className="ft-holdings__total">{formatINR(total)}</span>}
       </div>
     </div>
   );

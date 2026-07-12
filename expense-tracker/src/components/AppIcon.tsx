@@ -33,6 +33,7 @@ import {
   Plus,
   Redo2,
   RefreshCw,
+  Scale,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
@@ -64,6 +65,7 @@ const ICONS = {
   vault: Lock,
   brand: Sprout,
   // Fortuna (Financial Planning) tabs
+  networth: Scale,
   cashflow: ArrowRightLeft,
   portfolio: PieChart,
   assumptions: SlidersHorizontal,

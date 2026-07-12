@@ -280,6 +280,9 @@ export interface HoldingRow {
 export interface CashFlow {
   inflows: HoldingRow[];
   outflows: HoldingRow[];
+  /** Optional custom emergency-fund target. When unset, defaults to 6× monthly
+   *  outflows (the recommended value); set it to override. */
+  emergencyTarget?: number;
 }
 
 /** The full portfolio of holdings, grouped by the spreadsheet's asset sheets.
