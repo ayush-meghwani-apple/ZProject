@@ -40,6 +40,9 @@ export interface Context {
 export interface PaymentMethod {
   id: ID;
   name: string;
+  icon?: string; // optional emoji shown in pickers/badges
+  order?: number; // manual sort position (lower = higher up)
+  archived?: boolean;
 }
 
 /** Free-text token -> resolves to a category/subcategory. Powers the parser. */

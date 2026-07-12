@@ -14,16 +14,18 @@ import {
   getCategoryBreakdown,
   getCategorySummary,
   getMonthlyTotals,
+  getPaymentMethodSummary,
   getSubcategorySummary,
   totalSpend,
 } from '../core/reports';
 import { formatINR } from '../core/util';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
+import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import CycleFilter, { filterByCycles, selectionLabel } from './CycleFilter';
 import AppIcon from './AppIcon';
-import type { Category, Expense, SalaryCycle, Subcategory } from '../types/models';
+import type { Category, Expense, PaymentMethod, SalaryCycle, Subcategory } from '../types/models';
 
 interface Props {
   version: number;
@@ -86,12 +88,17 @@ export default function Summary({ version }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [drillId, setDrillId] = useState<string | null>(null);
   const [picked, setPicked] = useState<{ name: string; total: number; color: string; categoryId?: string } | null>(null);
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  const [pickedPm, setPickedPm] = useState<{ name: string; total: number; color: string } | null>(null);
   const lastClick = useRef<{ id: string; t: number }>({ id: '', t: 0 });
   const initialized = useRef(false);
   // Robust pie tap: recharts' SVG onClick is unreliable on iOS taps, so we do our
   // own hit-testing on pointerup (see handlePieTap).
   const pieWrapRef = useRef<HTMLDivElement>(null);
   const tapStart = useRef<{ x: number; y: number } | null>(null);
+  // Same, for the payment-method pie.
+  const pmWrapRef = useRef<HTMLDivElement>(null);
+  const pmTapStart = useRef<{ x: number; y: number } | null>(null);
 
   // Dismiss the picked-slice amount only when tapping somewhere that is neither a
   // slice nor the amount pill itself (so tapping the pill keeps it open).
@@ -100,6 +107,7 @@ export default function Summary({ version }: Props) {
       const t = e.target as Element;
       if (!t?.closest?.('.recharts-sector') && !t?.closest?.('.pie__pick')) {
         setPicked(null);
+        setPickedPm(null);
       }
     }
     document.addEventListener('mousedown', onDown);
@@ -119,16 +127,18 @@ export default function Summary({ version }: Props) {
   });
 
   async function load() {
-    const [e, c, s, cy] = await Promise.all([
+    const [e, c, s, cy, pm] = await Promise.all([
       ExpenseRepository.getExpensesSorted(),
       CategoryRepository.getCategories(),
       CategoryRepository.getSubcategories(),
       SalaryCycleRepository.getCyclesSorted(),
+      PaymentMethodRepository.list(),
     ]);
     setExpenses(e);
     setCategories(c);
     setSubcategories(s);
     setCycles(cy);
+    setMethods(pm);
 
     if (!initialized.current && cy.length > 0) {
       const open = cy.find((x) => !x.endDate) ?? cy[0];
@@ -148,6 +158,7 @@ export default function Summary({ version }: Props) {
   const breakdown = getCategoryBreakdown(scoped, categories, subcategories);
   const categorySummary = getCategorySummary(scoped, categories);
   const monthly = getMonthlyTotals(scoped);
+  const pmSummary = getPaymentMethodSummary(scoped, methods);
 
   const drill = drillId ? categorySummary.find((c) => c.categoryId === drillId) : null;
   const drillData = drill ? getSubcategorySummary(scoped, subcategories, drill.categoryId) : [];
@@ -216,6 +227,36 @@ export default function Summary({ version }: Props) {
       // Single-tap → show the amount pill (tap the pill to drill).
       setPicked({ name: c.name, total: c.total, color: c.color, categoryId: c.categoryId });
     }
+  }
+
+  // Payment-method pie: same robust pointer hit-testing, single-tap shows the
+  // amount pill (no drill).
+  function onPmPointerDown(e: React.PointerEvent) {
+    pmTapStart.current = { x: e.clientX, y: e.clientY };
+  }
+  function onPmPointerUp(e: React.PointerEvent) {
+    const s = pmTapStart.current;
+    pmTapStart.current = null;
+    if (!s) return;
+    if (Math.abs(e.clientX - s.x) + Math.abs(e.clientY - s.y) > 12) return;
+    const wrap = pmWrapRef.current;
+    if (!wrap) return;
+    const sectors = Array.from(wrap.querySelectorAll('.recharts-sector'));
+    if (!sectors.length) return;
+    const surf = wrap.querySelector('.recharts-surface') ?? wrap;
+    const rect = surf.getBoundingClientRect();
+    const ccx = rect.left + rect.width / 2;
+    const ccy = rect.top + rect.height / 2;
+    let index = -1;
+    for (let f = 0; f <= 4 && index < 0; f++) {
+      const t = f / 6;
+      const el = document.elementFromPoint(e.clientX + (ccx - e.clientX) * t, e.clientY + (ccy - e.clientY) * t);
+      const sector = el?.closest?.('.recharts-sector');
+      if (sector) index = sectors.indexOf(sector);
+    }
+    if (index < 0) return;
+    const m = pmSummary[index];
+    if (m) setPickedPm({ name: m.name, total: m.total, color: m.color });
   }
 
   return (
@@ -321,6 +362,74 @@ export default function Summary({ version }: Props) {
               )}
             </PieChart>
           </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {scoped.length > 0 && pmSummary.length > 0 && (
+        <div className="card">
+          <div className="pie__head">
+            <h3>Spend by Payment Method</h3>
+          </div>
+          <p className="card__subtitle">Tap a slice for its amount. Untagged = no method set.</p>
+
+          <div className="pie__pickslot">
+            {pickedPm ? (
+              <div
+                className="pie__pick"
+                style={{ background: tint(pickedPm.color, 0.18), borderColor: pickedPm.color }}
+              >
+                <span className="pie__pick-dot" style={{ background: pickedPm.color }} />
+                <span className="pie__pick-name">{pickedPm.name}</span>
+                <strong style={{ color: pickedPm.color }}>{formatINR(pickedPm.total)}</strong>
+              </div>
+            ) : (
+              <span className="pie__hint">Tap a slice to see its amount</span>
+            )}
+          </div>
+
+          <div className="pie__chart" ref={pmWrapRef} data-noswipe onPointerDown={onPmPointerDown} onPointerUp={onPmPointerUp}>
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                <Pie
+                  data={pmSummary}
+                  dataKey="total"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={72}
+                  label={pieLabel}
+                  labelLine={false}
+                  isAnimationActive={false}
+                >
+                  {pmSummary.map((m) => (
+                    <Cell key={m.methodId || 'untagged'} fill={m.color} style={{ cursor: 'pointer' }} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="pmbreakdown">
+            {pmSummary.map((m) => {
+              const pct = scopeTotal > 0 ? Math.round((m.total / scopeTotal) * 100) : 0;
+              return (
+                <div className="barrow" key={m.methodId || 'untagged'}>
+                  <div className="barrow__head barrow__head--static">
+                    <span className="barrow__dot" style={{ background: m.color }} />
+                    <span className="barrow__name">
+                      {m.icon ? `${m.icon} ` : ''}
+                      {m.name}
+                    </span>
+                    <span className="barrow__pct">{pct}%</span>
+                    <span className="barrow__amt">{formatINR(m.total)}</span>
+                  </div>
+                  <div className="barrow__track">
+                    <div className="barrow__fill" style={{ width: `${pct}%`, background: m.color }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

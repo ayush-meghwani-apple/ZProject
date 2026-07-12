@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
+import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import { NotesRepository, type Note } from '../repository/notesRepository';
 import { RemindersRepository } from '../repository/remindersRepository';
@@ -12,7 +13,7 @@ import { playSound } from '../core/sound';
 import { requestNotificationPermission } from '../core/notify';
 import EditExpenseModal from './EditExpenseModal';
 import AppIcon from './AppIcon';
-import type { Alias, Category, Expense, SalaryCycle, Subcategory } from '../types/models';
+import type { Alias, Category, Expense, PaymentMethod, SalaryCycle, Subcategory } from '../types/models';
 
 interface Props {
   version: number;
@@ -34,6 +35,7 @@ export default function Reels({ version, onChange }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [aliases, setAliases] = useState<Alias[]>([]);
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [noteAmt, setNoteAmt] = useState<Record<string, string>>({});
   const [cycles, setCycles] = useState<SalaryCycle[]>([]);
@@ -55,18 +57,20 @@ export default function Reels({ version, onChange }: Props) {
   }
 
   async function load() {
-    const [e, c, s, a, cy] = await Promise.all([
+    const [e, c, s, a, cy, pm] = await Promise.all([
       ExpenseRepository.getExpensesSorted(),
       CategoryRepository.getCategories(),
       CategoryRepository.getSubcategories(),
       CategoryRepository.getAliases(),
       SalaryCycleRepository.getCyclesSorted(),
+      PaymentMethodRepository.list(),
     ]);
     setExpenses(e);
     setCategories(c);
     setSubcategories(s);
     setAliases(a);
     setCycles(cy);
+    setMethods(pm);
     setNotes(NotesRepository.getActive());
     setBigThreshold(getPrefs().bigExpenseThreshold);
 
@@ -121,6 +125,9 @@ export default function Reels({ version, onChange }: Props) {
   }
   function subOf(e: Expense): Subcategory | undefined {
     return subcategories.find((x) => x.id === e.subcategoryId);
+  }
+  function methodOf(e: Expense): PaymentMethod | undefined {
+    return e.paymentMethodId ? methods.find((m) => m.id === e.paymentMethodId) : undefined;
   }
 
   async function handleDelete(id: string) {
@@ -295,6 +302,7 @@ export default function Reels({ version, onChange }: Props) {
               const cat = catFor(e);
               const color = cat?.color ?? '#6366f1';
               const sub = subOf(e);
+              const method = methodOf(e);
               const isBig = bigThreshold > 0 && e.amount >= bigThreshold;
               const big = isBig && !e.reviewed; // “hot” only until reviewed
               const reviewed = isBig && !!e.reviewed; // acknowledged → calm green
@@ -329,6 +337,12 @@ export default function Reels({ version, onChange }: Props) {
                   )}
 
                   <div className="reel__date">{formatDate(e.date)}</div>
+
+                  {method && (
+                    <div className="reel__method">
+                      {method.icon ? `${method.icon} ` : ''}{method.name}
+                    </div>
+                  )}
 
                   {isRecurring && (
                     <div className="reel__recurring" title="Created automatically from a recurring rule">

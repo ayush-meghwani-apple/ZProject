@@ -6,6 +6,7 @@ import { getPrefs, setPrefs } from '../core/preferences';
 import { saveBackupFile } from '../core/backupFile';
 import { playSound } from '../core/sound';
 import RecurringManager from './RecurringManager';
+import PaymentMethodsManager from './PaymentMethodsManager';
 import {
   ensurePersistentStorage,
   formatBytes,
@@ -287,6 +288,8 @@ export default function Settings({ version, onChange, global = false }: Props) {
           </div>
 
           <RecurringManager version={version} onChange={onChange} />
+
+          <PaymentMethodsManager />
 
           <div className="card">
             <h3>Reels Highlight</h3>

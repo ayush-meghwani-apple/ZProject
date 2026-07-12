@@ -6,12 +6,12 @@ When it's fixed, I'll move it to **Done** with the date and a short fix note.
 Status key: 🔴 open · 🟡 in progress · ✅ done
 
 ## Open
-- i want a way so that when i add expense i can add it whats the payment method, cash, my one of the credit card, my one of the bank accounts, or upi lite or cash or splitwise, but don't want to complicate the adding expense mechanism - so may be something like this would be a good flow that as i press or send message from typing box then a pop-up comes which asks me the payment method and i can dismiss it it or whatever easily so its not a compulsion to add it and obviously from reels also i should be able to add payment method.
-- and in summary tab also i would be able to see the expenses based on payment method like we have apie chart for categories.
 
 - Also i need a hidden way to save some of my saving values but i don't want it to be visible just like that me be something hiddent which can be seen only by a pass-code or something like that, may be we can add that in Questify App or create new sub-app called savings or think of some better way.
 
 ## Done
+
+- ✅ **(2026-07-12)** **Optional payment methods on expenses + a Summary breakdown.** You can now tag expenses with how you paid (Cash, cards, bank accounts, UPI Lite, Splitwise…) without slowing down adding them. On the **Add** tab there's a small **payment-method chip** above the box: pick one and it's remembered and applied to each expense you add (the confirmation shows it) — leave it on "No method" and nothing's tagged. It's fully editable per expense in the **edit sheet** (so also when adding/editing from **Reels**, which now shows a method badge on each card). Manage your list (add/rename/emoji/remove your own cards & banks) in **Settings → Payment Methods**. **Summary** gets a new **"Spend by Payment Method"** pie + breakdown (tap a slice for its amount). Existing expenses simply show as **"Untagged"** — nothing broke.
 
 - ✅ **(2026-07-12)** **Slate top toolbar no longer flies under the notch when the keyboard opens.** Tapping into the note body used to make the note's top bar (back / pin / undo / redo / category / delete) jump to the very top of the screen and overlap the phone's status bar. Cause: the app-wide rule that hides the global header when the keyboard opens (to reclaim space) removed the safe-area padding that keeps things below the notch. Now the header is **kept while you're editing a note**, so the note toolbar stays put in its proper place.
 

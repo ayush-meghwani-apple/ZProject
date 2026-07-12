@@ -15,6 +15,8 @@ export interface Prefs {
   lastWeeklyNudgeAt?: string;
   /** How often (in days) to auto-prompt for a data backup on app open. */
   backupReminderDays: number;
+  /** The payment method last picked in the Add tab, reused for the next expense. */
+  lastPaymentMethodId?: string;
 }
 
 const DEFAULTS: Prefs = {

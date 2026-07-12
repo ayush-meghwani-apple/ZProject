@@ -2,11 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { parseInput } from '../core/parser';
 import { formatINR } from '../core/util';
 import { playSound } from '../core/sound';
+import { getPrefs, setPrefs } from '../core/preferences';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { ExpenseRepository } from '../repository/expenseRepository';
+import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
 import { NotesRepository } from '../repository/notesRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
-import type { Category, Subcategory } from '../types/models';
+import type { Category, PaymentMethod, Subcategory } from '../types/models';
 
 export interface ChatMessage {
   id: number;
@@ -68,6 +70,11 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
   const [text, setText] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  // The sticky payment method: remembered across expenses, applied to each add,
+  // and never required (an empty id = untagged). Tap the chip to switch.
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  const [methodId, setMethodId] = useState<string>(getPrefs().lastPaymentMethodId ?? '');
+  const [methodMenu, setMethodMenu] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const firstScroll = useRef(true);
@@ -80,7 +87,27 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
       setCategories(c);
       setSubcategories(s);
     });
+    PaymentMethodRepository.list().then(setMethods);
   }, []);
+
+  // Close the method menu when tapping elsewhere.
+  useEffect(() => {
+    if (!methodMenu) return;
+    function onDown(e: PointerEvent) {
+      if (!(e.target as Element)?.closest?.('.chat__method')) setMethodMenu(false);
+    }
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [methodMenu]);
+
+  const currentMethod = methods.find((m) => m.id === methodId);
+
+  function chooseMethod(id: string) {
+    setMethodId(id);
+    setPrefs({ lastPaymentMethodId: id || undefined });
+    setMethodMenu(false);
+    inputRef.current?.focus();
+  }
 
   // Keep the latest message in view. On the first paint after opening the tab
   // we jump instantly (before paint) so there's no visible scroll “jerk”; after
@@ -289,12 +316,16 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
       amount: cmd.amount,
       categoryId: cmd.categoryId,
       subcategoryId: cmd.subcategoryId,
+      paymentMethodId: methodId || undefined,
       note: cmd.note,
       rawText: cmd.rawText,
     });
     playSound(cmd.categoryId ? 'success' : 'uncategorized');
     const label = labelFor(cmd.categoryId, cmd.subcategoryId, freshCats, freshSubs);
-    pushBot(`Added ${formatINR(cmd.amount)} · ${label} ✅`);
+    const methodTag = currentMethod
+      ? ` · ${currentMethod.icon ? currentMethod.icon + ' ' : ''}${currentMethod.name}`
+      : '';
+    pushBot(`Added ${formatINR(cmd.amount)} · ${label}${methodTag} ✅`);
     onChange();
   }
 
@@ -330,6 +361,45 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
           ))}
         </div>
       )}
+
+      <div className="chat__method" data-noswipe>
+        <button
+          type="button"
+          className={`methodchip${currentMethod ? ' methodchip--set' : ''}`}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setMethodMenu((v) => !v)}
+        >
+          <span className="methodchip__label">
+            {currentMethod
+              ? `${currentMethod.icon ? currentMethod.icon + ' ' : ''}${currentMethod.name}`
+              : 'Payment method'}
+          </span>
+          <span className="methodchip__caret">▾</span>
+        </button>
+        {methodMenu && (
+          <div className="methodmenu">
+            <button
+              type="button"
+              className={!methodId ? 'is-on' : ''}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => chooseMethod('')}
+            >
+              No method
+            </button>
+            {methods.map((m) => (
+              <button
+                type="button"
+                key={m.id}
+                className={m.id === methodId ? 'is-on' : ''}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => chooseMethod(m.id)}
+              >
+                {m.icon ? `${m.icon} ${m.name}` : m.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="symbolbar" data-noswipe>
         {SYMBOLS.map((s) => (

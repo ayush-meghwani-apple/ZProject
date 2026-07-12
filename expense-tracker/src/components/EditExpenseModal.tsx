@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ExpenseRepository } from '../repository/expenseRepository';
-import type { Category, Expense, Subcategory } from '../types/models';
+import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
+import type { Category, Expense, PaymentMethod, Subcategory } from '../types/models';
 
 function toDateInput(iso: string): string {
   const d = new Date(iso);
@@ -38,6 +39,12 @@ export default function EditExpenseModal({
   const [subcategoryId, setSubcategoryId] = useState(expense?.subcategoryId ?? '');
   const [note, setNote] = useState(expense?.note ?? '');
   const [date, setDate] = useState(toDateInput(expense?.date ?? new Date().toISOString()));
+  const [paymentMethodId, setPaymentMethodId] = useState(expense?.paymentMethodId ?? '');
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
+
+  useEffect(() => {
+    PaymentMethodRepository.list().then(setMethods);
+  }, []);
 
   const subs = subcategories.filter((s) => s.categoryId === categoryId);
 
@@ -52,6 +59,7 @@ export default function EditExpenseModal({
         amount: amt,
         categoryId: categoryId || undefined,
         subcategoryId: subcategoryId || undefined,
+        paymentMethodId: paymentMethodId || undefined,
         note: note.trim() || undefined,
         date: fromDateInput(date, new Date().toISOString()),
       });
@@ -61,6 +69,7 @@ export default function EditExpenseModal({
         amount: amt,
         categoryId: categoryId || undefined,
         subcategoryId: subcategoryId || undefined,
+        paymentMethodId: paymentMethodId || undefined,
         note: note.trim() || undefined,
         date: fromDateInput(date, expense!.date),
       });
@@ -129,6 +138,22 @@ export default function EditExpenseModal({
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+        </label>
+
+        <label className="field">
+          <span>Payment method</span>
+          <select
+            className="select"
+            value={paymentMethodId}
+            onChange={(e) => setPaymentMethodId(e.target.value)}
+          >
+            <option value="">— None —</option>
+            {methods.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.icon ? `${m.icon} ${m.name}` : m.name}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="field">

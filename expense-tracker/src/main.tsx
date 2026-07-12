@@ -4,6 +4,7 @@ import App from './App';
 import { seedIfEmpty } from './storage/seed';
 import { ensurePersistentStorage } from './storage/persistence';
 import { SalaryCycleRepository } from './repository/salaryCycleRepository';
+import { PaymentMethodRepository } from './repository/paymentMethodRepository';
 import { initViewport } from './core/viewport';
 import { initIosKeyboard } from './core/iosKeyboard';
 import './style.css';
@@ -36,6 +37,8 @@ async function bootstrap() {
 
   try {
     await seedIfEmpty();
+    // Give existing installs the default payment methods too (no-op if any exist).
+    await PaymentMethodRepository.ensureDefaults().catch(() => {});
     // Keep every expense filed under the cycle its date falls in (self-heals
     // expenses added before a cycle existed, or imported from a backup).
     await SalaryCycleRepository.reassignExpensesByDate().catch(() => {});

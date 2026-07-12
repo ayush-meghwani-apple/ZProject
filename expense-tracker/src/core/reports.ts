@@ -1,4 +1,4 @@
-import type { Category, Expense, Subcategory } from '../types/models';
+import type { Category, Expense, PaymentMethod, Subcategory } from '../types/models';
 
 const SUB_PALETTE = [
   '#38bdf8',
@@ -68,6 +68,44 @@ export interface SubcategorySummaryRow {
   total: number;
   count: number;
   color: string;
+}
+
+export interface PaymentMethodSummaryRow {
+  methodId: string; // '' for untagged
+  name: string;
+  icon?: string;
+  total: number;
+  count: number;
+  color: string;
+}
+
+/** Spend grouped by payment method (untagged expenses bucket under ''). Pure. */
+export function getPaymentMethodSummary(
+  expenses: Expense[],
+  methods: PaymentMethod[],
+): PaymentMethodSummaryRow[] {
+  const byId = new Map(methods.map((m) => [m.id, m]));
+  const totals = new Map<string, { total: number; count: number }>();
+  for (const e of expenses) {
+    const key = e.paymentMethodId && byId.has(e.paymentMethodId) ? e.paymentMethodId : '';
+    const entry = totals.get(key) ?? { total: 0, count: 0 };
+    entry.total += e.amount;
+    entry.count += 1;
+    totals.set(key, entry);
+  }
+  return Array.from(totals.entries())
+    .map(([methodId, { total, count }], i) => {
+      const m = byId.get(methodId);
+      return {
+        methodId,
+        name: m?.name ?? 'Untagged',
+        icon: m?.icon,
+        total,
+        count,
+        color: methodId ? SUB_PALETTE[i % SUB_PALETTE.length] : '#94a3b8',
+      };
+    })
+    .sort((a, b) => b.total - a.total);
 }
 
 /** Spend within one category, broken down by subcategory. Pure function. */

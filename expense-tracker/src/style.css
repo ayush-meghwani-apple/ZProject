@@ -741,6 +741,130 @@ body {
   display: none;
 }
 
+/* Sticky payment-method chip above the chat input. */
+.chat__method {
+  position: relative;
+  display: flex;
+  padding: 6px 12px 0;
+  background: var(--surface);
+}
+
+.methodchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.methodchip--set {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.methodchip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.methodchip__caret {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.methodmenu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 12px;
+  z-index: 20;
+  min-width: 180px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  padding: 5px;
+}
+
+.methodmenu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.methodmenu button.is-on {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Payment Methods manager (Settings). */
+.pmlist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pmrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pmrow__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pmrow__icon {
+  flex: 0 0 auto;
+  width: 52px;
+  text-align: center;
+}
+
+/* Payment-method breakdown rows under its pie. */
+.pmbreakdown {
+  margin-top: 8px;
+}
+
+.barrow__head--static {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 6px 0 4px;
+  cursor: default;
+}
+
+.barrow__dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
 .symbolbar__key {
   flex: 0 0 auto;
   min-width: 40px;
@@ -765,6 +889,18 @@ body {
   color: var(--muted);
   font-style: normal;
   font-size: 14px;
+}
+
+/* Payment-method badge on a reel card. */
+.reel__method {
+  margin-top: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .chat__input input {
