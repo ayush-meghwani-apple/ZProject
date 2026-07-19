@@ -6,6 +6,7 @@ import type {
   FinancialPlan,
   HoldingRow,
   HorizonDef,
+  MutualFundHolding,
 } from '../types/models';
 import { DEFAULT_HORIZONS } from '../types/models';
 
@@ -78,6 +79,7 @@ function defaultPlan(): FinancialPlan {
     liabilities: { items: defaultLiabilities() },
     goals: [],
     recurringInvestments: [],
+    mutualFunds: [],
     horizons: DEFAULT_HORIZONS.map((h) => ({ ...h })),
     customClasses: [],
     fixedLabels: {},
@@ -206,6 +208,7 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
     recurringInvestments: Array.isArray(raw.recurringInvestments)
       ? (raw.recurringInvestments as FinancialPlan['recurringInvestments'])
       : [],
+    mutualFunds: migrateMutualFunds(raw.mutualFunds),
     horizons: migrateHorizons(raw.horizons),
     customClasses: migrateCustomClasses(raw.customClasses),
     fixedLabels:
@@ -217,6 +220,55 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
       : [],
     updatedAt: (raw.updatedAt as string) ?? now(),
   };
+}
+
+/** Sanitize/default the tracked mutual-funds list. Non-destructive: keeps valid
+ *  funds and their transaction ledgers, drops only unusable entries. */
+function migrateMutualFunds(raw: unknown): MutualFundHolding[] {
+  if (!Array.isArray(raw)) return [];
+  const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const out: MutualFundHolding[] = [];
+  for (const r of raw as Record<string, unknown>[]) {
+    if (!r || typeof r !== 'object') continue;
+    const code = num(r.schemeCode);
+    if (!code) continue;
+    const txns = Array.isArray(r.transactions)
+      ? (r.transactions as Record<string, unknown>[])
+          .filter((t) => t && typeof t === 'object')
+          .map((t) => ({
+            id: (t.id as string) || newId(),
+            date: (t.date as string) || now(),
+            amount: num(t.amount),
+            units: num(t.units),
+            nav: num(t.nav),
+            kind: t.kind === 'lumpsum' ? ('lumpsum' as const) : ('sip' as const),
+            auto: t.auto === true,
+          }))
+      : [];
+    const sipRaw = r.sip as Record<string, unknown> | undefined;
+    const sip =
+      sipRaw && typeof sipRaw === 'object' && num(sipRaw.amount) > 0
+        ? {
+            amount: num(sipRaw.amount),
+            dayOfMonth: Math.min(28, Math.max(1, num(sipRaw.dayOfMonth) || 1)),
+            startDate: (sipRaw.startDate as string) || now(),
+            active: sipRaw.active !== false,
+          }
+        : undefined;
+    out.push({
+      id: (r.id as string) || newId(),
+      schemeCode: code,
+      name: (r.name as string) || 'Fund',
+      category: (r.category as MutualFundHolding['category']) || 'other',
+      transactions: txns,
+      sip,
+      latestNav: Number.isFinite(Number(r.latestNav)) ? Number(r.latestNav) : undefined,
+      latestNavDate: (r.latestNavDate as string) || undefined,
+      createdAt: (r.createdAt as string) || now(),
+      updatedAt: (r.updatedAt as string) || now(),
+    });
+  }
+  return out;
 }
 
 /** Migrate assumptions from the old fixed shortPct/mediumPct/longPct fields to

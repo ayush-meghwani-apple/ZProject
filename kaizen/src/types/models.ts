@@ -368,6 +368,63 @@ export interface RecurringInvestment {
   updatedAt: ISODate;
 }
 
+// ---- Mutual funds (auto-tracked via AMFI NAV) -----------------------------
+//
+// Unlike the rupee-only `RecurringInvestment`/`HoldingRow`, a tracked mutual
+// fund holds a real transaction ledger (units bought at a NAV on a date), so we
+// can pull the live NAV from AMFI and compute the true current value plus
+// money-weighted returns (XIRR / CAGR) per fund, per category and overall.
+
+/** Broad fund category, used to group returns (large/mid/small/flexi/debt…). */
+export type MFCategory = 'largecap' | 'midcap' | 'smallcap' | 'flexicap' | 'hybrid' | 'debt' | 'other';
+
+export const MF_CATEGORIES: { value: MFCategory; label: string }[] = [
+  { value: 'largecap', label: 'Large cap' },
+  { value: 'midcap', label: 'Mid cap' },
+  { value: 'smallcap', label: 'Small cap' },
+  { value: 'flexicap', label: 'Flexi / Multi cap' },
+  { value: 'hybrid', label: 'Hybrid' },
+  { value: 'debt', label: 'Debt' },
+  { value: 'other', label: 'Other' },
+];
+
+/** A single buy (SIP installment or lumpsum). Units are normally derived from
+ *  `amount / nav`, but every field is editable so you can reconcile with your
+ *  broker app if the auto-filled figure differs. */
+export interface MFTransaction {
+  id: ID;
+  date: ISODate; // purchase date (local-midnight ISO)
+  amount: number; // INR invested
+  units: number; // units allotted
+  nav: number; // NAV on the purchase date
+  kind: 'sip' | 'lumpsum';
+  auto?: boolean; // true = auto-generated from the SIP rule (untouched by user)
+}
+
+/** A recurring SIP rule for a fund: `amount` invested on `dayOfMonth` every
+ *  month from `startDate`. Installments are auto-filled using historical NAV. */
+export interface MFSip {
+  amount: number;
+  dayOfMonth: number; // 1–28 (clamped to month length)
+  startDate: ISODate; // first installment date
+  active: boolean;
+}
+
+/** One auto-tracked mutual fund: an AMFI scheme + its buy ledger + optional SIP.
+ *  The latest NAV is cached so a value still shows when offline. */
+export interface MutualFundHolding {
+  id: ID;
+  schemeCode: number; // AMFI scheme code (via api.mfapi.in)
+  name: string;
+  category: MFCategory;
+  transactions: MFTransaction[];
+  sip?: MFSip;
+  latestNav?: number; // last NAV fetched from AMFI (cache)
+  latestNavDate?: ISODate; // the date that NAV is for
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
 /**
  * The one-and-only Fortuna document. `v` is an internal version used to migrate
  * an older document forward in memory on load (never destructively).
@@ -381,6 +438,9 @@ export interface FinancialPlan {
   liabilities: Liabilities;
   goals: FinancialGoalRow[];
   recurringInvestments: RecurringInvestment[];
+  /** Auto-tracked mutual funds (AMFI NAV + SIP ledger + XIRR/CAGR). Optional so
+   *  older documents load unchanged; defaulted to `[]` on migrate. */
+  mutualFunds?: MutualFundHolding[];
   /** Goal time-horizon buckets (Short/Medium/Long + any the user adds). When
    *  absent, {@link DEFAULT_HORIZONS} are assumed. */
   horizons?: HorizonDef[];

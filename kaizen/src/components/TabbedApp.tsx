@@ -155,7 +155,7 @@ export default function TabbedApp({ tabs, initialId, controlledOpen }: Props) {
             onClick={() => goToTab(t.id)}
           >
             <span className="icon">{t.icon}</span>
-            {t.label}
+            <span className="tabbar__label">{t.label}</span>
           </button>
         ))}
       </nav>
