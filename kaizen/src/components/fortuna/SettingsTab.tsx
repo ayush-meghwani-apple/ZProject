@@ -209,7 +209,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
           </p>
           <div className="ft-btnrow">
             <button className="btn ft-btn" onClick={() => planImportRef.current?.click()}>
-              <AppIcon name="download" size={18} /> Import Fortuna data
+              <AppIcon name="backup" size={18} /> Import Fortuna data
             </button>
             <button className="btn btn--ghost ft-btn" onClick={exportPlan}>
               Export Fortuna data
