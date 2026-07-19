@@ -111,7 +111,13 @@ function FortunaLock({ onUnlock }: { onUnlock: () => void }) {
               />
             )}
             {err && <div className="vaultlock__err">{err}</div>}
-            <button className="btn" type="submit" disabled={busy}>
+            <button
+              className="btn"
+              type="submit"
+              disabled={busy}
+              onPointerDown={(e) => e.preventDefault()}
+              onMouseDown={(e) => e.preventDefault()}
+            >
               {busy ? 'Working…' : creating ? 'Create & open' : 'Unlock'}
             </button>
           </form>
@@ -203,7 +209,7 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     { id: 'networth', label: 'Net Worth', icon: <AppIcon name="networth" size={20} />, render: () => <NetWorthTab {...props} /> },
     { id: 'cashflow', label: 'Cash Flow', icon: <AppIcon name="cashflow" size={20} />, render: () => <CashFlowTab {...props} /> },
     { id: 'portfolio', label: 'Portfolio', icon: <AppIcon name="portfolio" size={20} />, render: () => <PortfolioTab {...props} /> },
-    { id: 'funds', label: 'Track', icon: <AppIcon name="investments" size={20} />, render: () => <FundsTab {...props} /> },
+    { id: 'funds', label: 'Pulse', icon: <AppIcon name="investments" size={20} />, render: () => <FundsTab {...props} /> },
     { id: 'transactions', label: 'Ledger', icon: <AppIcon name="table" size={20} />, render: () => <TransactionsTab {...props} /> },
     { id: 'goals', label: 'Goals', icon: <AppIcon name="goals" size={20} />, render: () => <GoalsTab {...props} /> },
     { id: 'assumptions', label: 'Returns', icon: <AppIcon name="assumptions" size={20} />, render: () => <AssumptionsTab {...props} /> },

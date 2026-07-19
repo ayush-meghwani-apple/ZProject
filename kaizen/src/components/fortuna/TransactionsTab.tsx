@@ -86,14 +86,14 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
         <div className="ft-mf__head">
           <div>
             <h2 className="ft-mf__h">Transactions</h2>
-            <p className="ft-mf__sub">Every mutual-fund buy — the ledger the Track tab computes returns from</p>
+            <p className="ft-mf__sub">Every mutual-fund buy — the ledger the Pulse tab computes returns from</p>
           </div>
         </div>
 
         {funds.length === 0 ? (
           <div className="ft-mf__empty">
             <AppIcon name="investments" size={30} />
-            <p>Add your mutual funds on the Track tab first — each fund’s buys (initial holding + SIP installments) show up here.</p>
+            <p>Add your mutual funds on the Pulse tab first — each fund’s buys (initial holding + SIP installments) show up here.</p>
           </div>
         ) : (
           <>

@@ -106,7 +106,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
         {trackedTotal > 0 && (
           <p className="ft-note ft-note--tracked">
             <AppIcon name="investments" size={13} /> You also have <strong>{formatINR(trackedTotal)}</strong> in
-            auto-tracked funds on the <strong>Funds</strong> tab (live NAV, counted in Net Worth). Don’t re-enter those
+            auto-tracked funds on the <strong>Pulse</strong> tab (live NAV, counted in Net Worth). Don’t re-enter those
             here as manual rows, or they’ll be double-counted.
           </p>
         )}
@@ -136,7 +136,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
             <div className="ft-sublabel">Mutual funds / ETFs / Smallcase</div>
             {trackedTotal > 0 && (
               <p className="ft-note" style={{ marginTop: 0 }}>
-                Your auto-tracked mutual funds now live on the <strong>Track</strong> tab (with units &amp; live NAV) and
+                Your auto-tracked mutual funds now live on the <strong>Pulse</strong> tab (with units &amp; live NAV) and
                 are counted in Net Worth. Use the list below only for funds you <em>don’t</em> want auto-tracked.
               </p>
             )}
@@ -192,12 +192,13 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
 
         {on('us_equity') && (
           <Section title="US Equity" right={<HeadRight k="us_equity" value={totals.usEquity} />} collapsible defaultOpen={false}>
-            <RenamableMoneyRow label={fl('usEquity.sp500Etf', 'S&P 500 ETF')} value={a.usEquity.sp500Etf} onChange={(v) => update((d) => { d.assets.usEquity.sp500Etf = v; })} onRename={(n) => rename('usEquity.sp500Etf', n)} />
-            <RenamableMoneyRow label={fl('usEquity.otherEtfs', 'Other ETFs')} value={a.usEquity.otherEtfs} onChange={(v) => update((d) => { d.assets.usEquity.otherEtfs = v; })} onRename={(n) => rename('usEquity.otherEtfs', n)} />
-            <RenamableMoneyRow label={fl('usEquity.mutualFunds', 'US mutual funds')} value={a.usEquity.mutualFunds} onChange={(v) => update((d) => { d.assets.usEquity.mutualFunds = v; })} onRename={(n) => rename('usEquity.mutualFunds', n)} />
+            <HoldingList
+              rows={a.usEquity.others}
+              namePlaceholder="e.g. S&P 500 ETF, VOO, US mutual fund"
+              showUnits
+              onChange={(m) => update((d) => m(d.assets.usEquity.others))}
+            />
             <RenamableMoneyRow label={fl('misc.smallcase', 'Smallcase')} value={a.misc.smallcase} onChange={(v) => update((d) => { d.assets.misc.smallcase = v; })} onRename={(n) => rename('misc.smallcase', n)} />
-            <div className="ft-sublabel">Other holdings</div>
-            <HoldingList rows={a.usEquity.others} namePlaceholder="e.g. VOO, QQQ, a US stock" onChange={(m) => update((d) => m(d.assets.usEquity.others))} />
           </Section>
         )}
 

@@ -4780,6 +4780,46 @@ svg.lucide {
   text-align: right;
   font-size: 12.5px;
 }
+
+/* Mutual-fund SIP rows shown inside the Recurring section (sourced from Pulse). */
+.ft-mfsip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+}
+.ft-mfsip__row .ft-sip__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ft-mfsip__amt {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.ft-mfsip__amt .input {
+  width: 88px;
+  text-align: right;
+}
+
+/* Stop accidental text selection on Fortuna's read-only chrome (long-press /
+   stray taps) — inputs stay selectable so editing is unaffected. */
+.ft-page,
+.ft-mf {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.ft-page input,
+.ft-page textarea,
+.ft-page select,
+.ft-page [contenteditable='true'],
+.ft-mf input,
+.ft-mf textarea,
+.ft-mf select {
+  -webkit-user-select: text;
+  user-select: text;
+}
 .ft-mf__empty {
   margin: 20px 0;
   text-align: center;

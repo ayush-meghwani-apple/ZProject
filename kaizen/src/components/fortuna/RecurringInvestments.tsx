@@ -33,13 +33,15 @@ export default function RecurringInvestments({
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const sips = plan.recurringInvestments;
+  // Mutual-fund SIPs live on each fund (Pulse tab), not in recurringInvestments —
+  // surface them here too so ALL recurring contributions are visible in one place.
+  const fundSips = (plan.mutualFunds ?? []).filter((f) => f.sip);
 
   const monthlyTotal = useMemo(
     () =>
-      sips
-        .filter((s) => s.active)
-        .reduce((sum, s) => sum + perMonth(s), 0),
-    [sips],
+      sips.filter((s) => s.active).reduce((sum, s) => sum + perMonth(s), 0) +
+      fundSips.filter((f) => f.sip?.active).reduce((sum, f) => sum + (f.sip?.amount ?? 0), 0),
+    [sips, fundSips],
   );
 
   function addSip() {
@@ -52,9 +54,9 @@ export default function RecurringInvestments({
     <Section
       title="Recurring investments (SIPs)"
       subtitle="Auto-add contributions to your portfolio"
-      right={sips.length > 0 ? <span className="ft-chip">{formatINR(monthlyTotal)}/mo</span> : undefined}
+      right={sips.length > 0 || fundSips.length > 0 ? <span className="ft-chip">{formatINR(monthlyTotal)}/mo</span> : undefined}
       collapsible
-      defaultOpen={sips.length > 0}
+      defaultOpen={sips.length > 0 || fundSips.length > 0}
     >
       <p className="ft-note" style={{ marginTop: 0 }}>
         Each SIP adds its amount to the chosen holding on schedule — it runs automatically whenever you open Fortuna,
@@ -234,6 +236,46 @@ export default function RecurringInvestments({
           </div>
         );
       })}
+
+      {fundSips.length > 0 && (
+        <>
+          <div className="ft-sublabel">Mutual fund SIPs · from Pulse</div>
+          {fundSips.map((f) => {
+            const sip = f.sip;
+            if (!sip) return null;
+            return (
+              <div className={`ft-sip ft-mfsip ${!sip.active ? 'ft-sip--paused' : ''}`} key={f.id}>
+                <div className="ft-mfsip__row">
+                  <span className="ft-sip__title">
+                    <span className="ft-sip__name">{f.name}</span>
+                    <span className="ft-sip__meta">Monthly · day {sip.dayOfMonth}{!sip.active && ' · paused'}</span>
+                  </span>
+                  <span className="ft-mfsip__amt">
+                    <span className="ft-row__cur">₹</span>
+                    <AmountInput
+                      className="input"
+                      value={sip.amount}
+                      onChange={(v) => update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund?.sip) fund.sip.amount = v; })}
+                      placeholder="0"
+                    />
+                  </span>
+                  <button
+                    className="iconbtn"
+                    title={sip.active ? 'Pause' : 'Resume'}
+                    aria-label={sip.active ? 'Pause SIP' : 'Resume SIP'}
+                    onPointerDown={(e) => e.preventDefault()}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund?.sip) fund.sip.active = !fund.sip.active; })}
+                  >
+                    <AppIcon name={sip.active ? 'pause' : 'play'} size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          <p className="ft-note">Adjust a fund’s SIP amount here or on the Pulse tab — installments post automatically each month at that day’s NAV.</p>
+        </>
+      )}
 
       <button className="ft-addrow ft-addrow--full" onClick={addSip}>
         <AppIcon name="plus" size={16} /> Add recurring investment

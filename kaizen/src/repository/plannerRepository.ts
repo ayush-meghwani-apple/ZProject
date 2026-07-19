@@ -182,12 +182,17 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
         stocks: cleanRows(de.stocks as HoldingRow[] | undefined),
         mutualFunds: cleanRows(de.mutualFunds as HoldingRow[] | undefined),
       },
-      usEquity: {
-        sp500Etf: num(us.sp500Etf),
-        otherEtfs: num(us.otherEtfs),
-        mutualFunds: num(us.mutualFunds),
-        others: cleanRows(us.others as HoldingRow[] | undefined),
-      },
+      usEquity: (() => {
+        // Move the old fixed lines (S&P 500 / Other ETFs / US MF) into the
+        // editable `others` list so EVERY US-equity entry is deletable like
+        // Domestic Equity. Runs once; afterwards the fixed fields stay 0.
+        const others = cleanRows(us.others as HoldingRow[] | undefined);
+        const seed = (v: unknown, name: string) => { if (num(v) > 0) others.unshift(row(name, num(v))); };
+        seed(us.sp500Etf, 'S&P 500 ETF');
+        seed(us.otherEtfs, 'Other ETFs');
+        seed(us.mutualFunds, 'US mutual funds');
+        return { sp500Etf: 0, otherEtfs: 0, mutualFunds: 0, others };
+      })(),
       debt: {
         liquidCash: num(debt.liquidCash),
         fds: cleanRows(debt.fds as HoldingRow[] | undefined),

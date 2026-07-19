@@ -44,6 +44,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
       d.liabilities = fresh.liabilities;
       d.goals = fresh.goals;
       d.recurringInvestments = fresh.recurringInvestments;
+      d.mutualFunds = fresh.mutualFunds;
     });
   }
 
@@ -75,6 +76,10 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
     if (busy) return;
     setBusy(true);
     try {
+      // Flush the latest in-memory plan to storage FIRST, so a change made
+      // moments ago (before the debounced auto-save fired) is captured in the
+      // backup — e.g. a just-edited SIP amount or a disabled asset category.
+      await PlannerRepository.save(plan);
       await saveBackupFile();
       setLastBackup(BackupRepository.getLastBackupAt());
     } finally {
