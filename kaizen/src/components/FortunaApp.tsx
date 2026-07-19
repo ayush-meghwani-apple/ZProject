@@ -9,6 +9,7 @@ import NetWorthTab from './fortuna/NetWorthTab';
 import CashFlowTab from './fortuna/CashFlowTab';
 import PortfolioTab from './fortuna/PortfolioTab';
 import FundsTab from './fortuna/FundsTab';
+import TransactionsTab from './fortuna/TransactionsTab';
 import GoalsTab from './fortuna/GoalsTab';
 import AssumptionsTab from './fortuna/AssumptionsTab';
 import SettingsTab from './fortuna/SettingsTab';
@@ -202,7 +203,8 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     { id: 'networth', label: 'Net Worth', icon: <AppIcon name="networth" size={20} />, render: () => <NetWorthTab {...props} /> },
     { id: 'cashflow', label: 'Cash Flow', icon: <AppIcon name="cashflow" size={20} />, render: () => <CashFlowTab {...props} /> },
     { id: 'portfolio', label: 'Portfolio', icon: <AppIcon name="portfolio" size={20} />, render: () => <PortfolioTab {...props} /> },
-    { id: 'funds', label: 'Funds', icon: <AppIcon name="investments" size={20} />, render: () => <FundsTab {...props} /> },
+    { id: 'funds', label: 'Track', icon: <AppIcon name="investments" size={20} />, render: () => <FundsTab {...props} /> },
+    { id: 'transactions', label: 'Ledger', icon: <AppIcon name="table" size={20} />, render: () => <TransactionsTab {...props} /> },
     { id: 'goals', label: 'Goals', icon: <AppIcon name="goals" size={20} />, render: () => <GoalsTab {...props} /> },
     { id: 'assumptions', label: 'Returns', icon: <AppIcon name="assumptions" size={20} />, render: () => <AssumptionsTab {...props} /> },
     { id: 'settings', label: 'Settings', icon: <AppIcon name="settings" size={20} />, render: () => <SettingsTab {...props} reload={reload} onLock={() => { flush(); onLock(); }} /> },

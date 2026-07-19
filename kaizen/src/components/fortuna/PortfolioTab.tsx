@@ -130,13 +130,21 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
               rows={a.domesticEquity.stocks}
               categories={EQUITY_CATS}
               namePlaceholder="Stock name"
+              showUnits
               onChange={(m) => update((d) => m(d.assets.domesticEquity.stocks))}
             />
             <div className="ft-sublabel">Mutual funds / ETFs / Smallcase</div>
+            {trackedTotal > 0 && (
+              <p className="ft-note" style={{ marginTop: 0 }}>
+                Your auto-tracked mutual funds now live on the <strong>Track</strong> tab (with units &amp; live NAV) and
+                are counted in Net Worth. Use the list below only for funds you <em>don’t</em> want auto-tracked.
+              </p>
+            )}
             <HoldingList
               rows={a.domesticEquity.mutualFunds}
               categories={EQUITY_CATS}
               namePlaceholder="Fund name"
+              showUnits
               onChange={(m) => update((d) => m(d.assets.domesticEquity.mutualFunds))}
             />
 

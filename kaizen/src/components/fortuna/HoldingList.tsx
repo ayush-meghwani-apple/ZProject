@@ -1,9 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { HoldingRow } from '../../types/models';
 import { newId } from '../../core/util';
 import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
 import { formatINR } from './shared';
+
+/** A decimal units input backed by local text (so a trailing "." while typing a
+ *  fractional unit count isn't lost). */
+function UnitsField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [text, setText] = useState(value ? String(value) : '');
+  useEffect(() => {
+    const parsed = parseFloat(text);
+    if (!(Math.abs((parsed || 0) - (value || 0)) < 1e-9)) setText(value ? String(value) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+  return (
+    <input
+      className="input ft-holding__units"
+      type="text"
+      inputMode="decimal"
+      placeholder="units"
+      value={text}
+      onChange={(e) => {
+        const t = e.target.value.replace(/[^0-9.]/g, '');
+        setText(t);
+        const n = parseFloat(t);
+        onChange(Number.isFinite(n) ? n : 0);
+      }}
+    />
+  );
+}
 
 /**
  * An editable list of `{name, [category], value}` rows — shared by the Portfolio
@@ -19,6 +45,7 @@ export default function HoldingList({
   addLabel = 'Add',
   total = false,
   totalLabel = 'Total',
+  showUnits = false,
   onChange,
 }: {
   rows: HoldingRow[];
@@ -27,6 +54,7 @@ export default function HoldingList({
   addLabel?: string;
   total?: boolean;
   totalLabel?: string;
+  showUnits?: boolean;
   onChange: (mutate: (rows: HoldingRow[]) => void) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -72,6 +100,12 @@ export default function HoldingList({
                 placeholder="0"
               />
             </span>
+            {showUnits && (
+              <UnitsField
+                value={row.units ?? 0}
+                onChange={(u) => onChange((rs) => { rs[i].units = u; })}
+              />
+            )}
             <button
               className="iconbtn ft-holding__del"
               aria-label="Remove"
@@ -98,6 +132,7 @@ export default function HoldingList({
             <span className="ft-readrow__name">
               {row.name.trim() || '—'}
               {categories && row.category && <span className="ft-readrow__cat">{row.category}</span>}
+              {showUnits && row.units ? <span className="ft-readrow__cat">{row.units.toLocaleString('en-IN', { maximumFractionDigits: 3 })} units</span> : null}
             </span>
             <span className="ft-readrow__val">{formatINR(row.value)}</span>
             <AppIcon name="chevronRight" size={15} className="ft-readrow__chev" />

@@ -93,6 +93,15 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const [note, setNote] = useState('');
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [view, setView] = useState<'all' | 'active' | 'inactive'>('all');
+
+  // A fund is "active" if it has a running SIP; otherwise it's held but not
+  // being added to (inactive).
+  const isActive = (f: MutualFundHolding) => !!f.sip?.active;
+  const activeCount = funds.filter(isActive).length;
+  const inactiveCount = funds.length - activeCount;
+  const shownFunds =
+    view === 'active' ? funds.filter(isActive) : view === 'inactive' ? funds.filter((f) => !isActive(f)) : funds;
 
   // Always read the freshest funds inside async callbacks.
   const planRef = useRef(plan);
@@ -153,7 +162,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   }, [funds.length, syncAll]);
 
   const asOf = new Date();
-  const { groups, total } = byCategory(funds, asOf);
+  const { groups, total } = byCategory(shownFunds, asOf);
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
     const id = newId();
@@ -214,6 +223,20 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               </span>
             </div>
             <ReturnPills s={total} />
+          </div>
+        )}
+
+        {funds.length > 0 && (
+          <div className="ft-mf__seg">
+            <button className={view === 'all' ? 'active' : ''} onClick={() => setView('all')}>
+              All <b>{funds.length}</b>
+            </button>
+            <button className={view === 'active' ? 'active' : ''} onClick={() => setView('active')}>
+              Active <b>{activeCount}</b>
+            </button>
+            <button className={view === 'inactive' ? 'active' : ''} onClick={() => setView('inactive')}>
+              Inactive <b>{inactiveCount}</b>
+            </button>
           </div>
         )}
 

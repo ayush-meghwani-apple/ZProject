@@ -270,6 +270,7 @@ export interface HoldingRow {
   name: string;
   category?: string; // e.g. Largecap/Midcap/Smallcap/Flexi, or a bank name
   value: number; // current value / amount in INR
+  units?: number; // optional units held (equity holdings) — for tracking
 }
 
 /**
