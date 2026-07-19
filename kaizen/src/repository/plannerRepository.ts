@@ -6,7 +6,9 @@ import type {
   FinancialPlan,
   HoldingRow,
   HorizonDef,
+  LedgerEntry,
   MutualFundHolding,
+  PlanSnapshot,
 } from '../types/models';
 import { DEFAULT_HORIZONS } from '../types/models';
 
@@ -80,6 +82,8 @@ function defaultPlan(): FinancialPlan {
     goals: [],
     recurringInvestments: [],
     mutualFunds: [],
+    ledger: [],
+    snapshots: [],
     horizons: DEFAULT_HORIZONS.map((h) => ({ ...h })),
     customClasses: [],
     fixedLabels: {},
@@ -214,6 +218,8 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
       ? (raw.recurringInvestments as FinancialPlan['recurringInvestments'])
       : [],
     mutualFunds: migrateMutualFunds(raw.mutualFunds),
+    ledger: migrateLedger(raw.ledger),
+    snapshots: migrateSnapshots(raw.snapshots),
     horizons: migrateHorizons(raw.horizons),
     customClasses: migrateCustomClasses(raw.customClasses),
     fixedLabels:
@@ -248,6 +254,7 @@ function migrateMutualFunds(raw: unknown): MutualFundHolding[] {
             nav: num(t.nav),
             kind: t.kind === 'lumpsum' ? ('lumpsum' as const) : ('sip' as const),
             auto: t.auto === true,
+            reviewed: t.reviewed === true,
           }))
       : [];
     const sipRaw = r.sip as Record<string, unknown> | undefined;
@@ -274,6 +281,60 @@ function migrateMutualFunds(raw: unknown): MutualFundHolding[] {
     });
   }
   return out;
+}
+
+/** Sanitize/default the general ledger (non-MF transactions). Non-destructive. */
+function migrateLedger(raw: unknown): LedgerEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const out: LedgerEntry[] = [];
+  for (const r of raw as Record<string, unknown>[]) {
+    if (!r || typeof r !== 'object') continue;
+    const key = typeof r.assetClassKey === 'string' ? r.assetClassKey : '';
+    if (!key) continue;
+    const kind = r.kind === 'sell' ? ('sell' as const) : r.kind === 'sip' ? ('sip' as const) : ('buy' as const);
+    out.push({
+      id: (r.id as string) || newId(),
+      date: (r.date as string) || now(),
+      assetClassKey: key,
+      name: (r.name as string) || 'Holding',
+      amount: num(r.amount),
+      units: r.units == null ? undefined : num(r.units),
+      price: r.price == null ? undefined : num(r.price),
+      kind,
+      note: (r.note as string) || undefined,
+      auto: r.auto === true,
+      reviewed: r.reviewed === true,
+      holdingId: (r.holdingId as string) || undefined,
+      createdAt: (r.createdAt as string) || now(),
+      updatedAt: (r.updatedAt as string) || now(),
+    });
+  }
+  return out;
+}
+
+/** Sanitize/default the monthly snapshot series. Non-destructive; sorted old→new. */
+function migrateSnapshots(raw: unknown): PlanSnapshot[] {
+  if (!Array.isArray(raw)) return [];
+  const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const out: PlanSnapshot[] = [];
+  for (const r of raw as Record<string, unknown>[]) {
+    if (!r || typeof r !== 'object') continue;
+    const ym = typeof r.ym === 'string' && /^\d{4}-\d{2}$/.test(r.ym) ? r.ym : '';
+    if (!ym) continue;
+    out.push({
+      ym,
+      at: (r.at as string) || now(),
+      netWorth: num(r.netWorth),
+      totalAssets: num(r.totalAssets),
+      mfInvested: num(r.mfInvested),
+      mfCurrent: num(r.mfCurrent),
+    });
+  }
+  // Keep one (latest) per month, sorted old→new.
+  const byMonth = new Map<string, PlanSnapshot>();
+  for (const s of out.sort((a, b) => a.at.localeCompare(b.at))) byMonth.set(s.ym, s);
+  return [...byMonth.values()].sort((a, b) => a.ym.localeCompare(b.ym));
 }
 
 /** Migrate assumptions from the old fixed shortPct/mediumPct/longPct fields to

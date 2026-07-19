@@ -4,6 +4,7 @@ import AppIcon from './AppIcon';
 import { hasPin, createPin, unlock } from '../core/vaultLock';
 import { PlannerRepository } from '../repository/plannerRepository';
 import { applyDueRecurringInvestments } from '../core/recurringInvestments';
+import { captureMonthlySnapshot } from '../core/planSnapshot';
 import type { FinancialPlan } from '../types/models';
 import NetWorthTab from './fortuna/NetWorthTab';
 import CashFlowTab from './fortuna/CashFlowTab';
@@ -138,7 +139,8 @@ function Fortuna({ onLock }: { onLock: () => void }) {
       // Apply any due recurring investments (SIPs) so the portfolio is up to
       // date the moment the plan opens; persist only if something changed.
       const applied = applyDueRecurringInvestments(p);
-      if (applied > 0) void PlannerRepository.save(p);
+      const snapped = captureMonthlySnapshot(p);
+      if (applied > 0 || snapped) void PlannerRepository.save(p);
       if (alive) setPlan(p);
     });
     return () => {
@@ -188,7 +190,8 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     pendingSave.current = null;
     const p = await PlannerRepository.load();
     const applied = applyDueRecurringInvestments(p);
-    if (applied > 0) await PlannerRepository.save(p);
+    const snapped = captureMonthlySnapshot(p);
+    if (applied > 0 || snapped) await PlannerRepository.save(p);
     setPlan(p);
   }, []);
 

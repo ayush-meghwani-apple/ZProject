@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
 import { formatINR, newId, now } from '../../core/util';
-import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch } from '../../core/amfi';
+import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
 import { generateSipInstallments } from '../../core/mfSip';
 import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
+import { mfMonthlyTrend } from '../../core/mfTrend';
+import { TrendCard } from './Sparkline';
 import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
 
@@ -94,6 +96,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = useState<'all' | 'active' | 'inactive'>('all');
+  const [navs, setNavs] = useState<Record<number, NavPoint[]>>({});
 
   // A fund is "active" if it has a running SIP; otherwise it's held but not
   // being added to (inactive).
@@ -120,9 +123,9 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
             const points = await fetchNavHistory(f.schemeCode, force);
             const latest = latestNav(points);
             const newTxns = generateSipInstallments(f, points);
-            return { id: f.id, ok: true as const, nav: latest?.nav, navDate: latest?.iso, newTxns };
+            return { id: f.id, schemeCode: f.schemeCode, ok: true as const, nav: latest?.nav, navDate: latest?.iso, newTxns, points };
           } catch {
-            return { id: f.id, ok: false as const };
+            return { id: f.id, schemeCode: f.schemeCode, ok: false as const };
           }
         }),
       );
@@ -139,6 +142,13 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
             f.updatedAt = now();
           }
         }
+      });
+      // Keep the fetched NAV histories so the value-trend sparkline can price
+      // each past month without re-downloading.
+      setNavs((prev) => {
+        const next = { ...prev };
+        for (const r of results) if (r.ok && r.points) next[r.schemeCode] = r.points;
+        return next;
       });
       const failed = results.filter((r) => !r.ok).length;
       const added = results.reduce((s, r) => s + (r.ok && r.newTxns ? r.newTxns.length : 0), 0);
@@ -163,6 +173,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
 
   const asOf = new Date();
   const { groups, total } = byCategory(shownFunds, asOf);
+  const trend = useMemo(() => mfMonthlyTrend(funds, navs, 9), [funds, navs]);
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
     const id = newId();
@@ -223,6 +234,13 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               </span>
             </div>
             <ReturnPills s={total} />
+            <TrendCard
+              title="Value trend"
+              values={trend.map((p) => p.value)}
+              baseline={trend.map((p) => p.invested)}
+              baselineLabel="Invested"
+              stroke="#6366f1"
+            />
           </div>
         )}
 

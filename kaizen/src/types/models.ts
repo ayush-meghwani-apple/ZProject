@@ -400,6 +400,7 @@ export interface MFTransaction {
   nav: number; // NAV on the purchase date
   kind: 'sip' | 'lumpsum';
   auto?: boolean; // true = auto-generated from the SIP rule (untouched by user)
+  reviewed?: boolean; // user has acknowledged an auto-added buy (clears the review hint)
 }
 
 /** A recurring SIP rule for a fund: `amount` invested on `dayOfMonth` every
@@ -426,6 +427,52 @@ export interface MutualFundHolding {
   updatedAt: ISODate;
 }
 
+// ---- General ledger (all asset types) -------------------------------------
+//
+// The ledger is the master transaction history across EVERY asset class — not
+// just mutual funds. Mutual-fund buys live inside their fund (so the Pulse tab
+// can price them against live NAV); every OTHER asset type (gold, a custom
+// "gold coin" bucket, US stocks, FDs…) records its buys/sells as
+// {@link LedgerEntry} rows here. Adding a non-MF entry also drops a matching
+// holding line into that asset class in the Portfolio (linked by `holdingId`),
+// so the ledger is the input and the portfolio reflects it.
+
+export type LedgerKind = 'buy' | 'sell' | 'sip';
+
+/** One non-mutual-fund transaction in the general ledger. */
+export interface LedgerEntry {
+  id: ID;
+  date: ISODate;
+  /** Asset class this belongs to: a built-in {@link AssetClassKey} or a custom
+   *  class id. Drives which Portfolio bucket the linked holding sits in. */
+  assetClassKey: string;
+  name: string; // instrument name, e.g. "Sovereign Gold Coin 24k"
+  amount: number; // INR value of this transaction (buy positive)
+  units?: number; // optional quantity (coins, grams, shares)
+  price?: number; // optional per-unit price
+  kind: LedgerKind;
+  note?: string;
+  auto?: boolean; // added automatically (kept for parity; user reviews it)
+  reviewed?: boolean; // user acknowledged an auto-added entry
+  /** The Portfolio {@link HoldingRow} this entry maintains (1:1), so editing or
+   *  deleting the entry keeps the portfolio in sync. */
+  holdingId?: ID;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+/** A monthly point-in-time snapshot of the plan's headline figures, captured
+ *  once per calendar month on open, so the app can show a month-on-month trend
+ *  without recomputing history. Oldest→newest. */
+export interface PlanSnapshot {
+  ym: string; // "yyyy-mm" (the calendar month this snapshot represents)
+  at: ISODate; // when it was captured
+  netWorth: number;
+  totalAssets: number;
+  mfInvested: number; // total put into tracked mutual funds
+  mfCurrent: number; // current value of tracked mutual funds (units × NAV)
+}
+
 /**
  * The one-and-only Fortuna document. `v` is an internal version used to migrate
  * an older document forward in memory on load (never destructively).
@@ -442,6 +489,12 @@ export interface FinancialPlan {
   /** Auto-tracked mutual funds (AMFI NAV + SIP ledger + XIRR/CAGR). Optional so
    *  older documents load unchanged; defaulted to `[]` on migrate. */
   mutualFunds?: MutualFundHolding[];
+  /** General ledger of non-mutual-fund transactions (gold, custom buckets, US
+   *  stocks…). Each maintains a linked Portfolio holding. Defaulted to `[]`. */
+  ledger?: LedgerEntry[];
+  /** Monthly headline snapshots (net worth / MF value) for the trend charts.
+   *  Appended once per calendar month on open; defaulted to `[]`. */
+  snapshots?: PlanSnapshot[];
   /** Goal time-horizon buckets (Short/Medium/Long + any the user adds). When
    *  absent, {@link DEFAULT_HORIZONS} are assumed. */
   horizons?: HorizonDef[];

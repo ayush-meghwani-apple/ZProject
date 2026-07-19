@@ -7,6 +7,7 @@
 
 import type { MFTransaction, MutualFundHolding } from '../types/models';
 import { navOnOrBefore, type NavPoint } from './amfi';
+import { nextWorkingDay } from './marketCalendar';
 import { newId } from './util';
 
 function startOfDay(d: Date): Date {
@@ -22,11 +23,16 @@ function monthKey(d: Date): string {
 /**
  * Generate the missing SIP installments for a fund, up to `today`.
  * - One installment per month from the SIP's start month to the current month.
- * - Each is dated the SIP `dayOfMonth` (clamped to the month's length).
+ * - Each is dated the SIP `dayOfMonth` (clamped to the month's length), then
+ *   rolled forward to the next trading day if that lands on a weekend/holiday
+ *   (that's when the AMC actually allots the units).
  * - A month already containing a SIP transaction is skipped, so existing/edited
  *   installments are never duplicated (lumpsums don't block a month).
- * - A month whose NAV can't be priced yet (predates the fund's history, or NAV
- *   not published) is skipped — the user can add it manually later.
+ * - Pricing is best-effort and never breaks: it uses the NAV on-or-before the
+ *   allotment day; failing that (date predates history) it falls back to the
+ *   earliest known NAV, then the fund's cached latest NAV, then the NAV used in
+ *   the fund's most recent transaction — so an installment is always produced
+ *   when the SIP is due.
  */
 export function generateSipInstallments(
   fund: MutualFundHolding,
@@ -46,6 +52,16 @@ export function generateSipInstallments(
     if (t.kind === 'sip') covered.add(monthKey(new Date(t.date)));
   }
 
+  // Fallback NAV chain (used when the allotment day predates the fund's history
+  // or its NAV isn't published yet): earliest known point, else cached latest,
+  // else the NAV of the most recent transaction. Keeps the SIP from stalling.
+  const earliestPoint = points.length ? points[points.length - 1] : null;
+  const lastTxn = [...fund.transactions].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  )[0];
+  const fallbackNav = (): number =>
+    (earliestPoint?.nav || fund.latestNav || lastTxn?.nav || 0) as number;
+
   const out: MFTransaction[] = [];
   const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
   let guard = 0;
@@ -54,22 +70,27 @@ export function generateSipInstallments(
     const y = cursor.getFullYear();
     const m = cursor.getMonth();
     const day = Math.min(sip.dayOfMonth, daysInMonth(y, m));
-    const due = new Date(y, m, day);
+    const scheduled = new Date(y, m, day);
+    // The unit allotment happens on the next trading day if the SIP date is a
+    // weekend/holiday; de-dup by the SCHEDULED month so a roll into the next
+    // month can't create two installments for one cycle.
+    const allot = nextWorkingDay(scheduled);
 
-    const inWindow = due.getTime() >= start.getTime() && due.getTime() <= end.getTime();
-    if (inWindow && !covered.has(monthKey(due))) {
-      const point = navOnOrBefore(points, due);
-      if (point && point.nav > 0) {
+    const inWindow = scheduled.getTime() >= start.getTime() && allot.getTime() <= end.getTime();
+    if (inWindow && !covered.has(monthKey(scheduled))) {
+      const point = navOnOrBefore(points, allot);
+      const nav = point && point.nav > 0 ? point.nav : fallbackNav();
+      if (nav > 0) {
         out.push({
           id: newId(),
-          date: startOfDay(due).toISOString(),
+          date: startOfDay(allot).toISOString(),
           amount: sip.amount,
-          units: sip.amount / point.nav,
-          nav: point.nav,
+          units: sip.amount / nav,
+          nav,
           kind: 'sip',
           auto: true,
         });
-        covered.add(monthKey(due));
+        covered.add(monthKey(scheduled));
       }
     }
     cursor.setMonth(cursor.getMonth() + 1);

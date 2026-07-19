@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
-import type { MFTransaction, MutualFundHolding } from '../../types/models';
+import type { LedgerEntry, LedgerKind, MFTransaction, MutualFundHolding } from '../../types/models';
+import { MF_CATEGORIES } from '../../types/models';
 import { formatINR, newId, now } from '../../core/util';
+import { assignableClasses, classLabel, removeEntryHolding, syncEntryHolding } from '../../core/ledger';
 import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
 
@@ -16,6 +18,7 @@ function todayInput(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+const mfCatLabel = (c: string) => MF_CATEGORIES.find((x) => x.value === c)?.label ?? 'Other';
 
 /** A decimal input (units / NAV) backed by local text so a trailing "." isn't lost. */
 function DecimalInput({ value, onChange, placeholder }: { value: number; onChange: (v: number) => void; placeholder?: string }) {
@@ -42,41 +45,125 @@ function DecimalInput({ value, onChange, placeholder }: { value: number; onChang
   );
 }
 
-interface LedgerRow extends MFTransaction {
-  fundId: string;
-  fundName: string;
+/** One unified ledger line — either a mutual-fund buy or a general asset entry. */
+interface UnifiedRow {
+  id: string;
+  source: 'mf' | 'ledger';
+  date: string;
+  name: string;
+  groupKey: string; // 'mf:largecap' | 'cls:gold'
+  groupLabel: string;
+  amount: number;
+  units: number;
+  nav?: number;
+  isSip: boolean;
+  isSell: boolean;
+  auto: boolean;
+  reviewed: boolean;
+  fundId?: string;
+  entryId?: string;
 }
 
 export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   const funds = plan.mutualFunds ?? [];
+  const ledger = plan.ledger ?? [];
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [filter, setFilter] = useState<string>('all'); // 'all' | groupKey
 
-  const rows = useMemo<LedgerRow[]>(
-    () =>
-      funds
-        .flatMap((f) => f.transactions.map((t) => ({ ...t, fundId: f.id, fundName: f.name })))
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [funds],
-  );
+  const rows = useMemo<UnifiedRow[]>(() => {
+    const mfRows: UnifiedRow[] = funds.flatMap((f) =>
+      f.transactions.map((t) => ({
+        id: t.id,
+        source: 'mf' as const,
+        date: t.date,
+        name: f.name,
+        groupKey: `mf:${f.category}`,
+        groupLabel: mfCatLabel(f.category),
+        amount: Number(t.amount) || 0,
+        units: Number(t.units) || 0,
+        nav: t.nav,
+        isSip: t.kind === 'sip',
+        isSell: false,
+        auto: t.auto === true,
+        reviewed: t.reviewed === true,
+        fundId: f.id,
+      })),
+    );
+    const genRows: UnifiedRow[] = ledger.map((e) => ({
+      id: e.id,
+      source: 'ledger' as const,
+      date: e.date,
+      name: e.name,
+      groupKey: `cls:${e.assetClassKey}`,
+      groupLabel: classLabel(plan, e.assetClassKey),
+      amount: Number(e.amount) || 0,
+      units: Number(e.units) || 0,
+      isSip: e.kind === 'sip',
+      isSell: e.kind === 'sell',
+      auto: e.auto === true,
+      reviewed: e.reviewed === true,
+      entryId: e.id,
+    }));
+    return [...mfRows, ...genRows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [funds, ledger, plan]);
 
-  const invested = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  // Distinct sub-category filters present in the ledger (MF caps + asset classes).
+  const groups = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of rows) if (!seen.has(r.groupKey)) seen.set(r.groupKey, r.groupLabel);
+    return [...seen.entries()].map(([key, label]) => ({ key, label }));
+  }, [rows]);
 
+  const shown = filter === 'all' ? rows : rows.filter((r) => r.groupKey === filter);
+  const invested = shown.reduce((s, r) => s + (r.isSell ? -r.amount : r.amount), 0);
+  const needsReview = rows.filter((r) => r.auto && !r.reviewed).length;
+
+  // ---- mutations ----------------------------------------------------------
   function editTxn(fundId: string, txnId: string, patch: Partial<MFTransaction>) {
     update((d) => {
       const f = (d.mutualFunds ?? []).find((x) => x.id === fundId);
       const t = f?.transactions.find((x) => x.id === txnId);
       if (t) {
         Object.assign(t, patch);
-        t.auto = false;
+        t.auto = false; // a manual edit takes the buy out of auto-management
         if (f) f.updatedAt = now();
       }
     });
   }
-  function deleteTxn(fundId: string, txnId: string) {
+  function reviewRow(row: UnifiedRow) {
     update((d) => {
-      const f = (d.mutualFunds ?? []).find((x) => x.id === fundId);
-      if (f) f.transactions = f.transactions.filter((x) => x.id !== txnId);
+      if (row.source === 'mf') {
+        const f = (d.mutualFunds ?? []).find((x) => x.id === row.fundId);
+        const t = f?.transactions.find((x) => x.id === row.id);
+        if (t) t.reviewed = true; // keep `auto` so the SIP stays auto-managed
+      } else {
+        const e = (d.ledger ?? []).find((x) => x.id === row.entryId);
+        if (e) e.reviewed = true;
+      }
+    });
+  }
+  function deleteRow(row: UnifiedRow) {
+    update((d) => {
+      if (row.source === 'mf') {
+        const f = (d.mutualFunds ?? []).find((x) => x.id === row.fundId);
+        if (f) f.transactions = f.transactions.filter((x) => x.id !== row.id);
+      } else {
+        const e = (d.ledger ?? []).find((x) => x.id === row.entryId);
+        if (e) removeEntryHolding(d, e);
+        d.ledger = (d.ledger ?? []).filter((x) => x.id !== row.entryId);
+      }
+    });
+    setOpenId(null);
+  }
+  function editEntry(entryId: string, patch: Partial<LedgerEntry>) {
+    update((d) => {
+      const e = (d.ledger ?? []).find((x) => x.id === entryId);
+      if (!e) return;
+      Object.assign(e, patch);
+      e.reviewed = true; // editing acknowledges it
+      e.updatedAt = now();
+      syncEntryHolding(d, e); // keep the linked portfolio holding in step
     });
   }
 
@@ -85,83 +172,182 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
       <div className="page ft-mf">
         <div className="ft-mf__head">
           <div>
-            <h2 className="ft-mf__h">Transactions</h2>
-            <p className="ft-mf__sub">Every mutual-fund buy — the ledger the Pulse tab computes returns from</p>
+            <h2 className="ft-mf__h">Ledger</h2>
+            <p className="ft-mf__sub">Every investment transaction across your portfolio · mutual funds feed the Pulse tab</p>
           </div>
         </div>
 
-        {funds.length === 0 ? (
+        {rows.length === 0 && !adding ? (
           <div className="ft-mf__empty">
-            <AppIcon name="investments" size={30} />
-            <p>Add your mutual funds on the Pulse tab first — each fund’s buys (initial holding + SIP installments) show up here.</p>
+            <AppIcon name="table" size={30} />
+            <p>No transactions yet. Add a mutual-fund buy (from the Pulse tab, or here) or record any other asset — a gold coin, a US stock, an FD — and it updates your Portfolio.</p>
           </div>
         ) : (
           <>
             <div className="ft-mf__total">
               <div className="ft-mf__totalrow">
-                <span>Total invested (all buys)</span>
+                <span>{filter === 'all' ? 'Net invested (all buys)' : 'Net invested (filtered)'}</span>
                 <b>{formatINR(invested)}</b>
               </div>
               <div className="ft-mf__totalrow ft-mf__muted">
                 <span>Entries</span>
-                <span>{rows.length}</span>
+                <span>{shown.length}</span>
               </div>
+              {needsReview > 0 && (
+                <div className="ft-mf__totalrow ft-led__reviewnote">
+                  <span>
+                    <AppIcon name="reviewed" size={13} /> {needsReview} auto-added {needsReview === 1 ? 'entry' : 'entries'} to review
+                  </span>
+                </div>
+              )}
             </div>
 
-            {rows.map((r) => (
-              <div className={`ft-mf__fund ${r.auto ? 'ft-mf__txn--auto' : ''}`} key={r.id}>
-                <button className="ft-mf__fundhead" onClick={() => setOpenId((id) => (id === r.id ? null : r.id))}>
-                  <span className="ft-mf__fundname">
-                    {r.fundName}
-                    <span className="ft-mf__fundmeta">
-                      {fmtDate(r.date)} · {r.kind === 'sip' ? 'SIP' : 'Lumpsum'} · {fmtUnits(r.units)} units @ ₹{r.nav}
-                    </span>
-                  </span>
-                  <span className="ft-mf__fundright">
-                    <b>{formatINR(r.amount)}</b>
-                  </span>
-                  <AppIcon name={openId === r.id ? 'chevronUp' : 'chevronDown'} size={16} className="ft-mf__chev" />
+            {groups.length > 1 && (
+              <div className="ft-led__filters">
+                <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
+                  All <b>{rows.length}</b>
                 </button>
-                {openId === r.id && (
-                  <div className="ft-mf__fundbody">
-                    <div className="ft-mf__txn">
-                      <input
-                        className="input ft-mf__txndate"
-                        type="date"
-                        value={r.date.slice(0, 10)}
-                        max={todayInput()}
-                        onChange={(e) => editTxn(r.fundId, r.id, { date: new Date(e.target.value + 'T00:00:00').toISOString() })}
-                      />
-                      <label className="ft-mf__txnf">
-                        <span>₹ Amount</span>
-                        <AmountInput className="input" value={r.amount} onChange={(v) => editTxn(r.fundId, r.id, { amount: v })} placeholder="0" />
-                      </label>
-                      <label className="ft-mf__txnf">
-                        <span>NAV</span>
-                        <DecimalInput value={r.nav} onChange={(v) => editTxn(r.fundId, r.id, { nav: v })} placeholder="0" />
-                      </label>
-                      <label className="ft-mf__txnf">
-                        <span>Units</span>
-                        <DecimalInput value={r.units} onChange={(v) => editTxn(r.fundId, r.id, { units: v })} placeholder="0" />
-                      </label>
+                {groups.map((g) => (
+                  <button key={g.key} className={filter === g.key ? 'active' : ''} onClick={() => setFilter(g.key)}>
+                    {g.label} <b>{rows.filter((r) => r.groupKey === g.key).length}</b>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {shown.map((r) => {
+              const review = r.auto && !r.reviewed;
+              return (
+                <div className={`ft-led__item ${review ? 'ft-led__item--review' : ''}`} key={r.id}>
+                  <div className="ft-led__row">
+                    <button className="ft-led__main" onClick={() => setOpenId((id) => (id === r.id ? null : r.id))}>
+                      {r.isSip && (
+                        <span className="ft-led__badge ft-led__badge--sip" title="SIP installment">
+                          <AppIcon name="recurring" size={12} />
+                        </span>
+                      )}
+                      <span className="ft-led__name">
+                        {r.name}
+                        <span className="ft-led__meta">
+                          {fmtDate(r.date)} · {r.groupLabel}
+                          {r.units > 0 ? ` · ${fmtUnits(r.units)} units` : ''}
+                          {r.nav ? ` @ ₹${r.nav}` : ''}
+                          {r.isSell ? ' · Sell' : ''}
+                        </span>
+                      </span>
+                      <b className={`ft-led__amt ${r.isSell ? 'ft-mf__neg' : ''}`}>
+                        {r.isSell ? '−' : ''}
+                        {formatINR(r.amount)}
+                      </b>
+                      <AppIcon name={openId === r.id ? 'chevronUp' : 'chevronDown'} size={16} className="ft-mf__chev" />
+                    </button>
+                    {review && (
                       <button
-                        className="iconbtn ft-mf__txndel"
-                        title="Delete"
-                        aria-label="Delete transaction"
+                        className="iconbtn ft-led__review"
+                        title="Mark reviewed"
+                        aria-label="Mark reviewed"
                         onPointerDown={(e) => e.preventDefault()}
                         onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => deleteTxn(r.fundId, r.id)}
+                        onClick={() => reviewRow(r)}
                       >
-                        <AppIcon name="trash" size={15} />
+                        <AppIcon name="reviewed" size={18} />
                       </button>
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {openId === r.id && (
+                    <div className="ft-mf__fundbody">
+                      {r.source === 'mf' ? (
+                        <div className="ft-mf__txn">
+                          <input
+                            className="input ft-mf__txndate"
+                            type="date"
+                            value={r.date.slice(0, 10)}
+                            max={todayInput()}
+                            onChange={(e) => editTxn(r.fundId!, r.id, { date: new Date(e.target.value + 'T00:00:00').toISOString() })}
+                          />
+                          <label className="ft-mf__txnf">
+                            <span>₹ Amount</span>
+                            <AmountInput className="input" value={r.amount} onChange={(v) => editTxn(r.fundId!, r.id, { amount: v })} placeholder="0" />
+                          </label>
+                          <label className="ft-mf__txnf">
+                            <span>NAV</span>
+                            <DecimalInput value={r.nav ?? 0} onChange={(v) => editTxn(r.fundId!, r.id, { nav: v })} placeholder="0" />
+                          </label>
+                          <label className="ft-mf__txnf">
+                            <span>Units</span>
+                            <DecimalInput value={r.units} onChange={(v) => editTxn(r.fundId!, r.id, { units: v })} placeholder="0" />
+                          </label>
+                          <button
+                            className="iconbtn ft-mf__txndel"
+                            title="Delete"
+                            aria-label="Delete transaction"
+                            onPointerDown={(e) => e.preventDefault()}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => deleteRow(r)}
+                          >
+                            <AppIcon name="trash" size={15} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="ft-mf__txn">
+                          <input
+                            className="input ft-mf__txndate"
+                            type="date"
+                            value={r.date.slice(0, 10)}
+                            max={todayInput()}
+                            onChange={(e) => editEntry(r.entryId!, { date: new Date(e.target.value + 'T00:00:00').toISOString() })}
+                          />
+                          <label className="ft-mf__txnf ft-led__txnname">
+                            <span>Name</span>
+                            <input className="input" value={r.name} onChange={(e) => editEntry(r.entryId!, { name: e.target.value })} />
+                          </label>
+                          <label className="ft-mf__txnf">
+                            <span>₹ Amount</span>
+                            <AmountInput className="input" value={r.amount} onChange={(v) => editEntry(r.entryId!, { amount: v })} placeholder="0" />
+                          </label>
+                          <label className="ft-mf__txnf">
+                            <span>Units (optional)</span>
+                            <DecimalInput value={r.units} onChange={(v) => editEntry(r.entryId!, { units: v || undefined })} placeholder="0" />
+                          </label>
+                          <button
+                            className="iconbtn ft-mf__txndel"
+                            title="Delete"
+                            aria-label="Delete transaction"
+                            onPointerDown={(e) => e.preventDefault()}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => deleteRow(r)}
+                          >
+                            <AppIcon name="trash" size={15} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             {adding ? (
-              <AddTxn funds={funds} onCancel={() => setAdding(false)} onAdd={(fundId, txn) => { update((d) => { const f = (d.mutualFunds ?? []).find((x) => x.id === fundId); if (f) { f.transactions.push(txn); f.updatedAt = now(); } }); setAdding(false); }} />
+              <AddTransaction
+                funds={funds}
+                classes={assignableClasses(plan)}
+                onCancel={() => setAdding(false)}
+                onAddMf={(fundId, txn) => {
+                  update((d) => {
+                    const f = (d.mutualFunds ?? []).find((x) => x.id === fundId);
+                    if (f) { f.transactions.push(txn); f.updatedAt = now(); }
+                  });
+                  setAdding(false);
+                }}
+                onAddEntry={(entry) => {
+                  update((d) => {
+                    (d.ledger ??= []).push(entry);
+                    syncEntryHolding(d, entry);
+                  });
+                  setAdding(false);
+                }}
+              />
             ) : (
               <button className="btn ft-addclass" onClick={() => setAdding(true)}>
                 <AppIcon name="plus" size={18} /> Add transaction
@@ -174,73 +360,166 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   );
 }
 
-function AddTxn({ funds, onCancel, onAdd }: { funds: MutualFundHolding[]; onCancel: () => void; onAdd: (fundId: string, txn: MFTransaction) => void }) {
-  const [fundId, setFundId] = useState(funds[0]?.id ?? '');
+function AddTransaction({
+  funds,
+  classes,
+  onCancel,
+  onAddMf,
+  onAddEntry,
+}: {
+  funds: MutualFundHolding[];
+  classes: { key: string; label: string }[];
+  onCancel: () => void;
+  onAddMf: (fundId: string, txn: MFTransaction) => void;
+  onAddEntry: (entry: LedgerEntry) => void;
+}) {
+  const [mode, setMode] = useState<'mf' | 'other'>(funds.length ? 'mf' : 'other');
   const [date, setDate] = useState(todayInput());
   const [amount, setAmount] = useState(0);
-  const [nav, setNav] = useState(0);
   const [units, setUnits] = useState(0);
+  // MF
+  const [fundId, setFundId] = useState(funds[0]?.id ?? '');
+  const [nav, setNav] = useState(0);
   const [kind, setKind] = useState<'sip' | 'lumpsum'>('lumpsum');
+  // Other asset
+  const [classKey, setClassKey] = useState(classes[0]?.key ?? 'gold');
+  const [name, setName] = useState('');
+  const [entryKind, setEntryKind] = useState<LedgerKind>('buy');
 
   return (
     <div className="ft-mf__add">
-      <label className="ft-mf__addf">
-        <span>Fund</span>
-        <select className="input" value={fundId} onChange={(e) => setFundId(e.target.value)}>
-          {funds.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="ft-mf__sipfields">
-        <label>
-          <span>Date</span>
-          <input className="input" type="date" value={date} max={todayInput()} onChange={(e) => setDate(e.target.value)} />
-        </label>
-        <label>
-          <span>Kind</span>
-          <select className="input" value={kind} onChange={(e) => setKind(e.target.value as 'sip' | 'lumpsum')}>
-            <option value="lumpsum">Lumpsum</option>
-            <option value="sip">SIP</option>
-          </select>
-        </label>
+      <div className="ft-led__modeseg">
+        <button className={mode === 'mf' ? 'active' : ''} disabled={!funds.length} onClick={() => setMode('mf')}>
+          Mutual fund
+        </button>
+        <button className={mode === 'other' ? 'active' : ''} onClick={() => setMode('other')}>
+          Other asset
+        </button>
       </div>
-      <div className="ft-mf__sipfields">
-        <label>
-          <span>₹ Amount</span>
-          <AmountInput className="input" value={amount} onChange={setAmount} placeholder="0" />
-        </label>
-        <label>
-          <span>NAV</span>
-          <DecimalInput value={nav} onChange={setNav} placeholder="0" />
-        </label>
-        <label>
-          <span>Units</span>
-          <DecimalInput value={units} onChange={setUnits} placeholder="0" />
-        </label>
-      </div>
+
+      {mode === 'mf' ? (
+        funds.length === 0 ? (
+          <p className="ft-mf__note">Add a mutual fund on the Pulse tab first.</p>
+        ) : (
+          <>
+            <label className="ft-mf__addf">
+              <span>Fund</span>
+              <select className="input" value={fundId} onChange={(e) => setFundId(e.target.value)}>
+                {funds.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </label>
+            <div className="ft-mf__sipfields">
+              <label>
+                <span>Date</span>
+                <input className="input" type="date" value={date} max={todayInput()} onChange={(e) => setDate(e.target.value)} />
+              </label>
+              <label>
+                <span>Kind</span>
+                <select className="input" value={kind} onChange={(e) => setKind(e.target.value as 'sip' | 'lumpsum')}>
+                  <option value="lumpsum">Lumpsum</option>
+                  <option value="sip">SIP</option>
+                </select>
+              </label>
+            </div>
+            <div className="ft-mf__sipfields">
+              <label>
+                <span>₹ Amount</span>
+                <AmountInput className="input" value={amount} onChange={setAmount} placeholder="0" />
+              </label>
+              <label>
+                <span>NAV</span>
+                <DecimalInput value={nav} onChange={setNav} placeholder="0" />
+              </label>
+              <label>
+                <span>Units</span>
+                <DecimalInput value={units} onChange={setUnits} placeholder="0" />
+              </label>
+            </div>
+          </>
+        )
+      ) : (
+        <>
+          <div className="ft-mf__sipfields">
+            <label>
+              <span>Asset class</span>
+              <select className="input" value={classKey} onChange={(e) => setClassKey(e.target.value)}>
+                {classes.map((c) => (
+                  <option key={c.key} value={c.key}>{c.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Kind</span>
+              <select className="input" value={entryKind} onChange={(e) => setEntryKind(e.target.value as LedgerKind)}>
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+              </select>
+            </label>
+          </div>
+          <label className="ft-mf__addf">
+            <span>Name</span>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Gold coin 10g" />
+          </label>
+          <div className="ft-mf__sipfields">
+            <label>
+              <span>Date</span>
+              <input className="input" type="date" value={date} max={todayInput()} onChange={(e) => setDate(e.target.value)} />
+            </label>
+            <label>
+              <span>₹ Amount</span>
+              <AmountInput className="input" value={amount} onChange={setAmount} placeholder="0" />
+            </label>
+            <label>
+              <span>Units (optional)</span>
+              <DecimalInput value={units} onChange={setUnits} placeholder="0" />
+            </label>
+          </div>
+        </>
+      )}
+
       <div className="ft-mf__addactions">
-        <button className="btn btn--ghost" onClick={onCancel}>
-          Cancel
-        </button>
-        <button
-          className="btn"
-          disabled={!fundId}
-          onClick={() =>
-            onAdd(fundId, {
-              id: newId(),
-              date: new Date(date + 'T00:00:00').toISOString(),
-              amount,
-              units: units || (nav > 0 ? amount / nav : 0),
-              nav,
-              kind,
-            })
-          }
-        >
-          Add
-        </button>
+        <button className="btn btn--ghost" onClick={onCancel}>Cancel</button>
+        {mode === 'mf' ? (
+          <button
+            className="btn"
+            disabled={!fundId}
+            onClick={() =>
+              onAddMf(fundId, {
+                id: newId(),
+                date: new Date(date + 'T00:00:00').toISOString(),
+                amount,
+                units: units || (nav > 0 ? amount / nav : 0),
+                nav,
+                kind,
+              })
+            }
+          >
+            Add
+          </button>
+        ) : (
+          <button
+            className="btn"
+            disabled={!name.trim() || !(amount > 0)}
+            onClick={() =>
+              onAddEntry({
+                id: newId(),
+                date: new Date(date + 'T00:00:00').toISOString(),
+                assetClassKey: classKey,
+                name: name.trim(),
+                amount,
+                units: units || undefined,
+                kind: entryKind,
+                reviewed: true,
+                createdAt: now(),
+                updatedAt: now(),
+              })
+            }
+          >
+            Add
+          </button>
+        )}
       </div>
     </div>
   );

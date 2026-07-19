@@ -11,6 +11,7 @@ import type { AssetClassKey } from '../../types/models';
 import HoldingList from './HoldingList';
 import AppIcon from '../AppIcon';
 import { Section, TotalRow, Stat, formatINR } from './shared';
+import { TrendCard } from './Sparkline';
 
 const CLASS_COLOR: Record<AssetClassKey, string> = {
   domestic_equity: '#6366f1',
@@ -70,6 +71,14 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
             </div>
           </div>
         </div>
+
+        {(plan.snapshots?.length ?? 0) >= 2 && (
+          <TrendCard
+            title="Net worth trend"
+            values={(plan.snapshots ?? []).map((s) => s.netWorth)}
+            stroke="#22c55e"
+          />
+        )}
 
         {trackedTotal > 0 && (
           <p className="ft-note ft-note--tracked">

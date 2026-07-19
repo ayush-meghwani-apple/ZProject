@@ -4820,6 +4820,187 @@ svg.lucide {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* ---- General ledger (Ledger tab) ---------------------------------------- */
+.ft-led__filters {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.ft-led__filters::-webkit-scrollbar {
+  display: none;
+}
+.ft-led__filters button {
+  flex: 0 0 auto;
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ft-led__filters button b {
+  color: var(--text);
+  margin-left: 3px;
+}
+.ft-led__filters button.active {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--text);
+}
+.ft-led__reviewnote {
+  color: var(--accent);
+  font-size: 12px;
+}
+.ft-led__reviewnote span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ft-led__item {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+/* Auto-added, not-yet-reviewed rows get a subtle amber cue on the leading edge. */
+.ft-led__item--review {
+  border-left: 3px solid #f59e0b;
+}
+.ft-led__row {
+  display: flex;
+  align-items: stretch;
+}
+.ft-led__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.ft-led__badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: var(--accent);
+  background: rgba(99, 102, 241, 0.14);
+}
+.ft-led__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  font-size: 13.5px;
+  overflow: hidden;
+}
+.ft-led__name > :first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ft-led__meta {
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ft-led__amt {
+  flex: 0 0 auto;
+  font-size: 14px;
+}
+.ft-led__review {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-right: 6px;
+  color: #f59e0b;
+}
+.ft-led__modeseg {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.ft-led__modeseg button {
+  flex: 1;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 9px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ft-led__modeseg button.active {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--text);
+}
+.ft-led__modeseg button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ft-led__txnname {
+  flex: 1.6;
+}
+
+/* ---- Trend sparkline card ------------------------------------------------ */
+.ft-trend {
+  margin-top: 12px;
+  padding: 10px 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.ft-trend__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.ft-trend__title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.ft-trend__delta {
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: right;
+}
+.ft-trend__delta small {
+  font-weight: 400;
+  color: var(--muted);
+}
+.ft-spark {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 6px 0 2px;
+}
+.ft-trend__foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--muted);
+}
 .ft-mf__empty {
   margin: 20px 0;
   text-align: center;
