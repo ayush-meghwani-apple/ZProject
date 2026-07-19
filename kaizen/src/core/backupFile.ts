@@ -57,3 +57,32 @@ export function backupDue(intervalDays: number): boolean {
   const ms = Math.max(1, intervalDays) * 86400000;
   return Date.now() - new Date(last).getTime() >= ms;
 }
+
+/**
+ * Save an arbitrary JSON object to a file the user keeps (share sheet on iOS /
+ * download elsewhere). Used by the Fortuna-only plan export — kept separate from
+ * the whole-app backup so the two never get confused. Returns false if the user
+ * cancelled the share sheet.
+ */
+export async function saveJsonFile(obj: unknown, name: string): Promise<boolean> {
+  const json = JSON.stringify(obj, null, 2);
+  try {
+    const file = new File([json], name, { type: 'application/json' });
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
+      await nav.share({ files: [file] });
+      return true;
+    }
+  } catch (err) {
+    if ((err as Error)?.name === 'AbortError') return false;
+  }
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+  return true;
+}
+

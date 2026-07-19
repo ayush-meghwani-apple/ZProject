@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import { BackupRepository } from '../../repository/backupRepository';
-import { defaultPlan } from '../../repository/plannerRepository';
-import { saveBackupFile } from '../../core/backupFile';
+import { PlannerRepository, defaultPlan } from '../../repository/plannerRepository';
+import { saveBackupFile, saveJsonFile } from '../../core/backupFile';
 import { unlock } from '../../core/vaultLock';
 import AppIcon from '../AppIcon';
 import { Section } from './shared';
@@ -23,9 +23,10 @@ function fmtWhen(iso: string | null): string {
   });
 }
 
-export default function SettingsTab({ update, onLock, reload }: Props) {
+export default function SettingsTab({ plan, update, onLock, reload }: Props) {
   const importRef = useRef<HTMLInputElement>(null);
   const restoreRef = useRef<HTMLInputElement>(null);
+  const planImportRef = useRef<HTMLInputElement>(null);
   const [lastBackup, setLastBackup] = useState<string | null>(BackupRepository.getLastBackupAt());
   const [busy, setBusy] = useState(false);
   // Reset is dangerous, so it's gated: confirm → enter PIN → reset.
@@ -124,6 +125,35 @@ export default function SettingsTab({ update, onLock, reload }: Props) {
     setResetStage('confirm');
   }
 
+  // --- Fortuna-only plan import/export (kept separate from the whole-app
+  //     backup). Import writes ONLY the plan document, so other apps' data is
+  //     untouched. Used rarely — e.g. a one-time pre-fill from the spreadsheet.
+  async function exportPlan() {
+    await saveJsonFile(plan, 'fortuna-plan.json');
+  }
+
+  async function importPlan(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (
+        !confirm(
+          'Import this Fortuna plan?\n\nIt REPLACES your current financial plan (cash flow, assets, goals, assumptions) with the file. Your other apps (expenses, notes, vault) are NOT affected.',
+        )
+      ) {
+        return;
+      }
+      await PlannerRepository.importPlan(parsed);
+      await reload();
+      alert('Fortuna plan imported ✅');
+    } catch (err) {
+      alert(`Plan import failed: ${(err as Error).message}`);
+    } finally {
+      if (planImportRef.current) planImportRef.current.value = '';
+    }
+  }
+
   return (
     <main className="app__body">
       <div className="page ft-page">
@@ -162,6 +192,36 @@ export default function SettingsTab({ update, onLock, reload }: Props) {
             <span>Last backup</span>
             <span className="ft-total__val">{fmtWhen(lastBackup)}</span>
           </div>
+        </Section>
+
+        <Section
+          title="Fortuna plan — import / export"
+          subtitle="Advanced · rarely used"
+          collapsible
+          defaultOpen={false}
+        >
+          <p className="ft-note" style={{ marginTop: 0 }}>
+            A <strong>Fortuna-only</strong> transfer, separate from the whole-app backup above. <strong>Import</strong>{' '}
+            loads a <code>fortuna-plan.json</code> (e.g. one built from your spreadsheet) and replaces{' '}
+            <em>only</em> your financial plan — your expenses, notes and vault are untouched. <strong>Export</strong>{' '}
+            saves just the plan as its own file. Everyday edits still just save automatically; use this only for a
+            one-time pre-fill or to move the plan between devices.
+          </p>
+          <div className="ft-btnrow">
+            <button className="btn ft-btn" onClick={() => planImportRef.current?.click()}>
+              <AppIcon name="download" size={18} /> Import Fortuna data
+            </button>
+            <button className="btn btn--ghost ft-btn" onClick={exportPlan}>
+              Export Fortuna data
+            </button>
+          </div>
+          <input
+            ref={planImportRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={importPlan}
+          />
         </Section>
 
         <Section title="Privacy">

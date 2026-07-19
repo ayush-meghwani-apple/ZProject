@@ -360,6 +360,17 @@ export const PlannerRepository = {
     await storage.plannerDocs.put(toStore);
   },
 
+  /** Import a Fortuna plan JSON (from the xlsx converter or a plan export) and
+   *  make it the current plan. Runs the same forward-only migration as load, so
+   *  a partial/older document is completed safely. Writes ONLY the plan record —
+   *  every other sub-app's data is left untouched. Returns the stored plan. */
+  async importPlan(raw: unknown): Promise<FinancialPlan> {
+    const plan = migrate(raw as Record<string, unknown> | null);
+    const toStore: FinancialPlan = { ...plan, id: PLAN_ID, v: PLAN_VERSION, updatedAt: now() };
+    await storage.plannerDocs.put(toStore);
+    return toStore;
+  },
+
   /** Reset the plan back to an empty default (used by a deliberate reset only). */
   async reset(): Promise<FinancialPlan> {
     const seed = defaultPlan();

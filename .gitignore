@@ -18,3 +18,7 @@ npm-debug.log*
 Thumbs.db
 .vscode/*
 !.vscode/extensions.json
+
+# Personal / copyrighted spreadsheets — never commit (may contain personal data)
+*.xlsx
+_xlsx_extract/
