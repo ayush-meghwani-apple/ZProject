@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import {
   computeNetWorth,
@@ -24,11 +24,30 @@ const CLASS_COLOR: Record<AssetClassKey, string> = {
 /** Palette for custom classes (cycled by order). */
 const CUSTOM_COLORS = ['#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#84cc16', '#06b6d4'];
 
+/** Normalise the many category spellings (manual EQUITY_CATS + tracked MFCategory)
+ *  to one key so stocks vs fund-type breakdown groups cleanly. */
+const EQUITY_CAT_LABELS: Record<string, string> = {
+  largecap: 'Large cap',
+  midcap: 'Mid cap',
+  smallcap: 'Small cap',
+  flexicap: 'Flexi / Multi cap',
+  hybrid: 'Hybrid',
+  other: 'Other funds',
+};
+function normEquityCat(raw: string): string {
+  const s = (raw || '').toLowerCase();
+  if (s.includes('large')) return 'largecap';
+  if (s.includes('mid')) return 'midcap';
+  if (s.includes('small')) return 'smallcap';
+  if (s.includes('flexi') || s.includes('multi')) return 'flexicap';
+  if (s.includes('hybrid')) return 'hybrid';
+  return 'other';
+}
+
 export default function NetWorthTab({ plan, update }: FortunaTabProps) {
   const disabled = plan.disabledClasses ?? [];
   const custom = plan.customClasses ?? [];
   const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
-  const trackedTotal = (tracked.domestic_equity ?? 0) + (tracked.debt ?? 0);
   const nw = useMemo(
     () => computeNetWorth(plan.assets, plan.liabilities, disabled, custom, tracked),
     [plan.assets, plan.liabilities, disabled, custom, tracked],
@@ -50,6 +69,31 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
   const mix = nw.byClass.filter((c) => c.value > 0);
   const targetKeys = Object.keys(target).filter((k) => target[k] > 0);
   const targetTotal = targetKeys.reduce((s, k) => s + target[k], 0);
+
+  // Break domestic equity into Stocks + mutual funds by type (manual rows +
+  // auto-tracked funds), so the mix can be drilled into one level deeper.
+  const [deOpen, setDeOpen] = useState(false);
+  const deBreak = useMemo(() => {
+    const a = plan.assets;
+    const n = (v: number) => (Number.isFinite(v) ? v : 0);
+    const catMap = new Map<string, number>();
+    const add = (raw: string, val: number) => {
+      if (!(val > 0)) return;
+      const k = normEquityCat(raw);
+      catMap.set(k, (catMap.get(k) ?? 0) + val);
+    };
+    for (const r of a.domesticEquity.mutualFunds) add(r.category ?? 'other', n(r.value));
+    for (const f of plan.mutualFunds ?? []) {
+      if (f.category === 'debt') continue; // debt funds belong to the Debt class
+      const units = (f.transactions ?? []).reduce((s, t) => s + n(t.units), 0);
+      add(f.category, units * n(f.latestNav ?? 0));
+    }
+    const rows = [{ label: 'Stocks', value: a.domesticEquity.stocks.reduce((s, r) => s + n(r.value), 0) }];
+    for (const [k, v] of [...catMap.entries()].sort((x, y) => y[1] - x[1])) rows.push({ label: EQUITY_CAT_LABELS[k] ?? k, value: v });
+    if (n(a.misc.smallcase) > 0) rows.push({ label: 'Smallcase', value: n(a.misc.smallcase) });
+    if (n(a.misc.ulips) > 0) rows.push({ label: 'ULIPs / insurance', value: n(a.misc.ulips) });
+    return rows.filter((r) => r.value > 0);
+  }, [plan.assets, plan.mutualFunds]);
 
   return (
     <main className="app__body">
@@ -80,14 +124,6 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
           />
         )}
 
-        {trackedTotal > 0 && (
-          <p className="ft-note ft-note--tracked">
-            <AppIcon name="recurring" size={13} /> Includes <strong>{formatINR(trackedTotal)}</strong> of auto-tracked
-            funds from the Funds tab (live NAV). Keep those funds out of the Portfolio’s manual rows so they aren’t
-            counted twice.
-          </p>
-        )}
-
         <Section title="Current asset mix" subtitle="Where your money sits today, by asset class">
           {nw.totalAssets > 0 ? (
             <>
@@ -102,14 +138,33 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
                 ))}
               </div>
               <ul className="ft-legend">
-                {mix.map((c) => (
-                  <li key={c.key} className="ft-legend__item">
-                    <span className="ft-legend__dot" style={{ background: colorFor(c.key) }} />
-                    <span className="ft-legend__label">{c.label}</span>
-                    <span className="ft-legend__pct">{Math.round((c.value / nw.totalAssets) * 100)}%</span>
-                    <span className="ft-legend__val">{formatINR(c.value)}</span>
-                  </li>
-                ))}
+                {mix.map((c) => {
+                  const expandable = c.key === 'domestic_equity' && deBreak.length > 1;
+                  return (
+                    <Fragment key={c.key}>
+                      <li
+                        className={`ft-legend__item ${expandable ? 'ft-legend__item--exp' : ''}`}
+                        onClick={expandable ? () => setDeOpen((o) => !o) : undefined}
+                      >
+                        <span className="ft-legend__dot" style={{ background: colorFor(c.key) }} />
+                        <span className="ft-legend__label">
+                          {c.label}
+                          {expandable && <AppIcon name={deOpen ? 'chevronUp' : 'chevronDown'} size={13} className="ft-legend__chev" />}
+                        </span>
+                        <span className="ft-legend__pct">{Math.round((c.value / nw.totalAssets) * 100)}%</span>
+                        <span className="ft-legend__val">{formatINR(c.value)}</span>
+                      </li>
+                      {expandable && deOpen &&
+                        deBreak.map((s) => (
+                          <li key={`${c.key}-${s.label}`} className="ft-legend__item ft-legend__sub">
+                            <span className="ft-legend__label">{s.label}</span>
+                            <span className="ft-legend__pct">{Math.round(c.value ? (s.value / c.value) * 100 : 0)}%</span>
+                            <span className="ft-legend__val">{formatINR(s.value)}</span>
+                          </li>
+                        ))}
+                    </Fragment>
+                  );
+                })}
               </ul>
             </>
           ) : (

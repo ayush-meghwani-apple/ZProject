@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
@@ -6,8 +6,7 @@ import { formatINR, newId, now } from '../../core/util';
 import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
 import { generateSipInstallments } from '../../core/mfSip';
 import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
-import { mfMonthlyTrend } from '../../core/mfTrend';
-import { TrendCard } from './Sparkline';
+import { PerformanceTrend } from './Sparkline';
 import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
 
@@ -173,7 +172,6 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
 
   const asOf = new Date();
   const { groups, total } = byCategory(shownFunds, asOf);
-  const trend = useMemo(() => mfMonthlyTrend(funds, navs, 9), [funds, navs]);
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
     const id = newId();
@@ -234,13 +232,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               </span>
             </div>
             <ReturnPills s={total} />
-            <TrendCard
-              title="Value trend"
-              values={trend.map((p) => p.value)}
-              baseline={trend.map((p) => p.invested)}
-              baselineLabel="Invested"
-              stroke="#6366f1"
-            />
+            <PerformanceTrend funds={funds} navs={navs} />
           </div>
         )}
 

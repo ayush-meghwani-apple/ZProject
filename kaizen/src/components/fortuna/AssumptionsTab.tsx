@@ -76,11 +76,6 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
   return (
     <main className="app__body">
       <div className="page ft-page">
-        <p className="ft-note ft-note--top">
-          Define your own goal types, then set each asset class's expected return and how much of each type's SIP goes
-          into it. These drive the goal SIP and target-mix calculations. Percentages are whole numbers.
-        </p>
-
         <Section title="Effective returns" subtitle="Blended annual return used for each goal type">
           <div className="ft-eff">
             {goalTypes.map((h) => (

@@ -1,5 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { formatINR } from './shared';
+import { mfValueSeries, type TrendRange } from '../../core/mfTrend';
+import type { NavPoint } from '../../core/amfi';
+import type { MutualFundHolding } from '../../types/models';
 
 /** A compact inline SVG sparkline. Draws `values` as a line (optionally filled),
  *  with an optional faint `baseline` series behind it (e.g. amount invested). */
@@ -87,6 +90,62 @@ export function TrendCard({
       <div className="ft-trend__foot">
         <span>{values.length}-month trend</span>
         {baseline && baselineLabel && <span className="ft-trend__baseline">– – {baselineLabel}</span>}
+      </div>
+    </div>
+  );
+}
+
+const RANGES: { k: TrendRange; label: string }[] = [
+  { k: '1M', label: '1M' },
+  { k: '6M', label: '6M' },
+  { k: '1Y', label: '1Y' },
+  { k: 'MAX', label: 'Max' },
+];
+
+/** The Pulse tab's performance chart: pick a window and see the tracked funds'
+ *  value (vs amount invested) over it, reconstructed from NAV history. */
+export function PerformanceTrend({
+  funds,
+  navs,
+}: {
+  funds: MutualFundHolding[];
+  navs: Record<number, NavPoint[]>;
+}) {
+  const [range, setRange] = useState<TrendRange>('1Y');
+  const series = useMemo(() => mfValueSeries(funds, navs, range), [funds, navs, range]);
+  if (series.length < 2) return null;
+
+  const first = series[0];
+  const last = series[series.length - 1];
+  const delta = last.value - first.value;
+  const pct = first.value > 0 ? (delta / first.value) * 100 : 0;
+  const tone = delta > 0 ? 'ft-mf__pos' : delta < 0 ? 'ft-mf__neg' : '';
+  const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '■';
+  const rangeLabel = range === 'MAX' ? 'since first investment' : `past ${RANGES.find((r) => r.k === range)!.label}`;
+
+  return (
+    <div className="ft-trend">
+      <div className="ft-trend__head">
+        <span className="ft-trend__title">Performance</span>
+        <span className={`ft-trend__delta ${tone}`}>
+          {arrow} {formatINR(Math.abs(delta))} <small>({pct >= 0 ? '+' : ''}{pct.toFixed(1)}%) {rangeLabel}</small>
+        </span>
+      </div>
+      <Sparkline values={series.map((p) => p.value)} baseline={series.map((p) => p.invested)} stroke="#6366f1" />
+      <div className="ft-trend__foot">
+        <div className="ft-trend__ranges">
+          {RANGES.map((r) => (
+            <button
+              key={r.k}
+              className={range === r.k ? 'active' : ''}
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => setRange(r.k)}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+        <span className="ft-trend__baseline">– – Invested</span>
       </div>
     </div>
   );

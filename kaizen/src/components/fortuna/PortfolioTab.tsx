@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { AssetClassKey, CustomAssetClass } from '../../types/models';
-import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION, trackedFundsByClass } from '../../core/plannerMath';
+import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import RecurringInvestments from './RecurringInvestments';
@@ -22,8 +22,6 @@ const CLASS_SECTION: { key: AssetClassKey; label: string; field: keyof ReturnTyp
 export default function PortfolioTab({ plan, update }: FortunaTabProps) {
   const totals = useMemo(() => sectionTotals(plan.assets), [plan.assets]);
   const caps = useMemo(() => capBreakdown(plan.assets), [plan.assets]);
-  const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
-  const trackedTotal = (tracked.domestic_equity ?? 0) + (tracked.debt ?? 0);
   const a = plan.assets;
   const capTotal = caps.reduce((s, c) => s + c.value, 0);
   const [newClassId, setNewClassId] = useState<string | null>(null);
@@ -97,20 +95,6 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
   return (
     <main className="app__body">
       <div className="page ft-page">
-        <p className="ft-note ft-note--top">
-          Enter the current value of everything you own. Tap a section to expand it; totals roll up into your Net
-          Worth automatically. Flip a category's toggle off to exclude it from net worth, the mix, Returns and goals —
-          it drops to the Disabled section below. Add your own categories at the bottom.
-        </p>
-
-        {trackedTotal > 0 && (
-          <p className="ft-note ft-note--tracked">
-            <AppIcon name="investments" size={13} /> You also have <strong>{formatINR(trackedTotal)}</strong> in
-            auto-tracked funds on the <strong>Pulse</strong> tab (live NAV, counted in Net Worth). Don’t re-enter those
-            here as manual rows, or they’ll be double-counted.
-          </p>
-        )}
-
         <RecurringInvestments plan={plan} update={update} />
 
         {on('real_estate') && (
@@ -134,12 +118,6 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
               onChange={(m) => update((d) => m(d.assets.domesticEquity.stocks))}
             />
             <div className="ft-sublabel">Mutual funds / ETFs / Smallcase</div>
-            {trackedTotal > 0 && (
-              <p className="ft-note" style={{ marginTop: 0 }}>
-                Your auto-tracked mutual funds now live on the <strong>Pulse</strong> tab (with units &amp; live NAV) and
-                are counted in Net Worth. Use the list below only for funds you <em>don’t</em> want auto-tracked.
-              </p>
-            )}
             <HoldingList
               rows={a.domesticEquity.mutualFunds}
               categories={EQUITY_CATS}
@@ -186,7 +164,6 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
                 </div>
               ))}
             </div>
-            <p className="ft-note">A rough guide for how to split domestic equity across market caps as you age.</p>
           </Section>
         )}
 

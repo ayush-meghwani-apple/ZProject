@@ -56,13 +56,8 @@ export default function RecurringInvestments({
       subtitle="Auto-add contributions to your portfolio"
       right={sips.length > 0 || fundSips.length > 0 ? <span className="ft-chip">{formatINR(monthlyTotal)}/mo</span> : undefined}
       collapsible
-      defaultOpen={sips.length > 0 || fundSips.length > 0}
+      defaultOpen={false}
     >
-      <p className="ft-note" style={{ marginTop: 0 }}>
-        Each SIP adds its amount to the chosen holding on schedule — it runs automatically whenever you open Fortuna,
-        catching up any missed contributions, so your portfolio stays current without manual edits.
-      </p>
-
       {sips.map((s, i) => {
         const open = openId === s.id;
         return (

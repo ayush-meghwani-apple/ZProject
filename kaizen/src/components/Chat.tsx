@@ -426,7 +426,13 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
           autoComplete="off"
           autoCapitalize="off"
         />
-        <button type="submit">Add</button>
+        <button
+          type="submit"
+          onPointerDown={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          Add
+        </button>
       </form>
     </div>
   );
