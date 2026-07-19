@@ -3353,6 +3353,21 @@ svg.lucide {
 .ft-note--top {
   margin: 4px 2px 2px;
 }
+/* Auto-tracked-funds callout (links Portfolio/Net Worth to the Funds tab). */
+.ft-note--tracked {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 10px;
+  color: var(--text);
+}
+.ft-note--tracked svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
 
 /* Hero stat block */
 .ft-hero {

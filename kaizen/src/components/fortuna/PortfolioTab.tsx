@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { AssetClassKey, CustomAssetClass } from '../../types/models';
-import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION } from '../../core/plannerMath';
+import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION, trackedFundsByClass } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import RecurringInvestments from './RecurringInvestments';
@@ -22,6 +22,8 @@ const CLASS_SECTION: { key: AssetClassKey; label: string; field: keyof ReturnTyp
 export default function PortfolioTab({ plan, update }: FortunaTabProps) {
   const totals = useMemo(() => sectionTotals(plan.assets), [plan.assets]);
   const caps = useMemo(() => capBreakdown(plan.assets), [plan.assets]);
+  const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
+  const trackedTotal = (tracked.domestic_equity ?? 0) + (tracked.debt ?? 0);
   const a = plan.assets;
   const capTotal = caps.reduce((s, c) => s + c.value, 0);
   const [newClassId, setNewClassId] = useState<string | null>(null);
@@ -100,6 +102,14 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
           Worth automatically. Flip a category's toggle off to exclude it from net worth, the mix, Returns and goals —
           it drops to the Disabled section below. Add your own categories at the bottom.
         </p>
+
+        {trackedTotal > 0 && (
+          <p className="ft-note ft-note--tracked">
+            <AppIcon name="investments" size={13} /> You also have <strong>{formatINR(trackedTotal)}</strong> in
+            auto-tracked funds on the <strong>Funds</strong> tab (live NAV, counted in Net Worth). Don’t re-enter those
+            here as manual rows, or they’ll be double-counted.
+          </p>
+        )}
 
         <RecurringInvestments plan={plan} update={update} />
 

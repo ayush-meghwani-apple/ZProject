@@ -5,9 +5,11 @@ import {
   targetAllocation,
   activeAssumptions,
   classLabelMap,
+  trackedFundsByClass,
 } from '../../core/plannerMath';
 import type { AssetClassKey } from '../../types/models';
 import HoldingList from './HoldingList';
+import AppIcon from '../AppIcon';
 import { Section, TotalRow, Stat, formatINR } from './shared';
 
 const CLASS_COLOR: Record<AssetClassKey, string> = {
@@ -24,9 +26,11 @@ const CUSTOM_COLORS = ['#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#84cc16', '#
 export default function NetWorthTab({ plan, update }: FortunaTabProps) {
   const disabled = plan.disabledClasses ?? [];
   const custom = plan.customClasses ?? [];
+  const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
+  const trackedTotal = (tracked.domestic_equity ?? 0) + (tracked.debt ?? 0);
   const nw = useMemo(
-    () => computeNetWorth(plan.assets, plan.liabilities, disabled, custom),
-    [plan.assets, plan.liabilities, disabled, custom],
+    () => computeNetWorth(plan.assets, plan.liabilities, disabled, custom, tracked),
+    [plan.assets, plan.liabilities, disabled, custom, tracked],
   );
   const active = useMemo(() => activeAssumptions(plan.assumptions, disabled), [plan.assumptions, disabled]);
   const target = useMemo(
@@ -66,6 +70,14 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
             </div>
           </div>
         </div>
+
+        {trackedTotal > 0 && (
+          <p className="ft-note ft-note--tracked">
+            <AppIcon name="recurring" size={13} /> Includes <strong>{formatINR(trackedTotal)}</strong> of auto-tracked
+            funds from the Funds tab (live NAV). Keep those funds out of the Portfolio’s manual rows so they aren’t
+            counted twice.
+          </p>
+        )}
 
         <Section title="Current asset mix" subtitle="Where your money sits today, by asset class">
           {nw.totalAssets > 0 ? (

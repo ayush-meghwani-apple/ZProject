@@ -8,6 +8,7 @@ import type {
   HoldingRow,
   HorizonDef,
   Liabilities,
+  MutualFundHolding,
   PlanAssets,
 } from '../types/models';
 import { DEFAULT_HORIZONS } from '../types/models';
@@ -217,11 +218,34 @@ export function totalLiabilities(l: Liabilities): number {
   return sumRows(l.items);
 }
 
+/** The auto-valued contribution of the Funds-tab holdings, split into the asset
+ *  classes they belong to (all AMFI funds are Indian: equity caps → domestic
+ *  equity, debt-category funds → debt). Fed into net worth / mix / portfolio so
+ *  those auto-update as NAVs refresh. */
+export interface TrackedFundTotals {
+  domestic_equity?: number;
+  debt?: number;
+}
+
+/** Sum the Funds-tab holdings' current value (Σ units × latest NAV) by class. */
+export function trackedFundsByClass(funds: MutualFundHolding[] = []): TrackedFundTotals {
+  let domestic_equity = 0;
+  let debt = 0;
+  for (const f of funds) {
+    const units = (f.transactions ?? []).reduce((s, t) => s + num(t.units), 0);
+    const value = units * num(f.latestNav ?? 0);
+    if (f.category === 'debt') debt += value;
+    else domestic_equity += value;
+  }
+  return { domestic_equity, debt };
+}
+
 export function computeNetWorth(
   assets: PlanAssets,
   liabilities: Liabilities,
   disabled: string[] = [],
   customClasses: CustomAssetClass[] = [],
+  tracked: TrackedFundTotals = {},
 ): NetWorthResult {
   const re = assets.realEstate;
   const de = assets.domesticEquity;
@@ -236,10 +260,12 @@ export function computeNetWorth(
   // C21/C33 split): ULIPs illiquid + Smallcase liquid both class as domestic
   // equity; EPF illiquid within debt; jewellery/SGB illiquid within gold; home /
   // other real estate (and custom "others") illiquid within real estate.
+  // `tracked` adds the auto-valued Funds-tab holdings (units × live NAV) into
+  // their asset class, so net worth auto-updates as NAVs refresh.
   const parts: Record<AssetClassKey, { liquid: number; illiquid: number }> = {
-    domestic_equity: { liquid: domesticStocksMF + num(assets.misc.smallcase), illiquid: num(assets.misc.ulips) },
+    domestic_equity: { liquid: domesticStocksMF + num(assets.misc.smallcase) + num(tracked.domestic_equity ?? 0), illiquid: num(assets.misc.ulips) },
     us_equity: { liquid: num(us.sp500Etf) + num(us.otherEtfs) + num(us.mutualFunds) + sumRows(us.others), illiquid: 0 },
-    debt: { liquid: num(debt.liquidCash) + sumRows(debt.fds) + sumRows(debt.debtFunds), illiquid: sumRows(debt.epfPpfVpf) },
+    debt: { liquid: num(debt.liquidCash) + sumRows(debt.fds) + sumRows(debt.debtFunds) + num(tracked.debt ?? 0), illiquid: sumRows(debt.epfPpfVpf) },
     gold: { liquid: num(gold.goldEtf) + sumRows(gold.others), illiquid: num(gold.jewellery) + num(gold.sgb) },
     crypto: { liquid: num(assets.crypto.crypto) + sumRows(assets.crypto.others), illiquid: 0 },
     real_estate: { liquid: num(re.reits), illiquid: num(re.home) + num(re.otherRealEstate) + sumRows(re.others) },
@@ -395,9 +421,10 @@ export const AGE_EQUITY_ALLOCATION: {
 
 /** Convenience: everything the Net Worth dashboard needs in one call. */
 export function computePlanSummary(plan: FinancialPlan) {
+  const tracked = trackedFundsByClass(plan.mutualFunds);
   return {
     cashFlow: computeCashFlow(plan.cashFlow),
-    netWorth: computeNetWorth(plan.assets, plan.liabilities, plan.disabledClasses ?? [], plan.customClasses ?? []),
+    netWorth: computeNetWorth(plan.assets, plan.liabilities, plan.disabledClasses ?? [], plan.customClasses ?? [], tracked),
     effReturns: effectiveReturns(plan.assumptions, plan.horizons),
     target: targetAllocation(plan.goals, plan.assumptions, plan.horizons),
   };

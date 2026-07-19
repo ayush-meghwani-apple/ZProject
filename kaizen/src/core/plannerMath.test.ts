@@ -7,6 +7,7 @@ import type {
   FinancialGoalRow,
   HoldingRow,
   Liabilities,
+  MutualFundHolding,
   PlanAssets,
 } from '../types/models';
 import {
@@ -20,6 +21,7 @@ import {
   totalLiabilities,
   activeAssumptions,
   assetClassTotals,
+  trackedFundsByClass,
 } from './plannerMath';
 
 // --- test fixtures ---------------------------------------------------------
@@ -169,5 +171,41 @@ describe('totalLiabilities / activeAssumptions / assetClassTotals', () => {
     assets.debt.liquidCash = 200000;
     const totals = assetClassTotals(assets);
     expect(totals.debt).toBe(200000);
+  });
+});
+
+describe('tracked funds (Funds tab) integration', () => {
+  const fund = (category: MutualFundHolding['category'], units: number, nav: number): MutualFundHolding => ({
+    id: `f${idc++}`,
+    schemeCode: 100000 + idc,
+    name: 'F',
+    category,
+    transactions: [{ id: `t${idc++}`, date: '2024-01-01', amount: units * nav, units, nav, kind: 'sip' }],
+    latestNav: nav,
+    createdAt: '2024-01-01',
+    updatedAt: '2024-01-01',
+  });
+
+  it('splits tracked value into domestic equity vs debt by category', () => {
+    const t = trackedFundsByClass([fund('flexicap', 100, 20), fund('largecap', 50, 10), fund('debt', 100, 12)]);
+    expect(t.domestic_equity).toBeCloseTo(2000 + 500, 6); // equity caps -> domestic equity
+    expect(t.debt).toBeCloseTo(1200, 6);
+  });
+
+  it('handles no funds', () => {
+    expect(trackedFundsByClass()).toEqual({ domestic_equity: 0, debt: 0 });
+    expect(trackedFundsByClass([])).toEqual({ domestic_equity: 0, debt: 0 });
+  });
+
+  it('adds tracked value into net worth (domestic equity + debt)', () => {
+    const assets = emptyAssets();
+    assets.debt.liquidCash = 100000;
+    const nwPlain = computeNetWorth(assets, { items: [] });
+    const nwTracked = computeNetWorth(assets, { items: [] }, [], [], { domestic_equity: 300000, debt: 50000 });
+    expect(nwTracked.totalAssets).toBe(nwPlain.totalAssets + 350000);
+    const de = nwTracked.byClass.find((c) => c.key === 'domestic_equity');
+    expect(de?.value).toBe(300000);
+    const debt = nwTracked.byClass.find((c) => c.key === 'debt');
+    expect(debt?.value).toBe(150000); // 100k liquid + 50k tracked
   });
 });
