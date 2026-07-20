@@ -69,7 +69,8 @@ interface UnifiedRow {
 }
 
 const BUILTIN_CLASS_LABEL: Record<string, string> = {
-  domestic_equity: 'Domestic equity',
+  domestic_equity: 'Equity stocks',
+  equity_mf: 'Equity mutual funds',
   us_equity: 'US equity',
   debt: 'Debt',
   gold: 'Gold',
@@ -91,7 +92,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
         source: 'mf' as const,
         date: t.date,
         name: f.name,
-        classKey: f.category === 'debt' ? 'debt' : 'domestic_equity',
+        classKey: f.category === 'debt' ? 'debt' : 'equity_mf',
         isMF: true,
         groupKey: `mf:${f.category}`,
         groupLabel: mfCatLabel(f.category),
@@ -149,7 +150,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
       });
     };
     for (const r of a.domesticEquity.stocks) pos('domestic_equity', r.name || 'Stock', num(r.value), num(r.units));
-    for (const r of a.domesticEquity.mutualFunds) pos('domestic_equity', r.name || 'Fund', num(r.value), num(r.units), true);
+    for (const r of a.domesticEquity.mutualFunds) pos('equity_mf', r.name || 'Fund', num(r.value), num(r.units), true);
     if (num(a.misc.smallcase) > 0) pos('domestic_equity', 'Smallcase', num(a.misc.smallcase));
     if (num(a.misc.ulips) > 0) pos('domestic_equity', 'ULIPs / insurance', num(a.misc.ulips));
     for (const r of a.usEquity.others) pos('us_equity', r.name || 'US holding', num(r.value), num(r.units));

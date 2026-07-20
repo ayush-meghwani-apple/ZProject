@@ -22,7 +22,8 @@ export const PLAN_VERSION = 1;
  *  Weights are keyed by horizon id (short/medium/long). */
 function defaultAssumptions(): AssetClassAssumption[] {
   return [
-    { key: 'domestic_equity', label: 'Domestic equity', expectedReturnPct: 12, weights: { short: 0, medium: 40, long: 60 } },
+    { key: 'domestic_equity', label: 'Equity stocks', expectedReturnPct: 12, weights: { short: 0, medium: 0, long: 0 } },
+    { key: 'equity_mf', label: 'Equity mutual funds', expectedReturnPct: 12, weights: { short: 0, medium: 40, long: 60 } },
     { key: 'us_equity', label: 'US equity', expectedReturnPct: 12, weights: { short: 0, medium: 0, long: 10 } },
     { key: 'debt', label: 'Debt', expectedReturnPct: 6, weights: { short: 100, medium: 50, long: 15 } },
     { key: 'gold', label: 'Gold (SGB / ETF)', expectedReturnPct: 6, weights: { short: 0, medium: 10, long: 5 } },
@@ -167,11 +168,17 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
   const misc = (a.misc ?? {}) as Record<string, unknown>;
 
   const horizons = migrateHorizons(raw.horizons);
+  // Split the old single "Domestic equity" assumption into Equity Stocks +
+  // Equity Mutual Funds the first time a pre-split plan loads (idempotent).
+  const { assumptions, disabledClasses } = ensureEquityMfSplit(
+    migrateAssumptions(raw.assumptions, base.assumptions),
+    Array.isArray(raw.disabledClasses) ? (raw.disabledClasses as string[]) : [],
+  );
 
   return {
     id: PLAN_ID,
     v: PLAN_VERSION,
-    assumptions: migrateAssumptions(raw.assumptions, base.assumptions),
+    assumptions,
     cashFlow: {
       inflows,
       outflows,
@@ -229,9 +236,7 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
       raw.fixedLabels && typeof raw.fixedLabels === 'object'
         ? (raw.fixedLabels as Record<string, string>)
         : {},
-    disabledClasses: Array.isArray(raw.disabledClasses)
-      ? (raw.disabledClasses as string[])
-      : [],
+    disabledClasses,
     updatedAt: (raw.updatedAt as string) ?? now(),
   };
 }
@@ -386,6 +391,42 @@ function migrateAssumptions(raw: unknown, fallback: AssetClassAssumption[]): Ass
       weights,
     };
   });
+}
+
+/**
+ * One-time split of the legacy single "Domestic equity" assumption into two
+ * classes: `domestic_equity` (Equity Stocks) and `equity_mf` (Equity Mutual
+ * Funds). To preserve each goal's TOTAL equity allocation (so goal SIPs don't
+ * change), the whole equity weight moves to the mutual-funds row and the stocks
+ * row is zeroed — the user can rebalance the split in the Returns tab. If the
+ * class was disabled, the new MF class is disabled too. Idempotent: does nothing
+ * once an `equity_mf` row exists.
+ */
+export function ensureEquityMfSplit(
+  assumptions: AssetClassAssumption[],
+  disabledClasses: string[],
+): { assumptions: AssetClassAssumption[]; disabledClasses: string[] } {
+  if (assumptions.some((a) => a.key === 'equity_mf')) return { assumptions, disabledClasses };
+  const de = assumptions.find((a) => a.key === 'domestic_equity');
+  if (!de) return { assumptions, disabledClasses };
+
+  const mf: AssetClassAssumption = {
+    key: 'equity_mf',
+    label: 'Equity mutual funds',
+    expectedReturnPct: de.expectedReturnPct,
+    weights: { ...de.weights },
+  };
+  de.label = 'Equity stocks';
+  de.weights = Object.fromEntries(Object.keys(de.weights).map((k) => [k, 0]));
+
+  const out = [...assumptions];
+  out.splice(out.indexOf(de) + 1, 0, mf);
+
+  const disabled =
+    disabledClasses.includes('domestic_equity') && !disabledClasses.includes('equity_mf')
+      ? [...disabledClasses, 'equity_mf']
+      : disabledClasses;
+  return { assumptions: out, disabledClasses: disabled };
 }
 
 /** Migrate/seed the goal-type list (formerly "horizons"). When absent, use the

@@ -206,7 +206,8 @@ export interface NetWorthResult {
 }
 
 const CLASS_LABELS: Record<AssetClassKey, string> = {
-  domestic_equity: 'Domestic Equity',
+  domestic_equity: 'Equity Stocks',
+  equity_mf: 'Equity Mutual Funds',
   us_equity: 'US Equity',
   debt: 'Debt',
   gold: 'Gold',
@@ -219,25 +220,25 @@ export function totalLiabilities(l: Liabilities): number {
 }
 
 /** The auto-valued contribution of the Funds-tab holdings, split into the asset
- *  classes they belong to (all AMFI funds are Indian: equity caps → domestic
- *  equity, debt-category funds → debt). Fed into net worth / mix / portfolio so
- *  those auto-update as NAVs refresh. */
+ *  classes they belong to (all AMFI funds are Indian: equity caps → equity
+ *  mutual funds, debt-category funds → debt). Fed into net worth / mix /
+ *  portfolio so those auto-update as NAVs refresh. */
 export interface TrackedFundTotals {
-  domestic_equity?: number;
+  equity_mf?: number;
   debt?: number;
 }
 
 /** Sum the Funds-tab holdings' current value (Σ units × latest NAV) by class. */
 export function trackedFundsByClass(funds: MutualFundHolding[] = []): TrackedFundTotals {
-  let domestic_equity = 0;
+  let equity_mf = 0;
   let debt = 0;
   for (const f of funds) {
     const units = (f.transactions ?? []).reduce((s, t) => s + num(t.units), 0);
     const value = units * num(f.latestNav ?? 0);
     if (f.category === 'debt') debt += value;
-    else domestic_equity += value;
+    else equity_mf += value;
   }
-  return { domestic_equity, debt };
+  return { equity_mf, debt };
 }
 
 /** One sub-category slice within an asset class (for the distribution charts).
@@ -285,6 +286,10 @@ export function classBreakdown(
   const a = assets;
   const rows: BreakdownRow[] = [];
   if (key === 'domestic_equity') {
+    for (const r of a.domesticEquity.stocks) if (num(r.value) > 0) rows.push({ label: r.name || 'Stock', value: num(r.value) });
+    if (num(a.misc.smallcase) > 0) rows.push({ label: 'Smallcase', value: num(a.misc.smallcase) });
+    if (num(a.misc.ulips) > 0) rows.push({ label: 'ULIPs / insurance', value: num(a.misc.ulips) });
+  } else if (key === 'equity_mf') {
     // Fund types, each carrying its individual funds so the chart can drill in.
     const catTotal = new Map<string, number>();
     const catFunds = new Map<string, BreakdownRow[]>();
@@ -302,17 +307,10 @@ export function classBreakdown(
       const units = (f.transactions ?? []).reduce((s, t) => s + num(t.units), 0);
       addFund(f.category, f.name || 'Fund', units * num(f.latestNav ?? 0));
     }
-    const stockKids = a.domesticEquity.stocks
-      .filter((r) => num(r.value) > 0)
-      .map((r) => ({ label: r.name || 'Stock', value: num(r.value) }))
-      .sort((x, y) => y.value - x.value);
-    rows.push({ label: 'Stocks', value: sumRows(a.domesticEquity.stocks), children: stockKids.length > 1 ? stockKids : undefined });
     for (const [k, v] of [...catTotal.entries()].sort((x, y) => y[1] - x[1])) {
       const kids = (catFunds.get(k) ?? []).sort((x, y) => y.value - x.value);
       rows.push({ label: EQUITY_CAT_LABELS[k] ?? k, value: v, children: kids.length > 1 ? kids : undefined });
     }
-    if (num(a.misc.smallcase) > 0) rows.push({ label: 'Smallcase', value: num(a.misc.smallcase) });
-    if (num(a.misc.ulips) > 0) rows.push({ label: 'ULIPs / insurance', value: num(a.misc.ulips) });
   } else if (key === 'us_equity') {
     for (const r of a.usEquity.others) rows.push({ label: r.name || 'Holding', value: num(r.value) });
   } else if (key === 'debt') {
@@ -365,16 +363,14 @@ export function computeNetWorth(
   const gold = assets.gold;
   const off = new Set(disabled);
 
-  const domesticStocksMF = sumRows(de.stocks) + sumRows(de.mutualFunds);
-
   // Each class split into its liquid and illiquid parts (mirrors the sheet's
-  // C21/C33 split): ULIPs illiquid + Smallcase liquid both class as domestic
-  // equity; EPF illiquid within debt; jewellery/SGB illiquid within gold; home /
-  // other real estate (and custom "others") illiquid within real estate.
-  // `tracked` adds the auto-valued Funds-tab holdings (units × live NAV) into
-  // their asset class, so net worth auto-updates as NAVs refresh.
+  // C21/C33 split). Domestic equity is split into direct Stocks (+ Smallcase
+  // liquid, ULIPs illiquid) and Equity Mutual Funds (manual MF rows + the
+  // auto-tracked equity funds, via `tracked.equity_mf`). EPF illiquid within
+  // debt; jewellery/SGB illiquid within gold; home/other real estate illiquid.
   const parts: Record<AssetClassKey, { liquid: number; illiquid: number }> = {
-    domestic_equity: { liquid: domesticStocksMF + num(assets.misc.smallcase) + num(tracked.domestic_equity ?? 0), illiquid: num(assets.misc.ulips) },
+    domestic_equity: { liquid: sumRows(de.stocks) + num(assets.misc.smallcase), illiquid: num(assets.misc.ulips) },
+    equity_mf: { liquid: sumRows(de.mutualFunds) + num(tracked.equity_mf ?? 0), illiquid: 0 },
     us_equity: { liquid: num(us.sp500Etf) + num(us.otherEtfs) + num(us.mutualFunds) + sumRows(us.others), illiquid: 0 },
     debt: { liquid: num(debt.liquidCash) + sumRows(debt.fds) + sumRows(debt.debtFunds) + num(tracked.debt ?? 0), illiquid: sumRows(debt.epfPpfVpf) },
     gold: { liquid: num(gold.goldEtf) + sumRows(gold.others), illiquid: num(gold.jewellery) + num(gold.sgb) },
@@ -416,7 +412,7 @@ export function computeNetWorth(
   };
 }
 
-const CLASS_ORDER: AssetClassKey[] = ['domestic_equity', 'us_equity', 'debt', 'gold', 'crypto', 'real_estate'];
+const CLASS_ORDER: AssetClassKey[] = ['domestic_equity', 'equity_mf', 'us_equity', 'debt', 'gold', 'crypto', 'real_estate'];
 
 /** Per-asset-class value totals used by both Net Worth and Portfolio views. */
 export function assetClassTotals(
@@ -458,7 +454,8 @@ export function classLabelMap(assumptions: AssetClassAssumption[]): Record<strin
  */
 export interface SectionTotals {
   realEstate: number;
-  domesticEquity: number;
+  equityStocks: number;
+  equityMf: number;
   usEquity: number;
   debt: number;
   gold: number;
@@ -469,7 +466,8 @@ export interface SectionTotals {
 export function sectionTotals(assets: PlanAssets): SectionTotals {
   const realEstate =
     num(assets.realEstate.home) + num(assets.realEstate.otherRealEstate) + num(assets.realEstate.reits) + sumRows(assets.realEstate.others);
-  const domesticEquity = sumRows(assets.domesticEquity.stocks) + sumRows(assets.domesticEquity.mutualFunds);
+  const equityStocks = sumRows(assets.domesticEquity.stocks);
+  const equityMf = sumRows(assets.domesticEquity.mutualFunds);
   const usEquity =
     num(assets.usEquity.sp500Etf) + num(assets.usEquity.otherEtfs) + num(assets.usEquity.mutualFunds) + sumRows(assets.usEquity.others) + num(assets.misc.smallcase);
   const debt =
@@ -482,23 +480,24 @@ export function sectionTotals(assets: PlanAssets): SectionTotals {
   const crypto = num(assets.crypto.crypto) + sumRows(assets.crypto.others);
   return {
     realEstate,
-    domesticEquity,
+    equityStocks,
+    equityMf,
     usEquity,
     debt,
     gold,
     crypto,
-    total: realEstate + domesticEquity + usEquity + debt + gold + crypto,
+    total: realEstate + equityStocks + equityMf + usEquity + debt + gold + crypto,
   };
 }
 
 export type EquityCap = 'Largecap' | 'Midcap' | 'Smallcap' | 'Flexi/Multi cap';
 export const EQUITY_CAPS: EquityCap[] = ['Largecap', 'Midcap', 'Smallcap', 'Flexi/Multi cap'];
 
-/** Domestic-equity value split by market-cap category (stocks + mutual funds),
- *  mirroring the sheet's cap-size aggregation. Uncategorised rows fall under the
- *  first bucket the row's `category` matches, else are ignored from the split. */
+/** Domestic direct-equity value split by market-cap category (stocks only;
+ *  mutual funds have their own class now), mirroring the sheet's cap-size
+ *  aggregation. */
 export function capBreakdown(assets: PlanAssets): { cap: EquityCap; value: number }[] {
-  const rows = [...assets.domesticEquity.stocks, ...assets.domesticEquity.mutualFunds];
+  const rows = [...assets.domesticEquity.stocks];
   const totals: Record<string, number> = {};
   for (const cap of EQUITY_CAPS) totals[cap] = 0;
   for (const r of rows) {

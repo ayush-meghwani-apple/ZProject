@@ -9,7 +9,8 @@ import { Section } from './shared';
 /** Short column headers for the asset-class matrix, so the 6 classes fit the
  *  screen width without horizontal scrolling. */
 const SHORT_CLASS: Record<string, string> = {
-  domestic_equity: 'Dom. Eq',
+  domestic_equity: 'Eq. Stocks',
+  equity_mf: 'Eq. MF',
   us_equity: 'US Eq',
   debt: 'Debt',
   gold: 'Gold',

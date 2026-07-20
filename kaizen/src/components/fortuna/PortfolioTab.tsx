@@ -13,7 +13,8 @@ const EQUITY_CATS = ['Largecap', 'Midcap', 'Smallcap', 'Flexi/Multi cap'];
 
 const CLASS_SECTION: { key: AssetClassKey; label: string; field: keyof ReturnType<typeof sectionTotals> }[] = [
   { key: 'real_estate', label: 'Real Estate & REITs', field: 'realEstate' },
-  { key: 'domestic_equity', label: 'Domestic Equity', field: 'domesticEquity' },
+  { key: 'domestic_equity', label: 'Equity Stocks', field: 'equityStocks' },
+  { key: 'equity_mf', label: 'Equity Mutual Funds', field: 'equityMf' },
   { key: 'us_equity', label: 'US Equity', field: 'usEquity' },
   { key: 'debt', label: 'Debt', field: 'debt' },
   { key: 'gold', label: 'Gold', field: 'gold' },
@@ -125,7 +126,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
         )}
 
         {on('domestic_equity') && (
-          <Section title="Domestic Equity" subtitle="Stocks & mutual funds" right={<HeadRight k="domestic_equity" value={totals.domesticEquity} />} collapsible defaultOpen={false}>
+          <Section title="Equity Stocks" subtitle="Direct stocks" right={<HeadRight k="domestic_equity" value={totals.equityStocks} />} collapsible defaultOpen={false}>
             <ClassDist k="domestic_equity" />
             <div className="ft-sublabel">Stocks</div>
             <HoldingList
@@ -134,14 +135,6 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
               namePlaceholder="Stock name"
               showUnits
               onChange={(m) => update((d) => m(d.assets.domesticEquity.stocks))}
-            />
-            <div className="ft-sublabel">Mutual funds / ETFs / Smallcase</div>
-            <HoldingList
-              rows={a.domesticEquity.mutualFunds}
-              categories={EQUITY_CATS}
-              namePlaceholder="Fund name"
-              showUnits
-              onChange={(m) => update((d) => m(d.assets.domesticEquity.mutualFunds))}
             />
 
             {capTotal > 0 && (
@@ -182,6 +175,19 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
                 </div>
               ))}
             </div>
+          </Section>
+        )}
+
+        {on('equity_mf') && (
+          <Section title="Equity Mutual Funds" subtitle="Funds & ETFs (also auto-tracked on Pulse)" right={<HeadRight k="equity_mf" value={totals.equityMf} />} collapsible defaultOpen={false}>
+            <ClassDist k="equity_mf" />
+            <HoldingList
+              rows={a.domesticEquity.mutualFunds}
+              categories={EQUITY_CATS}
+              namePlaceholder="Fund name"
+              showUnits
+              onChange={(m) => update((d) => m(d.assets.domesticEquity.mutualFunds))}
+            />
           </Section>
         )}
 

@@ -187,25 +187,25 @@ describe('tracked funds (Funds tab) integration', () => {
     updatedAt: '2024-01-01',
   });
 
-  it('splits tracked value into domestic equity vs debt by category', () => {
+  it('splits tracked value into equity mutual funds vs debt by category', () => {
     const t = trackedFundsByClass([fund('flexicap', 100, 20), fund('largecap', 50, 10), fund('debt', 100, 12)]);
-    expect(t.domestic_equity).toBeCloseTo(2000 + 500, 6); // equity caps -> domestic equity
+    expect(t.equity_mf).toBeCloseTo(2000 + 500, 6); // equity caps -> equity mutual funds
     expect(t.debt).toBeCloseTo(1200, 6);
   });
 
   it('handles no funds', () => {
-    expect(trackedFundsByClass()).toEqual({ domestic_equity: 0, debt: 0 });
-    expect(trackedFundsByClass([])).toEqual({ domestic_equity: 0, debt: 0 });
+    expect(trackedFundsByClass()).toEqual({ equity_mf: 0, debt: 0 });
+    expect(trackedFundsByClass([])).toEqual({ equity_mf: 0, debt: 0 });
   });
 
-  it('adds tracked value into net worth (domestic equity + debt)', () => {
+  it('adds tracked value into net worth (equity mutual funds + debt)', () => {
     const assets = emptyAssets();
     assets.debt.liquidCash = 100000;
     const nwPlain = computeNetWorth(assets, { items: [] });
-    const nwTracked = computeNetWorth(assets, { items: [] }, [], [], { domestic_equity: 300000, debt: 50000 });
+    const nwTracked = computeNetWorth(assets, { items: [] }, [], [], { equity_mf: 300000, debt: 50000 });
     expect(nwTracked.totalAssets).toBe(nwPlain.totalAssets + 350000);
-    const de = nwTracked.byClass.find((c) => c.key === 'domestic_equity');
-    expect(de?.value).toBe(300000);
+    const mf = nwTracked.byClass.find((c) => c.key === 'equity_mf');
+    expect(mf?.value).toBe(300000);
     const debt = nwTracked.byClass.find((c) => c.key === 'debt');
     expect(debt?.value).toBe(150000); // 100k liquid + 50k tracked
   });
@@ -223,16 +223,24 @@ describe('classBreakdown', () => {
     updatedAt: '2024-01-01',
   });
 
-  it('splits domestic equity into Stocks + fund types (manual + tracked), excluding debt funds', () => {
+  it('domestic_equity breaks into individual stocks (funds moved to equity_mf)', () => {
     const assets = emptyAssets();
-    assets.domesticEquity.stocks = [row(50000, 'ACME')];
-    const funds = [fund('largecap', 100, 20), fund('midcap', 50, 10), fund('debt', 100, 12)];
-    const rows = classBreakdown(assets, 'domestic_equity', funds);
+    assets.domesticEquity.stocks = [row(50000, 'ACME'), row(30000, 'BETA')];
+    const rows = classBreakdown(assets, 'domestic_equity');
     const byLabel = Object.fromEntries(rows.map((r) => [r.label, r.value]));
-    expect(byLabel['Stocks']).toBe(50000);
-    expect(byLabel['Large cap']).toBe(2000);
+    expect(byLabel['ACME']).toBe(50000);
+    expect(byLabel['BETA']).toBe(30000);
+  });
+
+  it('equity_mf breaks into fund types (tracked), excluding debt; a type with 2 funds drills in', () => {
+    const assets = emptyAssets();
+    const funds = [fund('largecap', 100, 20), fund('largecap', 50, 20), fund('midcap', 50, 10), fund('debt', 100, 12)];
+    const rows = classBreakdown(assets, 'equity_mf', funds);
+    const byLabel = Object.fromEntries(rows.map((r) => [r.label, r.value]));
+    expect(byLabel['Large cap']).toBe(3000); // 2000 + 1000
     expect(byLabel['Mid cap']).toBe(500);
-    expect(rows.some((r) => r.label.toLowerCase().includes('debt'))).toBe(false); // debt fund excluded
+    expect(rows.some((r) => r.label.toLowerCase().includes('debt'))).toBe(false);
+    expect(rows.find((r) => r.label === 'Large cap')?.children?.length).toBe(2);
   });
 
   it('breaks debt into cash / FDs / debt funds (incl. tracked) / EPF', () => {

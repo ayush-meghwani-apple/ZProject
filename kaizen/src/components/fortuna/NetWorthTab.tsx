@@ -19,6 +19,7 @@ const CHART_RANGES: ChartRange[] = ['1W', '1M', '3M', 'MAX'];
 
 const CLASS_COLOR: Record<AssetClassKey, string> = {
   domestic_equity: '#6366f1',
+  equity_mf: '#818cf8',
   us_equity: '#0ea5e9',
   debt: '#22c55e',
   gold: '#f59e0b',

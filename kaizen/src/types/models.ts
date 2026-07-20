@@ -210,9 +210,12 @@ export interface VaultItem {
 // is INR; all percentages are whole numbers (12 = 12%).
 // ---------------------------------------------------------------------------
 
-/** One of the six asset classes the planner reasons about. */
+/** One of the built-in asset classes the planner reasons about. Domestic equity
+ *  is split into direct stocks (`domestic_equity`) and mutual funds
+ *  (`equity_mf`) so the two can be tracked separately. */
 export type AssetClassKey =
   | 'domestic_equity'
+  | 'equity_mf'
   | 'us_equity'
   | 'debt'
   | 'gold'

@@ -9,7 +9,8 @@ import type { AssetClassKey, FinancialPlan, HoldingRow, LedgerEntry } from '../t
 import { newId } from './util';
 
 const BUILTIN_LABELS: Record<AssetClassKey, string> = {
-  domestic_equity: 'Domestic Equity',
+  domestic_equity: 'Equity Stocks',
+  equity_mf: 'Equity Mutual Funds',
   us_equity: 'US Equity',
   debt: 'Debt',
   gold: 'Gold',
@@ -47,6 +48,8 @@ export function classHoldings(draft: FinancialPlan, key: string): HoldingRow[] |
   switch (key) {
     case 'domestic_equity':
       return a.domesticEquity.stocks;
+    case 'equity_mf':
+      return a.domesticEquity.mutualFunds;
     case 'us_equity':
       return a.usEquity.others;
     case 'debt':
