@@ -70,62 +70,66 @@ export default function HoldingList({
     <div className="ft-holdings">
       {rows.map((row, i) =>
         editingId === row.id ? (
-          <div className="ft-holding" key={row.id}>
-            <input
-              className="input ft-holding__name"
-              value={row.name}
-              placeholder={namePlaceholder}
-              autoFocus
-              onChange={(e) => onChange((rs) => { rs[i].name = e.target.value; })}
-            />
-            {categories && (
-              <select
-                className="input ft-holding__cat"
-                value={row.category ?? categories[0]}
-                onChange={(e) => onChange((rs) => { rs[i].category = e.target.value; })}
+          <div className="ft-holding ft-holding--edit" key={row.id}>
+            <div className="ft-holding__r1">
+              <input
+                className="input ft-holding__name"
+                value={row.name}
+                placeholder={namePlaceholder}
+                autoFocus
+                onChange={(e) => onChange((rs) => { rs[i].name = e.target.value; })}
+              />
+              <button
+                className="iconbtn ft-holding__del"
+                aria-label="Remove"
+                title="Remove"
+                onPointerDown={(e) => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { setEditingId(null); onChange((rs) => { rs.splice(i, 1); }); }}
               >
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            )}
-            <span className="ft-holding__amt">
-              <span className="ft-row__cur">₹</span>
-              <AmountInput
-                className="input ft-holding__val"
-                value={row.value}
-                onChange={(v) => onChange((rs) => { rs[i].value = v; })}
-                placeholder="0"
-              />
-            </span>
-            {showUnits && (
-              <UnitsField
-                value={row.units ?? 0}
-                onChange={(u) => onChange((rs) => { rs[i].units = u; })}
-              />
-            )}
-            <button
-              className="iconbtn ft-holding__del"
-              aria-label="Remove"
-              title="Remove"
-              onPointerDown={(e) => e.preventDefault()}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { setEditingId(null); onChange((rs) => { rs.splice(i, 1); }); }}
-            >
-              <AppIcon name="trash" size={16} />
-            </button>
-            <button
-              className="iconbtn ft-holding__done"
-              aria-label="Done"
-              title="Done"
-              onPointerDown={(e) => e.preventDefault()}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setEditingId(null)}
-            >
-              <AppIcon name="done" size={16} />
-            </button>
+                <AppIcon name="trash" size={16} />
+              </button>
+              <button
+                className="iconbtn ft-holding__done"
+                aria-label="Done"
+                title="Done"
+                onPointerDown={(e) => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setEditingId(null)}
+              >
+                <AppIcon name="done" size={16} />
+              </button>
+            </div>
+            <div className="ft-holding__r2">
+              {categories && (
+                <select
+                  className="input ft-holding__cat"
+                  value={row.category ?? categories[0]}
+                  onChange={(e) => onChange((rs) => { rs[i].category = e.target.value; })}
+                >
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <span className="ft-holding__amt">
+                <span className="ft-row__cur">₹</span>
+                <AmountInput
+                  className="input ft-holding__val"
+                  value={row.value}
+                  onChange={(v) => onChange((rs) => { rs[i].value = v; })}
+                  placeholder="0"
+                />
+              </span>
+              {showUnits && (
+                <UnitsField
+                  value={row.units ?? 0}
+                  onChange={(u) => onChange((rs) => { rs[i].units = u; })}
+                />
+              )}
+            </div>
           </div>
         ) : (
           <button className="ft-readrow ft-readrow--tap" key={row.id} onClick={() => setEditingId(row.id)}>

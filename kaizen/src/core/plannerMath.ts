@@ -240,10 +240,12 @@ export function trackedFundsByClass(funds: MutualFundHolding[] = []): TrackedFun
   return { domestic_equity, debt };
 }
 
-/** One sub-category slice within an asset class (for the distribution charts). */
+/** One sub-category slice within an asset class (for the distribution charts).
+ *  `children` lets a slice drill down one more level (a fund-type → its funds). */
 export interface BreakdownRow {
   label: string;
   value: number;
+  children?: BreakdownRow[];
 }
 
 const EQUITY_CAT_LABELS: Record<string, string> = {
@@ -279,25 +281,36 @@ export function classBreakdown(
   key: string,
   funds: MutualFundHolding[] = [],
   customClasses: CustomAssetClass[] = [],
-  tracked: TrackedFundTotals = {},
 ): BreakdownRow[] {
   const a = assets;
   const rows: BreakdownRow[] = [];
   if (key === 'domestic_equity') {
-    const catMap = new Map<string, number>();
-    const add = (raw: string, val: number) => {
+    // Fund types, each carrying its individual funds so the chart can drill in.
+    const catTotal = new Map<string, number>();
+    const catFunds = new Map<string, BreakdownRow[]>();
+    const addFund = (raw: string, name: string, val: number) => {
       if (!(val > 0)) return;
       const k = normEquityCat(raw);
-      catMap.set(k, (catMap.get(k) ?? 0) + val);
+      catTotal.set(k, (catTotal.get(k) ?? 0) + val);
+      const arr = catFunds.get(k) ?? [];
+      arr.push({ label: name, value: val });
+      catFunds.set(k, arr);
     };
-    for (const r of a.domesticEquity.mutualFunds) add(r.category ?? 'other', num(r.value));
+    for (const r of a.domesticEquity.mutualFunds) addFund(r.category ?? 'other', r.name || 'Fund', num(r.value));
     for (const f of funds) {
       if (f.category === 'debt') continue;
       const units = (f.transactions ?? []).reduce((s, t) => s + num(t.units), 0);
-      add(f.category, units * num(f.latestNav ?? 0));
+      addFund(f.category, f.name || 'Fund', units * num(f.latestNav ?? 0));
     }
-    rows.push({ label: 'Stocks', value: sumRows(a.domesticEquity.stocks) });
-    for (const [k, v] of [...catMap.entries()].sort((x, y) => y[1] - x[1])) rows.push({ label: EQUITY_CAT_LABELS[k] ?? k, value: v });
+    const stockKids = a.domesticEquity.stocks
+      .filter((r) => num(r.value) > 0)
+      .map((r) => ({ label: r.name || 'Stock', value: num(r.value) }))
+      .sort((x, y) => y.value - x.value);
+    rows.push({ label: 'Stocks', value: sumRows(a.domesticEquity.stocks), children: stockKids.length > 1 ? stockKids : undefined });
+    for (const [k, v] of [...catTotal.entries()].sort((x, y) => y[1] - x[1])) {
+      const kids = (catFunds.get(k) ?? []).sort((x, y) => y.value - x.value);
+      rows.push({ label: EQUITY_CAT_LABELS[k] ?? k, value: v, children: kids.length > 1 ? kids : undefined });
+    }
     if (num(a.misc.smallcase) > 0) rows.push({ label: 'Smallcase', value: num(a.misc.smallcase) });
     if (num(a.misc.ulips) > 0) rows.push({ label: 'ULIPs / insurance', value: num(a.misc.ulips) });
   } else if (key === 'us_equity') {
@@ -306,8 +319,16 @@ export function classBreakdown(
     if (num(a.debt.liquidCash) > 0) rows.push({ label: 'Liquid / cash', value: num(a.debt.liquidCash) });
     const fds = sumRows(a.debt.fds);
     if (fds > 0) rows.push({ label: 'Fixed deposits', value: fds });
-    const df = sumRows(a.debt.debtFunds) + num(tracked.debt ?? 0);
-    if (df > 0) rows.push({ label: 'Debt funds', value: df });
+    const dfKids: BreakdownRow[] = [];
+    for (const r of a.debt.debtFunds) if (num(r.value) > 0) dfKids.push({ label: r.name || 'Debt fund', value: num(r.value) });
+    for (const f of funds) {
+      if (f.category !== 'debt') continue;
+      const units = (f.transactions ?? []).reduce((s, t) => s + num(t.units), 0);
+      const v = units * num(f.latestNav ?? 0);
+      if (v > 0) dfKids.push({ label: f.name || 'Debt fund', value: v });
+    }
+    const df = dfKids.reduce((s, r) => s + r.value, 0);
+    if (df > 0) rows.push({ label: 'Debt funds', value: df, children: dfKids.length > 1 ? dfKids.sort((x, y) => y.value - x.value) : undefined });
     const epf = sumRows(a.debt.epfPpfVpf);
     if (epf > 0) rows.push({ label: 'EPF / PPF / VPF', value: epf });
   } else if (key === 'gold') {

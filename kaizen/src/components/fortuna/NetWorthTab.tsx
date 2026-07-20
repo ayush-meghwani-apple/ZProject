@@ -63,7 +63,7 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
       else s.add(k);
       return s;
     });
-  const breakdownFor = (key: string) => classBreakdown(plan.assets, key, plan.mutualFunds ?? [], custom, tracked);
+  const breakdownFor = (key: string) => classBreakdown(plan.assets, key, plan.mutualFunds ?? [], custom);
 
   // "Assets over time" line chart — from daily snapshots, so it starts the day
   // tracking began and builds forward (no misleading back-to-inception jumps).

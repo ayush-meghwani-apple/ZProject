@@ -3804,6 +3804,34 @@ svg.lucide {
 .ft-holding__val:focus {
   outline: none;
 }
+/* Editing a holding uses two rows so a long name isn't squeezed (issue). */
+.ft-holding--edit {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.06);
+}
+.ft-holding__r1,
+.ft-holding__r2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ft-holding--edit .ft-holding__name {
+  flex: 1 1 auto;
+}
+.ft-holding__r2 .ft-holding__cat {
+  flex: 1 1 auto;
+}
+.ft-holding__r2 .ft-holding__amt {
+  flex: 1 1 auto;
+}
+.ft-holding__r2 .ft-holding__units {
+  flex: 0 0 auto;
+}
 .ft-holding__del {
   flex: 0 0 auto;
   color: var(--bad);
@@ -5151,8 +5179,18 @@ svg.lucide {
 .ft-chartctl__sel {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 7px 10px;
+  padding: 8px 34px 8px 12px;
   font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background-color: var(--surface-2);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b8b9a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .ft-chartctl__ranges,
 .ft-trend__ranges {

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { AssetClassKey, CustomAssetClass } from '../../types/models';
-import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION, classBreakdown, trackedFundsByClass } from '../../core/plannerMath';
+import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION, classBreakdown } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import RecurringInvestments from './RecurringInvestments';
@@ -97,9 +97,8 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
   // vs EPF…) shown at the top of each section so the Portfolio visualises how
   // each asset class is split, not just its total.
   const funds = plan.mutualFunds ?? [];
-  const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
   const ClassDist = ({ k }: { k: string }) => {
-    const rows = classBreakdown(a, k, funds, customClasses, tracked);
+    const rows = classBreakdown(a, k, funds, customClasses);
     if (rows.length < 2) return null;
     return (
       <>

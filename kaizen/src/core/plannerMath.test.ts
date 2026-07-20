@@ -240,11 +240,11 @@ describe('classBreakdown', () => {
     assets.debt.liquidCash = 100000;
     assets.debt.fds = [row(200000, 'HDFC FD')];
     assets.debt.epfPpfVpf = [row(300000, 'EPF')];
-    const rows = classBreakdown(assets, 'debt', [], [], { debt: 40000 });
+    const rows = classBreakdown(assets, 'debt', [fund('debt', 100, 400)]);
     const byLabel = Object.fromEntries(rows.map((r) => [r.label, r.value]));
     expect(byLabel['Liquid / cash']).toBe(100000);
     expect(byLabel['Fixed deposits']).toBe(200000);
-    expect(byLabel['Debt funds']).toBe(40000); // tracked debt only
+    expect(byLabel['Debt funds']).toBe(40000); // tracked debt fund 100 x 400
     expect(byLabel['EPF / PPF / VPF']).toBe(300000);
   });
 

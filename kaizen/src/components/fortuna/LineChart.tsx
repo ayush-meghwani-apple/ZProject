@@ -50,9 +50,19 @@ export default function LineChart({
     return () => ro.disconnect();
   }, []);
 
-  const n = labels.length;
-  const allVals = series.flatMap((s) => s.values).filter((v): v is number => v != null && Number.isFinite(v));
-  if (n < 2 || allVals.length < 2) {
+  // A single data point (e.g. the very first day of tracking) is expanded to a
+  // flat two-point line so the chart shows a "starting point today" instead of
+  // an empty message; it then grows as more days are captured.
+  let lbls = labels;
+  let srs = series;
+  if (labels.length === 1) {
+    lbls = [labels[0], labels[0]];
+    srs = series.map((s) => ({ ...s, values: [s.values[0] ?? null, s.values[0] ?? null] }));
+  }
+
+  const n = lbls.length;
+  const allVals = srs.flatMap((s) => s.values).filter((v): v is number => v != null && Number.isFinite(v));
+  if (n < 2 || allVals.length < 1) {
     return <p className="ft-chart__empty">{emptyHint}</p>;
   }
 
@@ -117,10 +127,10 @@ export default function LineChart({
         })}
         {xTickIdx.map((i) => (
           <text key={i} x={xFor(i)} y={height - 6} className="ft-chart__xlabel" style={{ textAnchor: i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle' }}>
-            {labels[i]}
+            {lbls[i]}
           </text>
         ))}
-        {series.map((s) => (
+        {srs.map((s) => (
           <path
             key={s.label}
             d={pathFor(s.values)}
@@ -135,7 +145,7 @@ export default function LineChart({
         {active != null && (
           <>
             <line x1={xFor(active)} y1={padT} x2={xFor(active)} y2={padT + plotH} className="ft-chart__cross" />
-            {series.map((s) => {
+            {srs.map((s) => {
               const v = s.values[active];
               if (v == null || !Number.isFinite(v)) return null;
               return <circle key={s.label} cx={xFor(active)} cy={yFor(v)} r={3.5} fill={s.color} />;
@@ -145,8 +155,8 @@ export default function LineChart({
       </svg>
       {active != null && (
         <div className="ft-chart__tip" style={{ left: tipLeft }}>
-          <div className="ft-chart__tipdate">{labels[active]}</div>
-          {series.map((s) => {
+          <div className="ft-chart__tipdate">{lbls[active]}</div>
+          {srs.map((s) => {
             const v = s.values[active];
             if (v == null || !Number.isFinite(v)) return null;
             return (
