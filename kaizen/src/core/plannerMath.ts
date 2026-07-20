@@ -240,6 +240,96 @@ export function trackedFundsByClass(funds: MutualFundHolding[] = []): TrackedFun
   return { domestic_equity, debt };
 }
 
+/** One sub-category slice within an asset class (for the distribution charts). */
+export interface BreakdownRow {
+  label: string;
+  value: number;
+}
+
+const EQUITY_CAT_LABELS: Record<string, string> = {
+  largecap: 'Large cap',
+  midcap: 'Mid cap',
+  smallcap: 'Small cap',
+  flexicap: 'Flexi / Multi cap',
+  hybrid: 'Hybrid',
+  other: 'Other funds',
+};
+
+/** Normalise the many category spellings (manual EQUITY_CATS + tracked
+ *  MFCategory) to one key so stocks vs fund-type breakdown groups cleanly. */
+function normEquityCat(raw: string): string {
+  const s = (raw || '').toLowerCase();
+  if (s.includes('large')) return 'largecap';
+  if (s.includes('mid')) return 'midcap';
+  if (s.includes('small')) return 'smallcap';
+  if (s.includes('flexi') || s.includes('multi')) return 'flexicap';
+  if (s.includes('hybrid')) return 'hybrid';
+  return 'other';
+}
+
+/**
+ * Break one asset class into its sub-categories (for the Net Worth drill-down
+ * and the Portfolio distribution charts). Domestic equity → Stocks + funds by
+ * type (manual rows + auto-tracked funds; debt funds stay in Debt); Debt →
+ * cash/FDs/debt funds/EPF; Gold → ETF/jewellery/SGB/other; etc. Only non-zero
+ * slices are returned. Pure.
+ */
+export function classBreakdown(
+  assets: PlanAssets,
+  key: string,
+  funds: MutualFundHolding[] = [],
+  customClasses: CustomAssetClass[] = [],
+  tracked: TrackedFundTotals = {},
+): BreakdownRow[] {
+  const a = assets;
+  const rows: BreakdownRow[] = [];
+  if (key === 'domestic_equity') {
+    const catMap = new Map<string, number>();
+    const add = (raw: string, val: number) => {
+      if (!(val > 0)) return;
+      const k = normEquityCat(raw);
+      catMap.set(k, (catMap.get(k) ?? 0) + val);
+    };
+    for (const r of a.domesticEquity.mutualFunds) add(r.category ?? 'other', num(r.value));
+    for (const f of funds) {
+      if (f.category === 'debt') continue;
+      const units = (f.transactions ?? []).reduce((s, t) => s + num(t.units), 0);
+      add(f.category, units * num(f.latestNav ?? 0));
+    }
+    rows.push({ label: 'Stocks', value: sumRows(a.domesticEquity.stocks) });
+    for (const [k, v] of [...catMap.entries()].sort((x, y) => y[1] - x[1])) rows.push({ label: EQUITY_CAT_LABELS[k] ?? k, value: v });
+    if (num(a.misc.smallcase) > 0) rows.push({ label: 'Smallcase', value: num(a.misc.smallcase) });
+    if (num(a.misc.ulips) > 0) rows.push({ label: 'ULIPs / insurance', value: num(a.misc.ulips) });
+  } else if (key === 'us_equity') {
+    for (const r of a.usEquity.others) rows.push({ label: r.name || 'Holding', value: num(r.value) });
+  } else if (key === 'debt') {
+    if (num(a.debt.liquidCash) > 0) rows.push({ label: 'Liquid / cash', value: num(a.debt.liquidCash) });
+    const fds = sumRows(a.debt.fds);
+    if (fds > 0) rows.push({ label: 'Fixed deposits', value: fds });
+    const df = sumRows(a.debt.debtFunds) + num(tracked.debt ?? 0);
+    if (df > 0) rows.push({ label: 'Debt funds', value: df });
+    const epf = sumRows(a.debt.epfPpfVpf);
+    if (epf > 0) rows.push({ label: 'EPF / PPF / VPF', value: epf });
+  } else if (key === 'gold') {
+    if (num(a.gold.goldEtf) > 0) rows.push({ label: 'Gold ETF', value: num(a.gold.goldEtf) });
+    if (num(a.gold.jewellery) > 0) rows.push({ label: 'Jewellery', value: num(a.gold.jewellery) });
+    if (num(a.gold.sgb) > 0) rows.push({ label: 'SGB', value: num(a.gold.sgb) });
+    for (const r of a.gold.others) rows.push({ label: r.name || 'Gold', value: num(r.value) });
+  } else if (key === 'crypto') {
+    if (num(a.crypto.crypto) > 0) rows.push({ label: 'Crypto', value: num(a.crypto.crypto) });
+    for (const r of a.crypto.others) rows.push({ label: r.name || 'Crypto', value: num(r.value) });
+  } else if (key === 'real_estate') {
+    if (num(a.realEstate.home) > 0) rows.push({ label: 'Home', value: num(a.realEstate.home) });
+    if (num(a.realEstate.otherRealEstate) > 0) rows.push({ label: 'Other real estate', value: num(a.realEstate.otherRealEstate) });
+    if (num(a.realEstate.reits) > 0) rows.push({ label: 'REITs', value: num(a.realEstate.reits) });
+    for (const r of a.realEstate.others) rows.push({ label: r.name || 'Property', value: num(r.value) });
+  } else {
+    const c = customClasses.find((x) => x.id === key);
+    if (c) for (const r of c.holdings) rows.push({ label: r.name || 'Holding', value: num(r.value) });
+  }
+  return rows.filter((r) => r.value > 0);
+}
+
 export function computeNetWorth(
   assets: PlanAssets,
   liabilities: Liabilities,

@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { AssetClassKey, CustomAssetClass } from '../../types/models';
-import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION } from '../../core/plannerMath';
+import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION, classBreakdown, trackedFundsByClass } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import RecurringInvestments from './RecurringInvestments';
 import HoldingList from './HoldingList';
+import DistributionBar from './DistributionBar';
 import { Section, RenamableMoneyRow, TotalRow, Switch, formatINR } from './shared';
 
 const EQUITY_CATS = ['Largecap', 'Midcap', 'Smallcap', 'Flexi/Multi cap'];
@@ -92,6 +93,22 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
     </span>
   );
 
+  // A per-class sub-category distribution bar (Stocks vs fund types, cash vs FDs
+  // vs EPF…) shown at the top of each section so the Portfolio visualises how
+  // each asset class is split, not just its total.
+  const funds = plan.mutualFunds ?? [];
+  const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
+  const ClassDist = ({ k }: { k: string }) => {
+    const rows = classBreakdown(a, k, funds, customClasses, tracked);
+    if (rows.length < 2) return null;
+    return (
+      <>
+        <div className="ft-sublabel">Distribution</div>
+        <DistributionBar rows={rows} />
+      </>
+    );
+  };
+
   return (
     <main className="app__body">
       <div className="page ft-page">
@@ -99,6 +116,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
 
         {on('real_estate') && (
           <Section title="Real Estate & REITs" right={<HeadRight k="real_estate" value={totals.realEstate} />} collapsible defaultOpen={false}>
+            <ClassDist k="real_estate" />
             <RenamableMoneyRow label={fl('realEstate.home', 'Home')} value={a.realEstate.home} onChange={(v) => update((d) => { d.assets.realEstate.home = v; })} onRename={(n) => rename('realEstate.home', n)} />
             <RenamableMoneyRow label={fl('realEstate.otherRealEstate', 'Other real estate')} value={a.realEstate.otherRealEstate} onChange={(v) => update((d) => { d.assets.realEstate.otherRealEstate = v; })} onRename={(n) => rename('realEstate.otherRealEstate', n)} />
             <RenamableMoneyRow label={fl('realEstate.reits', 'REITs')} value={a.realEstate.reits} onChange={(v) => update((d) => { d.assets.realEstate.reits = v; })} onRename={(n) => rename('realEstate.reits', n)} />
@@ -109,6 +127,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
 
         {on('domestic_equity') && (
           <Section title="Domestic Equity" subtitle="Stocks & mutual funds" right={<HeadRight k="domestic_equity" value={totals.domesticEquity} />} collapsible defaultOpen={false}>
+            <ClassDist k="domestic_equity" />
             <div className="ft-sublabel">Stocks</div>
             <HoldingList
               rows={a.domesticEquity.stocks}
@@ -169,6 +188,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
 
         {on('us_equity') && (
           <Section title="US Equity" right={<HeadRight k="us_equity" value={totals.usEquity} />} collapsible defaultOpen={false}>
+            <ClassDist k="us_equity" />
             <HoldingList
               rows={a.usEquity.others}
               namePlaceholder="e.g. S&P 500 ETF, VOO, US mutual fund"
@@ -181,6 +201,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
 
         {on('debt') && (
           <Section title="Debt" subtitle="Cash, FDs, debt funds, EPF/PPF/VPF" right={<HeadRight k="debt" value={totals.debt} />} collapsible defaultOpen={false}>
+            <ClassDist k="debt" />
             <RenamableMoneyRow label={fl('debt.liquidCash', 'Liquid (savings, cash, liquid fund)')} value={a.debt.liquidCash} onChange={(v) => update((d) => { d.assets.debt.liquidCash = v; })} onRename={(n) => rename('debt.liquidCash', n)} />
             <div className="ft-sublabel">Fixed deposits</div>
             <HoldingList rows={a.debt.fds} namePlaceholder="Bank name" onChange={(m) => update((d) => m(d.assets.debt.fds))} />
@@ -194,6 +215,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
 
         {on('gold') && (
           <Section title="Gold" right={<HeadRight k="gold" value={totals.gold} />} collapsible defaultOpen={false}>
+            <ClassDist k="gold" />
             <RenamableMoneyRow label={fl('gold.jewellery', 'Jewellery')} value={a.gold.jewellery} onChange={(v) => update((d) => { d.assets.gold.jewellery = v; })} onRename={(n) => rename('gold.jewellery', n)} />
             <RenamableMoneyRow label={fl('gold.sgb', 'SGB')} value={a.gold.sgb} onChange={(v) => update((d) => { d.assets.gold.sgb = v; })} onRename={(n) => rename('gold.sgb', n)} />
             <RenamableMoneyRow label={fl('gold.goldEtf', 'Gold ETF / digital gold')} value={a.gold.goldEtf} onChange={(v) => update((d) => { d.assets.gold.goldEtf = v; })} onRename={(n) => rename('gold.goldEtf', n)} />
@@ -204,6 +226,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
 
         {on('crypto') && (
           <Section title="Crypto" right={<HeadRight k="crypto" value={totals.crypto} />} collapsible defaultOpen={false}>
+            <ClassDist k="crypto" />
             <RenamableMoneyRow label={fl('crypto.crypto', 'Crypto')} value={a.crypto.crypto} onChange={(v) => update((d) => { d.assets.crypto.crypto = v; })} onRename={(n) => rename('crypto.crypto', n)} />
             <div className="ft-sublabel">Other holdings</div>
             <HoldingList rows={a.crypto.others} namePlaceholder="e.g. BTC, ETH, SOL" onChange={(m) => update((d) => m(d.assets.crypto.others))} />
@@ -218,6 +241,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
             collapsible
             defaultOpen={c.id === newClassId}
           >
+            <ClassDist k={c.id} />
             <label className="ft-row">
               <span className="ft-row__label">Category name</span>
               <span className="ft-row__field">

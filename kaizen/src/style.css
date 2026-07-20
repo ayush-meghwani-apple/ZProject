@@ -3588,6 +3588,11 @@ svg.lucide {
   font-variant-numeric: tabular-nums;
 }
 
+/* Per-class sub-category distribution bar shown inside each Portfolio section. */
+.ft-dist {
+  margin: 2px 0 14px;
+}
+
 /* Drill-down: domestic-equity split into Stocks + mutual-fund types. */
 .ft-legend__item--exp {
   cursor: pointer;

@@ -22,6 +22,7 @@ import {
   activeAssumptions,
   assetClassTotals,
   trackedFundsByClass,
+  classBreakdown,
 } from './plannerMath';
 
 // --- test fixtures ---------------------------------------------------------
@@ -209,3 +210,49 @@ describe('tracked funds (Funds tab) integration', () => {
     expect(debt?.value).toBe(150000); // 100k liquid + 50k tracked
   });
 });
+
+describe('classBreakdown', () => {
+  const fund = (category: MutualFundHolding['category'], units: number, nav: number): MutualFundHolding => ({
+    id: `f${idc++}`,
+    schemeCode: 200000 + idc,
+    name: 'F',
+    category,
+    transactions: [{ id: `t${idc++}`, date: '2024-01-01', amount: units * nav, units, nav, kind: 'sip' }],
+    latestNav: nav,
+    createdAt: '2024-01-01',
+    updatedAt: '2024-01-01',
+  });
+
+  it('splits domestic equity into Stocks + fund types (manual + tracked), excluding debt funds', () => {
+    const assets = emptyAssets();
+    assets.domesticEquity.stocks = [row(50000, 'ACME')];
+    const funds = [fund('largecap', 100, 20), fund('midcap', 50, 10), fund('debt', 100, 12)];
+    const rows = classBreakdown(assets, 'domestic_equity', funds);
+    const byLabel = Object.fromEntries(rows.map((r) => [r.label, r.value]));
+    expect(byLabel['Stocks']).toBe(50000);
+    expect(byLabel['Large cap']).toBe(2000);
+    expect(byLabel['Mid cap']).toBe(500);
+    expect(rows.some((r) => r.label.toLowerCase().includes('debt'))).toBe(false); // debt fund excluded
+  });
+
+  it('breaks debt into cash / FDs / debt funds (incl. tracked) / EPF', () => {
+    const assets = emptyAssets();
+    assets.debt.liquidCash = 100000;
+    assets.debt.fds = [row(200000, 'HDFC FD')];
+    assets.debt.epfPpfVpf = [row(300000, 'EPF')];
+    const rows = classBreakdown(assets, 'debt', [], [], { debt: 40000 });
+    const byLabel = Object.fromEntries(rows.map((r) => [r.label, r.value]));
+    expect(byLabel['Liquid / cash']).toBe(100000);
+    expect(byLabel['Fixed deposits']).toBe(200000);
+    expect(byLabel['Debt funds']).toBe(40000); // tracked debt only
+    expect(byLabel['EPF / PPF / VPF']).toBe(300000);
+  });
+
+  it('omits zero slices', () => {
+    const assets = emptyAssets();
+    assets.gold.sgb = 29000;
+    const rows = classBreakdown(assets, 'gold');
+    expect(rows).toEqual([{ label: 'SGB', value: 29000 }]);
+  });
+});
+

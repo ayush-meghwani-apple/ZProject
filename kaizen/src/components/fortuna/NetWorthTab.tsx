@@ -6,6 +6,7 @@ import {
   activeAssumptions,
   classLabelMap,
   trackedFundsByClass,
+  classBreakdown,
 } from '../../core/plannerMath';
 import type { AssetClassKey, DaySnapshot } from '../../types/models';
 import HoldingList from './HoldingList';
@@ -26,26 +27,6 @@ const CLASS_COLOR: Record<AssetClassKey, string> = {
 };
 /** Palette for custom classes (cycled by order). */
 const CUSTOM_COLORS = ['#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#84cc16', '#06b6d4'];
-
-/** Normalise the many category spellings (manual EQUITY_CATS + tracked MFCategory)
- *  to one key so stocks vs fund-type breakdown groups cleanly. */
-const EQUITY_CAT_LABELS: Record<string, string> = {
-  largecap: 'Large cap',
-  midcap: 'Mid cap',
-  smallcap: 'Small cap',
-  flexicap: 'Flexi / Multi cap',
-  hybrid: 'Hybrid',
-  other: 'Other funds',
-};
-function normEquityCat(raw: string): string {
-  const s = (raw || '').toLowerCase();
-  if (s.includes('large')) return 'largecap';
-  if (s.includes('mid')) return 'midcap';
-  if (s.includes('small')) return 'smallcap';
-  if (s.includes('flexi') || s.includes('multi')) return 'flexicap';
-  if (s.includes('hybrid')) return 'hybrid';
-  return 'other';
-}
 
 export default function NetWorthTab({ plan, update }: FortunaTabProps) {
   const disabled = plan.disabledClasses ?? [];
@@ -82,57 +63,7 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
       else s.add(k);
       return s;
     });
-  function breakdownFor(key: string): { label: string; value: number }[] {
-    const a = plan.assets;
-    const n = (v: number) => (Number.isFinite(v) ? v : 0);
-    const sum = (rows: { value: number }[]) => rows.reduce((s, r) => s + n(r.value), 0);
-    const rows: { label: string; value: number }[] = [];
-    if (key === 'domestic_equity') {
-      const catMap = new Map<string, number>();
-      const add = (raw: string, val: number) => {
-        if (!(val > 0)) return;
-        const k = normEquityCat(raw);
-        catMap.set(k, (catMap.get(k) ?? 0) + val);
-      };
-      for (const r of a.domesticEquity.mutualFunds) add(r.category ?? 'other', n(r.value));
-      for (const f of plan.mutualFunds ?? []) {
-        if (f.category === 'debt') continue;
-        const units = (f.transactions ?? []).reduce((s, t) => s + n(t.units), 0);
-        add(f.category, units * n(f.latestNav ?? 0));
-      }
-      rows.push({ label: 'Stocks', value: sum(a.domesticEquity.stocks) });
-      for (const [k, v] of [...catMap.entries()].sort((x, y) => y[1] - x[1])) rows.push({ label: EQUITY_CAT_LABELS[k] ?? k, value: v });
-      if (n(a.misc.smallcase) > 0) rows.push({ label: 'Smallcase', value: n(a.misc.smallcase) });
-      if (n(a.misc.ulips) > 0) rows.push({ label: 'ULIPs / insurance', value: n(a.misc.ulips) });
-    } else if (key === 'us_equity') {
-      for (const r of a.usEquity.others) rows.push({ label: r.name || 'Holding', value: n(r.value) });
-    } else if (key === 'debt') {
-      if (n(a.debt.liquidCash) > 0) rows.push({ label: 'Liquid / cash', value: n(a.debt.liquidCash) });
-      const fds = sum(a.debt.fds);
-      if (fds > 0) rows.push({ label: 'Fixed deposits', value: fds });
-      const df = sum(a.debt.debtFunds) + n(tracked.debt ?? 0);
-      if (df > 0) rows.push({ label: 'Debt funds', value: df });
-      const epf = sum(a.debt.epfPpfVpf);
-      if (epf > 0) rows.push({ label: 'EPF / PPF / VPF', value: epf });
-    } else if (key === 'gold') {
-      if (n(a.gold.goldEtf) > 0) rows.push({ label: 'Gold ETF', value: n(a.gold.goldEtf) });
-      if (n(a.gold.jewellery) > 0) rows.push({ label: 'Jewellery', value: n(a.gold.jewellery) });
-      if (n(a.gold.sgb) > 0) rows.push({ label: 'SGB', value: n(a.gold.sgb) });
-      for (const r of a.gold.others) rows.push({ label: r.name || 'Gold', value: n(r.value) });
-    } else if (key === 'crypto') {
-      if (n(a.crypto.crypto) > 0) rows.push({ label: 'Crypto', value: n(a.crypto.crypto) });
-      for (const r of a.crypto.others) rows.push({ label: r.name || 'Crypto', value: n(r.value) });
-    } else if (key === 'real_estate') {
-      if (n(a.realEstate.home) > 0) rows.push({ label: 'Home', value: n(a.realEstate.home) });
-      if (n(a.realEstate.otherRealEstate) > 0) rows.push({ label: 'Other real estate', value: n(a.realEstate.otherRealEstate) });
-      if (n(a.realEstate.reits) > 0) rows.push({ label: 'REITs', value: n(a.realEstate.reits) });
-      for (const r of a.realEstate.others) rows.push({ label: r.name || 'Property', value: n(r.value) });
-    } else {
-      const c = custom.find((x) => x.id === key);
-      if (c) for (const r of c.holdings) rows.push({ label: r.name || 'Holding', value: n(r.value) });
-    }
-    return rows.filter((r) => r.value > 0);
-  }
+  const breakdownFor = (key: string) => classBreakdown(plan.assets, key, plan.mutualFunds ?? [], custom, tracked);
 
   // "Assets over time" line chart — from daily snapshots, so it starts the day
   // tracking began and builds forward (no misleading back-to-inception jumps).
