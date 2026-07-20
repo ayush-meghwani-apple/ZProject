@@ -4875,6 +4875,24 @@ svg.lucide {
   background: rgba(99, 102, 241, 0.12);
   color: var(--text);
 }
+/* Ledger filter dropdown + read-only position rows. */
+.ft-led__filterbar {
+  margin-top: 12px;
+}
+.ft-led__filtersel {
+  width: 100%;
+  padding: 9px 11px;
+  font-size: 13px;
+}
+.ft-led__item--pos .ft-led__main {
+  cursor: default;
+}
+.ft-led__item--pos .ft-led__name {
+  font-weight: 500;
+}
+.ft-led__item--pos .ft-led__amt {
+  color: var(--muted);
+}
 .ft-led__reviewnote {
   color: var(--accent);
   font-size: 12px;
@@ -5038,6 +5056,115 @@ svg.lucide {
   cursor: pointer;
 }
 .ft-trend__ranges button.active {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--text);
+}
+
+/* ---- Line chart (axes + tap-to-read) ------------------------------------ */
+.ft-chart {
+  position: relative;
+  width: 100%;
+  margin-top: 8px;
+  touch-action: pan-y;
+}
+.ft-chart__svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.ft-chart__grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+.ft-chart__cross {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.ft-chart__ylabel {
+  fill: var(--muted);
+  font-size: 9.5px;
+  text-anchor: end;
+}
+.ft-chart__xlabel {
+  fill: var(--muted);
+  font-size: 9.5px;
+}
+.ft-chart__empty {
+  margin: 14px 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.ft-chart__tip {
+  position: absolute;
+  top: 2px;
+  width: 128px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--card, #14141c);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 3;
+}
+.ft-chart__tipdate {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.ft-chart__tiprow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+}
+.ft-chart__tipdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+.ft-chart__tiplabel {
+  flex: 1 1 auto;
+  color: var(--muted);
+}
+.ft-chart__tipval {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chart controls: metric dropdown + range toggle. */
+.ft-chartctl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.ft-chartctl__sel {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 10px;
+  font-size: 12.5px;
+}
+.ft-chartctl__ranges,
+.ft-trend__ranges {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.ft-chartctl__ranges button {
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.ft-chartctl__ranges button.active {
   border-color: color-mix(in srgb, var(--accent) 50%, transparent);
   background: rgba(99, 102, 241, 0.12);
   color: var(--text);

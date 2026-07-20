@@ -3,14 +3,16 @@ import type { FortunaTabProps } from '../FortunaApp';
 import type { MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
 import { formatINR, newId, now } from '../../core/util';
-import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
+import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch } from '../../core/amfi';
 import { generateSipInstallments } from '../../core/mfSip';
 import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
-import { PerformanceTrend } from './Sparkline';
+import LineChart from './LineChart';
+import { sliceDays, dayLabel, type ChartRange } from '../../core/planSnapshot';
 import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
 
 const catLabel = (c: MFCategory) => MF_CATEGORIES.find((x) => x.value === c)?.label ?? 'Other';
+const CHART_RANGES: ChartRange[] = ['1W', '1M', '3M', 'MAX'];
 
 function fmtDate(iso?: string): string {
   if (!iso) return '—';
@@ -95,7 +97,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = useState<'all' | 'active' | 'inactive'>('all');
-  const [navs, setNavs] = useState<Record<number, NavPoint[]>>({});
+  const [range, setRange] = useState<ChartRange>('1M');
 
   // A fund is "active" if it has a running SIP; otherwise it's held but not
   // being added to (inactive).
@@ -142,13 +144,6 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
           }
         }
       });
-      // Keep the fetched NAV histories so the value-trend sparkline can price
-      // each past month without re-downloading.
-      setNavs((prev) => {
-        const next = { ...prev };
-        for (const r of results) if (r.ok && r.points) next[r.schemeCode] = r.points;
-        return next;
-      });
       const failed = results.filter((r) => !r.ok).length;
       const added = results.reduce((s, r) => s + (r.ok && r.newTxns ? r.newTxns.length : 0), 0);
       setStatus(failed ? 'partial' : 'ok');
@@ -172,6 +167,13 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
 
   const asOf = new Date();
   const { groups, total } = byCategory(shownFunds, asOf);
+
+  // Fund performance from today onward, from daily snapshots (no back-to-2020 jump).
+  const perfDays = sliceDays(plan.daySnapshots ?? [], range).filter((s) => s.mfInvested > 0 || s.mfValue > 0);
+  const perfFirst = perfDays[0];
+  const perfLast = perfDays[perfDays.length - 1];
+  const perfDelta = perfDays.length >= 2 ? perfLast.mfValue - perfFirst.mfValue : 0;
+  const perfPct = perfDays.length >= 2 && perfFirst.mfValue > 0 ? (perfDelta / perfFirst.mfValue) * 100 : 0;
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
     const id = newId();
@@ -232,7 +234,41 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               </span>
             </div>
             <ReturnPills s={total} />
-            <PerformanceTrend funds={funds} navs={navs} />
+            <div className="ft-trend">
+              <div className="ft-trend__head">
+                <span className="ft-trend__title">Performance</span>
+                {perfDays.length >= 2 && (
+                  <span className={`ft-trend__delta ${perfDelta > 0 ? 'ft-mf__pos' : perfDelta < 0 ? 'ft-mf__neg' : ''}`}>
+                    {perfDelta > 0 ? '\u25b2' : perfDelta < 0 ? '\u25bc' : '\u25a0'} {formatINR(Math.abs(perfDelta))}{' '}
+                    <small>({perfPct >= 0 ? '+' : ''}{perfPct.toFixed(1)}%)</small>
+                  </span>
+                )}
+              </div>
+              <LineChart
+                labels={perfDays.map((s) => dayLabel(s.d))}
+                series={[
+                  { label: 'Value', color: '#6366f1', values: perfDays.map((s) => s.mfValue) },
+                  { label: 'Invested', color: '#94a3b8', values: perfDays.map((s) => s.mfInvested), dashed: true },
+                ]}
+                height={170}
+                emptyHint="Your fund performance charts here from today onward, building up as the days pass."
+              />
+              <div className="ft-trend__foot">
+                <div className="ft-trend__ranges">
+                  {CHART_RANGES.map((r) => (
+                    <button
+                      key={r}
+                      className={range === r ? 'active' : ''}
+                      onPointerDown={(e) => e.preventDefault()}
+                      onClick={() => setRange(r)}
+                    >
+                      {r === 'MAX' ? 'Max' : r}
+                    </button>
+                  ))}
+                </div>
+                <span className="ft-trend__baseline">– – Invested</span>
+              </div>
+            </div>
           </div>
         )}
 

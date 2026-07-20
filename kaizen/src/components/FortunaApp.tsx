@@ -4,7 +4,7 @@ import AppIcon from './AppIcon';
 import { hasPin, createPin, unlock } from '../core/vaultLock';
 import { PlannerRepository } from '../repository/plannerRepository';
 import { applyDueRecurringInvestments } from '../core/recurringInvestments';
-import { captureMonthlySnapshot } from '../core/planSnapshot';
+import { captureMonthlySnapshot, captureDailySnapshot } from '../core/planSnapshot';
 import type { FinancialPlan } from '../types/models';
 import NetWorthTab from './fortuna/NetWorthTab';
 import CashFlowTab from './fortuna/CashFlowTab';
@@ -140,7 +140,8 @@ function Fortuna({ onLock }: { onLock: () => void }) {
       // date the moment the plan opens; persist only if something changed.
       const applied = applyDueRecurringInvestments(p);
       const snapped = captureMonthlySnapshot(p);
-      if (applied > 0 || snapped) void PlannerRepository.save(p);
+      const daySnapped = captureDailySnapshot(p);
+      if (applied > 0 || snapped || daySnapped) void PlannerRepository.save(p);
       if (alive) setPlan(p);
     });
     return () => {
@@ -191,7 +192,8 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     const p = await PlannerRepository.load();
     const applied = applyDueRecurringInvestments(p);
     const snapped = captureMonthlySnapshot(p);
-    if (applied > 0 || snapped) await PlannerRepository.save(p);
+    const daySnapped = captureDailySnapshot(p);
+    if (applied > 0 || snapped || daySnapped) await PlannerRepository.save(p);
     setPlan(p);
   }, []);
 

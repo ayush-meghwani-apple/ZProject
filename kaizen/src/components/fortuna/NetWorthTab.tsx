@@ -7,11 +7,14 @@ import {
   classLabelMap,
   trackedFundsByClass,
 } from '../../core/plannerMath';
-import type { AssetClassKey } from '../../types/models';
+import type { AssetClassKey, DaySnapshot } from '../../types/models';
 import HoldingList from './HoldingList';
 import AppIcon from '../AppIcon';
 import { Section, TotalRow, Stat, formatINR } from './shared';
-import { TrendCard } from './Sparkline';
+import LineChart from './LineChart';
+import { sliceDays, dayLabel, type ChartRange } from '../../core/planSnapshot';
+
+const CHART_RANGES: ChartRange[] = ['1W', '1M', '3M', 'MAX'];
 
 const CLASS_COLOR: Record<AssetClassKey, string> = {
   domestic_equity: '#6366f1',
@@ -70,30 +73,88 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
   const targetKeys = Object.keys(target).filter((k) => target[k] > 0);
   const targetTotal = targetKeys.reduce((s, k) => s + target[k], 0);
 
-  // Break domestic equity into Stocks + mutual funds by type (manual rows +
-  // auto-tracked funds), so the mix can be drilled into one level deeper.
-  const [deOpen, setDeOpen] = useState(false);
-  const deBreak = useMemo(() => {
+  // Drill any asset-class slice down into its parts (stocks / fund types / FDs…).
+  const [openKeys, setOpenKeys] = useState<Set<string>>(() => new Set());
+  const toggleKey = (k: string) =>
+    setOpenKeys((prev) => {
+      const s = new Set(prev);
+      if (s.has(k)) s.delete(k);
+      else s.add(k);
+      return s;
+    });
+  function breakdownFor(key: string): { label: string; value: number }[] {
     const a = plan.assets;
     const n = (v: number) => (Number.isFinite(v) ? v : 0);
-    const catMap = new Map<string, number>();
-    const add = (raw: string, val: number) => {
-      if (!(val > 0)) return;
-      const k = normEquityCat(raw);
-      catMap.set(k, (catMap.get(k) ?? 0) + val);
-    };
-    for (const r of a.domesticEquity.mutualFunds) add(r.category ?? 'other', n(r.value));
-    for (const f of plan.mutualFunds ?? []) {
-      if (f.category === 'debt') continue; // debt funds belong to the Debt class
-      const units = (f.transactions ?? []).reduce((s, t) => s + n(t.units), 0);
-      add(f.category, units * n(f.latestNav ?? 0));
+    const sum = (rows: { value: number }[]) => rows.reduce((s, r) => s + n(r.value), 0);
+    const rows: { label: string; value: number }[] = [];
+    if (key === 'domestic_equity') {
+      const catMap = new Map<string, number>();
+      const add = (raw: string, val: number) => {
+        if (!(val > 0)) return;
+        const k = normEquityCat(raw);
+        catMap.set(k, (catMap.get(k) ?? 0) + val);
+      };
+      for (const r of a.domesticEquity.mutualFunds) add(r.category ?? 'other', n(r.value));
+      for (const f of plan.mutualFunds ?? []) {
+        if (f.category === 'debt') continue;
+        const units = (f.transactions ?? []).reduce((s, t) => s + n(t.units), 0);
+        add(f.category, units * n(f.latestNav ?? 0));
+      }
+      rows.push({ label: 'Stocks', value: sum(a.domesticEquity.stocks) });
+      for (const [k, v] of [...catMap.entries()].sort((x, y) => y[1] - x[1])) rows.push({ label: EQUITY_CAT_LABELS[k] ?? k, value: v });
+      if (n(a.misc.smallcase) > 0) rows.push({ label: 'Smallcase', value: n(a.misc.smallcase) });
+      if (n(a.misc.ulips) > 0) rows.push({ label: 'ULIPs / insurance', value: n(a.misc.ulips) });
+    } else if (key === 'us_equity') {
+      for (const r of a.usEquity.others) rows.push({ label: r.name || 'Holding', value: n(r.value) });
+    } else if (key === 'debt') {
+      if (n(a.debt.liquidCash) > 0) rows.push({ label: 'Liquid / cash', value: n(a.debt.liquidCash) });
+      const fds = sum(a.debt.fds);
+      if (fds > 0) rows.push({ label: 'Fixed deposits', value: fds });
+      const df = sum(a.debt.debtFunds) + n(tracked.debt ?? 0);
+      if (df > 0) rows.push({ label: 'Debt funds', value: df });
+      const epf = sum(a.debt.epfPpfVpf);
+      if (epf > 0) rows.push({ label: 'EPF / PPF / VPF', value: epf });
+    } else if (key === 'gold') {
+      if (n(a.gold.goldEtf) > 0) rows.push({ label: 'Gold ETF', value: n(a.gold.goldEtf) });
+      if (n(a.gold.jewellery) > 0) rows.push({ label: 'Jewellery', value: n(a.gold.jewellery) });
+      if (n(a.gold.sgb) > 0) rows.push({ label: 'SGB', value: n(a.gold.sgb) });
+      for (const r of a.gold.others) rows.push({ label: r.name || 'Gold', value: n(r.value) });
+    } else if (key === 'crypto') {
+      if (n(a.crypto.crypto) > 0) rows.push({ label: 'Crypto', value: n(a.crypto.crypto) });
+      for (const r of a.crypto.others) rows.push({ label: r.name || 'Crypto', value: n(r.value) });
+    } else if (key === 'real_estate') {
+      if (n(a.realEstate.home) > 0) rows.push({ label: 'Home', value: n(a.realEstate.home) });
+      if (n(a.realEstate.otherRealEstate) > 0) rows.push({ label: 'Other real estate', value: n(a.realEstate.otherRealEstate) });
+      if (n(a.realEstate.reits) > 0) rows.push({ label: 'REITs', value: n(a.realEstate.reits) });
+      for (const r of a.realEstate.others) rows.push({ label: r.name || 'Property', value: n(r.value) });
+    } else {
+      const c = custom.find((x) => x.id === key);
+      if (c) for (const r of c.holdings) rows.push({ label: r.name || 'Holding', value: n(r.value) });
     }
-    const rows = [{ label: 'Stocks', value: a.domesticEquity.stocks.reduce((s, r) => s + n(r.value), 0) }];
-    for (const [k, v] of [...catMap.entries()].sort((x, y) => y[1] - x[1])) rows.push({ label: EQUITY_CAT_LABELS[k] ?? k, value: v });
-    if (n(a.misc.smallcase) > 0) rows.push({ label: 'Smallcase', value: n(a.misc.smallcase) });
-    if (n(a.misc.ulips) > 0) rows.push({ label: 'ULIPs / insurance', value: n(a.misc.ulips) });
     return rows.filter((r) => r.value > 0);
-  }, [plan.assets, plan.mutualFunds]);
+  }
+
+  // "Assets over time" line chart — from daily snapshots, so it starts the day
+  // tracking began and builds forward (no misleading back-to-inception jumps).
+  const days = plan.daySnapshots ?? [];
+  const [range, setRange] = useState<ChartRange>('1M');
+  const [metric, setMetric] = useState<string>('total');
+  const metricOptions = [
+    { k: 'total', label: 'Total assets' },
+    { k: 'networth', label: 'Net worth' },
+    ...mix.map((c) => ({ k: `class:${c.key}`, label: c.label })),
+    { k: 'stocks', label: 'Stocks' },
+    { k: 'mf', label: 'Mutual funds' },
+  ];
+  const valueOf = (s: DaySnapshot): number => {
+    if (metric === 'networth') return s.netWorth;
+    if (metric === 'stocks') return s.stocks;
+    if (metric === 'mf') return s.mfValue;
+    if (metric.startsWith('class:')) return s.byClass[metric.slice(6)] ?? 0;
+    return s.totalAssets;
+  };
+  const chartDays = sliceDays(days, range);
+  const metricLabel = metricOptions.find((o) => o.k === metric)?.label ?? 'Total assets';
 
   return (
     <main className="app__body">
@@ -116,13 +177,32 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
           </div>
         </div>
 
-        {(plan.snapshots?.length ?? 0) >= 2 && (
-          <TrendCard
-            title="Net worth trend"
-            values={(plan.snapshots ?? []).map((s) => s.netWorth)}
-            stroke="#22c55e"
+        <Section title="Assets over time" subtitle="Builds from the day you start tracking">
+          <div className="ft-chartctl">
+            <select className="input ft-chartctl__sel" value={metric} onChange={(e) => setMetric(e.target.value)}>
+              {metricOptions.map((o) => (
+                <option key={o.k} value={o.k}>{o.label}</option>
+              ))}
+            </select>
+            <div className="ft-chartctl__ranges">
+              {CHART_RANGES.map((r) => (
+                <button
+                  key={r}
+                  className={range === r ? 'active' : ''}
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={() => setRange(r)}
+                >
+                  {r === 'MAX' ? 'Max' : r}
+                </button>
+              ))}
+            </div>
+          </div>
+          <LineChart
+            labels={chartDays.map((s) => dayLabel(s.d))}
+            series={[{ label: metricLabel, color: '#6366f1', values: chartDays.map(valueOf) }]}
+            emptyHint="Open Fortuna over a few days and this chart of your assets will build up from today."
           />
-        )}
+        </Section>
 
         <Section title="Current asset mix" subtitle="Where your money sits today, by asset class">
           {nw.totalAssets > 0 ? (
@@ -139,23 +219,25 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
               </div>
               <ul className="ft-legend">
                 {mix.map((c) => {
-                  const expandable = c.key === 'domestic_equity' && deBreak.length > 1;
+                  const bd = breakdownFor(c.key);
+                  const expandable = bd.length > 1;
+                  const open = openKeys.has(c.key);
                   return (
                     <Fragment key={c.key}>
                       <li
                         className={`ft-legend__item ${expandable ? 'ft-legend__item--exp' : ''}`}
-                        onClick={expandable ? () => setDeOpen((o) => !o) : undefined}
+                        onClick={expandable ? () => toggleKey(c.key) : undefined}
                       >
                         <span className="ft-legend__dot" style={{ background: colorFor(c.key) }} />
                         <span className="ft-legend__label">
                           {c.label}
-                          {expandable && <AppIcon name={deOpen ? 'chevronUp' : 'chevronDown'} size={13} className="ft-legend__chev" />}
+                          {expandable && <AppIcon name={open ? 'chevronUp' : 'chevronDown'} size={13} className="ft-legend__chev" />}
                         </span>
                         <span className="ft-legend__pct">{Math.round((c.value / nw.totalAssets) * 100)}%</span>
                         <span className="ft-legend__val">{formatINR(c.value)}</span>
                       </li>
-                      {expandable && deOpen &&
-                        deBreak.map((s) => (
+                      {expandable && open &&
+                        bd.map((s) => (
                           <li key={`${c.key}-${s.label}`} className="ft-legend__item ft-legend__sub">
                             <span className="ft-legend__label">{s.label}</span>
                             <span className="ft-legend__pct">{Math.round(c.value ? (s.value / c.value) * 100 : 0)}%</span>

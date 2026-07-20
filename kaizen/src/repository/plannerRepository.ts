@@ -9,6 +9,7 @@ import type {
   LedgerEntry,
   MutualFundHolding,
   PlanSnapshot,
+  DaySnapshot,
 } from '../types/models';
 import { DEFAULT_HORIZONS } from '../types/models';
 
@@ -84,6 +85,7 @@ function defaultPlan(): FinancialPlan {
     mutualFunds: [],
     ledger: [],
     snapshots: [],
+    daySnapshots: [],
     horizons: DEFAULT_HORIZONS.map((h) => ({ ...h })),
     customClasses: [],
     fixedLabels: {},
@@ -220,6 +222,7 @@ function migrate(raw: Record<string, unknown> | undefined | null): FinancialPlan
     mutualFunds: migrateMutualFunds(raw.mutualFunds),
     ledger: migrateLedger(raw.ledger),
     snapshots: migrateSnapshots(raw.snapshots),
+    daySnapshots: migrateDaySnapshots(raw.daySnapshots),
     horizons: migrateHorizons(raw.horizons),
     customClasses: migrateCustomClasses(raw.customClasses),
     fixedLabels:
@@ -335,6 +338,32 @@ function migrateSnapshots(raw: unknown): PlanSnapshot[] {
   const byMonth = new Map<string, PlanSnapshot>();
   for (const s of out.sort((a, b) => a.at.localeCompare(b.at))) byMonth.set(s.ym, s);
   return [...byMonth.values()].sort((a, b) => a.ym.localeCompare(b.ym));
+}
+
+/** Sanitize/default the daily snapshot series. Non-destructive; sorted old→new. */
+function migrateDaySnapshots(raw: unknown): DaySnapshot[] {
+  if (!Array.isArray(raw)) return [];
+  const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const byDay = new Map<string, DaySnapshot>();
+  for (const r of raw as Record<string, unknown>[]) {
+    if (!r || typeof r !== 'object') continue;
+    const d = typeof r.d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.d) ? r.d : '';
+    if (!d) continue;
+    const byClass: Record<string, number> = {};
+    if (r.byClass && typeof r.byClass === 'object') {
+      for (const [k, v] of Object.entries(r.byClass as Record<string, unknown>)) byClass[k] = num(v);
+    }
+    byDay.set(d, {
+      d,
+      netWorth: num(r.netWorth),
+      totalAssets: num(r.totalAssets),
+      mfInvested: num(r.mfInvested),
+      mfValue: num(r.mfValue),
+      stocks: num(r.stocks),
+      byClass,
+    });
+  }
+  return [...byDay.values()].sort((a, b) => a.d.localeCompare(b.d));
 }
 
 /** Migrate assumptions from the old fixed shortPct/mediumPct/longPct fields to

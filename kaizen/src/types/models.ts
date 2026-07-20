@@ -473,6 +473,19 @@ export interface PlanSnapshot {
   mfCurrent: number; // current value of tracked mutual funds (units × NAV)
 }
 
+/** A daily point-in-time snapshot, captured once per day on open. Powers the
+ *  "assets over time" and MF performance line charts, which start from the day
+ *  tracking began and build forward (no misleading back-to-inception returns). */
+export interface DaySnapshot {
+  d: string; // "yyyy-mm-dd" (local day)
+  netWorth: number;
+  totalAssets: number;
+  mfInvested: number; // amount put into tracked mutual funds
+  mfValue: number; // current value of tracked mutual funds
+  stocks: number; // domestic-equity stocks value
+  byClass: Record<string, number>; // asset-class key -> value that day
+}
+
 /**
  * The one-and-only Fortuna document. `v` is an internal version used to migrate
  * an older document forward in memory on load (never destructively).
@@ -495,6 +508,9 @@ export interface FinancialPlan {
   /** Monthly headline snapshots (net worth / MF value) for the trend charts.
    *  Appended once per calendar month on open; defaulted to `[]`. */
   snapshots?: PlanSnapshot[];
+  /** Daily snapshots (net worth, per-class, stocks, MF value/invested) for the
+   *  line charts that start from today and build forward. Defaulted to `[]`. */
+  daySnapshots?: DaySnapshot[];
   /** Goal time-horizon buckets (Short/Medium/Long + any the user adds). When
    *  absent, {@link DEFAULT_HORIZONS} are assumed. */
   horizons?: HorizonDef[];

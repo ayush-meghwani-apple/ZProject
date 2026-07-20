@@ -46,11 +46,15 @@ function DecimalInput({ value, onChange, placeholder }: { value: number; onChang
 }
 
 /** One unified ledger line — either a mutual-fund buy or a general asset entry. */
+/** One unified ledger line — a mutual-fund buy, a general asset entry, or a
+ *  read-only current position from the Portfolio. */
 interface UnifiedRow {
   id: string;
-  source: 'mf' | 'ledger';
+  source: 'mf' | 'ledger' | 'holding';
   date: string;
   name: string;
+  classKey: string; // asset class this belongs to
+  isMF: boolean; // is a mutual fund (for the "All mutual funds" filter)
   groupKey: string; // 'mf:largecap' | 'cls:gold'
   groupLabel: string;
   amount: number;
@@ -63,6 +67,15 @@ interface UnifiedRow {
   fundId?: string;
   entryId?: string;
 }
+
+const BUILTIN_CLASS_LABEL: Record<string, string> = {
+  domestic_equity: 'Domestic equity',
+  us_equity: 'US equity',
+  debt: 'Debt',
+  gold: 'Gold',
+  crypto: 'Crypto',
+  real_estate: 'Real estate',
+};
 
 export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   const funds = plan.mutualFunds ?? [];
@@ -78,6 +91,8 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
         source: 'mf' as const,
         date: t.date,
         name: f.name,
+        classKey: f.category === 'debt' ? 'debt' : 'domestic_equity',
+        isMF: true,
         groupKey: `mf:${f.category}`,
         groupLabel: mfCatLabel(f.category),
         amount: Number(t.amount) || 0,
@@ -95,6 +110,8 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
       source: 'ledger' as const,
       date: e.date,
       name: e.name,
+      classKey: e.assetClassKey,
+      isMF: false,
       groupKey: `cls:${e.assetClassKey}`,
       groupLabel: classLabel(plan, e.assetClassKey),
       amount: Number(e.amount) || 0,
@@ -105,19 +122,85 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
       reviewed: e.reviewed === true,
       entryId: e.id,
     }));
-    return [...mfRows, ...genRows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    // Read-only current positions from the Portfolio, so the ledger reflects the
+    // WHOLE portfolio (stocks, gold, FDs, EPF, REITs…), not just fund buys.
+    const a = plan.assets;
+    const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const holdRows: UnifiedRow[] = [];
+    let hid = 0;
+    const pos = (classKey: string, name: string, value: number, units = 0, isMF = false) => {
+      if (!(value > 0)) return;
+      holdRows.push({
+        id: `hold:${hid++}`,
+        source: 'holding',
+        date: '',
+        name,
+        classKey,
+        isMF,
+        groupKey: `cls:${classKey}`,
+        groupLabel: classLabel(plan, classKey),
+        amount: value,
+        units,
+        isSip: false,
+        isSell: false,
+        auto: false,
+        reviewed: true,
+      });
+    };
+    for (const r of a.domesticEquity.stocks) pos('domestic_equity', r.name || 'Stock', num(r.value), num(r.units));
+    for (const r of a.domesticEquity.mutualFunds) pos('domestic_equity', r.name || 'Fund', num(r.value), num(r.units), true);
+    if (num(a.misc.smallcase) > 0) pos('domestic_equity', 'Smallcase', num(a.misc.smallcase));
+    if (num(a.misc.ulips) > 0) pos('domestic_equity', 'ULIPs / insurance', num(a.misc.ulips));
+    for (const r of a.usEquity.others) pos('us_equity', r.name || 'US holding', num(r.value), num(r.units));
+    if (num(a.debt.liquidCash) > 0) pos('debt', 'Liquid / cash', num(a.debt.liquidCash));
+    for (const r of a.debt.fds) pos('debt', r.name || 'FD', num(r.value));
+    for (const r of a.debt.debtFunds) pos('debt', r.name || 'Debt fund', num(r.value), num(r.units), true);
+    for (const r of a.debt.epfPpfVpf) pos('debt', r.name || 'EPF / PPF', num(r.value));
+    if (num(a.gold.goldEtf) > 0) pos('gold', 'Gold ETF', num(a.gold.goldEtf));
+    if (num(a.gold.jewellery) > 0) pos('gold', 'Jewellery', num(a.gold.jewellery));
+    if (num(a.gold.sgb) > 0) pos('gold', 'SGB', num(a.gold.sgb));
+    for (const r of a.gold.others) pos('gold', r.name || 'Gold', num(r.value));
+    if (num(a.crypto.crypto) > 0) pos('crypto', 'Crypto', num(a.crypto.crypto));
+    for (const r of a.crypto.others) pos('crypto', r.name || 'Crypto', num(r.value));
+    if (num(a.realEstate.home) > 0) pos('real_estate', 'Home', num(a.realEstate.home));
+    if (num(a.realEstate.otherRealEstate) > 0) pos('real_estate', 'Other real estate', num(a.realEstate.otherRealEstate));
+    if (num(a.realEstate.reits) > 0) pos('real_estate', 'REITs', num(a.realEstate.reits));
+    for (const r of a.realEstate.others) pos('real_estate', r.name || 'Property', num(r.value));
+    for (const c of plan.customClasses ?? []) for (const r of c.holdings) pos(c.id, r.name || 'Holding', num(r.value), num(r.units));
+
+    const ts = (r: UnifiedRow) => {
+      const t = new Date(r.date).getTime();
+      return Number.isFinite(t) ? t : -Infinity; // undated positions sink below dated txns
+    };
+    return [...mfRows, ...genRows, ...holdRows].sort((x, y) => ts(y) - ts(x));
   }, [funds, ledger, plan]);
 
-  // Distinct sub-category filters present in the ledger (MF caps + asset classes).
-  const groups = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const r of rows) if (!seen.has(r.groupKey)) seen.set(r.groupKey, r.groupLabel);
-    return [...seen.entries()].map(([key, label]) => ({ key, label }));
-  }, [rows]);
+  // Dropdown filter options: All, All mutual funds, per asset class, per MF cap.
+  const filterOptions = useMemo(() => {
+    const opts: { key: string; label: string }[] = [{ key: 'all', label: 'All transactions' }];
+    if (rows.some((r) => r.isMF)) opts.push({ key: 'mf', label: 'All mutual funds' });
+    const classes = new Map<string, string>();
+    for (const r of rows) if (r.classKey && !classes.has(r.classKey)) classes.set(r.classKey, BUILTIN_CLASS_LABEL[r.classKey] ?? classLabel(plan, r.classKey));
+    for (const [k, l] of classes) opts.push({ key: `cls:${k}`, label: `All ${l.toLowerCase()}` });
+    const caps = new Map<string, string>();
+    for (const r of rows) if (r.isMF && r.groupKey.startsWith('mf:') && !caps.has(r.groupKey)) caps.set(r.groupKey, r.groupLabel);
+    for (const [k, l] of caps) opts.push({ key: k, label: l });
+    return opts;
+  }, [rows, plan]);
 
-  const shown = filter === 'all' ? rows : rows.filter((r) => r.groupKey === filter);
-  const invested = shown.reduce((s, r) => s + (r.isSell ? -r.amount : r.amount), 0);
+  const shown = rows.filter((r) => {
+    if (filter === 'all') return true;
+    if (filter === 'mf') return r.isMF;
+    if (filter.startsWith('cls:')) return r.classKey === filter.slice(4);
+    return r.groupKey === filter;
+  });
+  const invested = shown.reduce((s, r) => (r.source === 'holding' ? s : s + (r.isSell ? -r.amount : r.amount)), 0);
   const needsReview = rows.filter((r) => r.auto && !r.reviewed).length;
+  const matchCount = (key: string) =>
+    key === 'all'
+      ? rows.length
+      : rows.filter((r) => (key === 'mf' ? r.isMF : key.startsWith('cls:') ? r.classKey === key.slice(4) : r.groupKey === key)).length;
 
   // ---- mutations ----------------------------------------------------------
   function editTxn(fundId: string, txnId: string, patch: Partial<MFTransaction>) {
@@ -202,25 +285,25 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
               )}
             </div>
 
-            {groups.length > 1 && (
-              <div className="ft-led__filters">
-                <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
-                  All <b>{rows.length}</b>
-                </button>
-                {groups.map((g) => (
-                  <button key={g.key} className={filter === g.key ? 'active' : ''} onClick={() => setFilter(g.key)}>
-                    {g.label} <b>{rows.filter((r) => r.groupKey === g.key).length}</b>
-                  </button>
-                ))}
+            {filterOptions.length > 2 && (
+              <div className="ft-led__filterbar">
+                <select className="input ft-led__filtersel" value={filter} onChange={(e) => setFilter(e.target.value)}>
+                  {filterOptions.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label} ({matchCount(o.key)})
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
             {shown.map((r) => {
               const review = r.auto && !r.reviewed;
+              const isPos = r.source === 'holding';
               return (
-                <div className={`ft-led__item ${review ? 'ft-led__item--review' : ''}`} key={r.id}>
+                <div className={`ft-led__item ${review ? 'ft-led__item--review' : ''} ${isPos ? 'ft-led__item--pos' : ''}`} key={r.id}>
                   <div className="ft-led__row">
-                    <button className="ft-led__main" onClick={() => setOpenId((id) => (id === r.id ? null : r.id))}>
+                    <button className="ft-led__main" onClick={isPos ? undefined : () => setOpenId((id) => (id === r.id ? null : r.id))}>
                       {r.isSip && (
                         <span className="ft-led__badge ft-led__badge--sip" title="SIP installment">
                           <AppIcon name="recurring" size={12} />
@@ -229,7 +312,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                       <span className="ft-led__name">
                         {r.name}
                         <span className="ft-led__meta">
-                          {fmtDate(r.date)} · {r.groupLabel}
+                          {isPos ? 'Position' : fmtDate(r.date)} · {r.groupLabel}
                           {r.units > 0 ? ` · ${fmtUnits(r.units)} units` : ''}
                           {r.nav ? ` @ ₹${r.nav}` : ''}
                           {r.isSell ? ' · Sell' : ''}
@@ -239,7 +322,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                         {r.isSell ? '−' : ''}
                         {formatINR(r.amount)}
                       </b>
-                      <AppIcon name={openId === r.id ? 'chevronUp' : 'chevronDown'} size={16} className="ft-mf__chev" />
+                      {!isPos && <AppIcon name={openId === r.id ? 'chevronUp' : 'chevronDown'} size={16} className="ft-mf__chev" />}
                     </button>
                     {review && (
                       <button
@@ -255,7 +338,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                     )}
                   </div>
 
-                  {openId === r.id && (
+                  {openId === r.id && !isPos && (
                     <div className="ft-mf__fundbody">
                       {r.source === 'mf' ? (
                         <div className="ft-mf__txn">
