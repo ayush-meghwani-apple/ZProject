@@ -60,6 +60,16 @@ export default function HoldingList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const sum = rows.reduce((s, r) => s + (Number(r.value) || 0), 0);
 
+  // Leaving an edit row unmounts its focused input. Because the Done/Delete
+  // buttons hold focus (preventDefault, for the iOS first-tap fix), removing the
+  // input fires NO focusout, so the keyboard-open flags — which hide the bottom
+  // tab bar — could stay stuck until an app restart. Blurring first fires a
+  // clean focusout so the viewport self-heals and the tab bar comes back.
+  function closeEdit() {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    setEditingId(null);
+  }
+
   function addRow() {
     const id = newId();
     onChange((rs) => { rs.push({ id, name: '', category: categories?.[0], value: 0 }); });
@@ -85,7 +95,7 @@ export default function HoldingList({
                 title="Remove"
                 onPointerDown={(e) => e.preventDefault()}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => { setEditingId(null); onChange((rs) => { rs.splice(i, 1); }); }}
+                onClick={() => { closeEdit(); onChange((rs) => { rs.splice(i, 1); }); }}
               >
                 <AppIcon name="trash" size={16} />
               </button>
@@ -95,7 +105,7 @@ export default function HoldingList({
                 title="Done"
                 onPointerDown={(e) => e.preventDefault()}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setEditingId(null)}
+                onClick={() => closeEdit()}
               >
                 <AppIcon name="done" size={16} />
               </button>

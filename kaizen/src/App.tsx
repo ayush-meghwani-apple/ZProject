@@ -22,8 +22,8 @@ interface AppDef {
 
 const APPS: AppDef[] = [
   { id: 'expensify', name: 'Expensify', icon: 'expensify', section: 'Money' },
-  { id: 'goals', name: 'Questify', icon: 'questify', section: 'Planning' },
   { id: 'fortuna', name: 'Fortuna', icon: 'investments', section: 'Planning' },
+  { id: 'goals', name: 'Questify', icon: 'questify', section: 'Studio' },
   { id: 'notes', name: 'Slate', icon: 'slate', section: 'Studio' },
   { id: 'vault', name: 'Vault', icon: 'vault', section: 'Private' },
 ];

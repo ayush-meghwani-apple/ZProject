@@ -174,6 +174,24 @@ export const BackupRepository = {
     }
   },
 
+  /** Records that we showed the backup reminder, so we don't nag again until the
+   *  next interval — whether the user backed up or tapped "Not now". */
+  markBackupPrompted(): void {
+    try {
+      localStorage.setItem('expense:backupPromptedAt', new Date().toISOString());
+    } catch {
+      /* storage unavailable — ignore */
+    }
+  },
+
+  getBackupPromptedAt(): string | null {
+    try {
+      return localStorage.getItem('expense:backupPromptedAt');
+    } catch {
+      return null;
+    }
+  },
+
   /** True if there's anything worth backing up yet (so we don't nag empty apps). */
   async hasAnyData(): Promise<boolean> {
     const [expenses, noteDocs, goals] = await Promise.all([

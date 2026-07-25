@@ -50,12 +50,20 @@ export async function saveBackupFile(): Promise<boolean> {
   return true;
 }
 
-/** Whether a backup prompt is due, given the configured interval (in days). */
+/** Whether a backup prompt is due, given the configured interval (in days). The
+ *  reminder fires at most once per interval: once shown, we snooze until the
+ *  interval elapses again — regardless of whether the user backed up or tapped
+ *  "Not now" — so it never re-nags on every app open within the same window. */
 export function backupDue(intervalDays: number): boolean {
-  const last = BackupRepository.getLastBackupAt();
-  if (!last) return true;
   const ms = Math.max(1, intervalDays) * 86400000;
-  return Date.now() - new Date(last).getTime() >= ms;
+  const nowMs = Date.now();
+  const last = BackupRepository.getLastBackupAt();
+  // Not due if a backup was taken within the interval.
+  if (last && nowMs - new Date(last).getTime() < ms) return false;
+  // Already prompted within the interval → don't ask again yet.
+  const prompted = BackupRepository.getBackupPromptedAt();
+  if (prompted && nowMs - new Date(prompted).getTime() < ms) return false;
+  return true;
 }
 
 /**

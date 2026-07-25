@@ -4864,6 +4864,8 @@ svg.lucide {
 .ft-mf {
   -webkit-user-select: none;
   user-select: none;
+  /* Room so the floating "Add" button never covers the last transaction row. */
+  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
 }
 .ft-page input,
 .ft-page textarea,
@@ -4914,8 +4916,42 @@ svg.lucide {
 }
 .ft-led__filtersel {
   width: 100%;
-  padding: 9px 11px;
+  padding: 9px 34px 9px 12px;
   font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background-color: var(--surface-2);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b8b9a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* Always-visible "Add" button on the Ledger — floats above the bottom tab bar
+   so it's reachable no matter how long the transaction list gets. Hidden while
+   the add form is open (which replaces it inline). */
+.ft-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.42);
+  cursor: pointer;
+}
+.ft-fab:active {
+  transform: translateY(1px);
 }
 .ft-led__item--pos .ft-led__main {
   cursor: default;

@@ -16,11 +16,24 @@ export function initViewport(): void {
   // keyboard opens — which would make the keyboard undetectable).
   let maxVH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
 
+  // Which focusable elements actually pop the on-screen TEXT keyboard. A
+  // `<select>` and the date/time/color/etc. inputs open an overlay wheel/picker,
+  // NOT a keyboard — but they still fire focusin/focusout. Treating them as
+  // "keyboard open" made the global header + bottom tab bar hide (and the whole
+  // app jump vertically) every time a dropdown or date field was tapped, so they
+  // are excluded here. Only real text entry counts.
+  const NON_KEYBOARD_INPUT_TYPES = new Set([
+    'date', 'datetime-local', 'month', 'week', 'time', 'color', 'range',
+    'checkbox', 'radio', 'file', 'button', 'submit', 'reset', 'image',
+  ]);
   function isEditable(el: EventTarget | null): boolean {
     const n = el as HTMLElement | null;
     if (!n) return false;
+    if (n.isContentEditable) return true;
     const tag = n.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || n.isContentEditable;
+    if (tag === 'TEXTAREA') return true;
+    if (tag === 'INPUT') return !NON_KEYBOARD_INPUT_TYPES.has(((n as HTMLInputElement).type || 'text').toLowerCase());
+    return false; // <select> and everything else: no text keyboard
   }
 
   function apply() {

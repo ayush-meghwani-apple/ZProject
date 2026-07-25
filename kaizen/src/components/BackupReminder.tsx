@@ -31,6 +31,9 @@ export default function BackupReminder({ onBackedUp }: Props) {
       // Don't nag a brand-new / empty app — nothing to lose yet.
       if (!(await BackupRepository.hasAnyData())) return;
       if (cancelled) return;
+      // Snooze future prompts for this interval the moment we decide to show —
+      // so "Not now" (or closing the app) won't make it pop again on next open.
+      BackupRepository.markBackupPrompted();
       setDays(BackupRepository.daysSinceBackup());
       setShow(true);
     })();

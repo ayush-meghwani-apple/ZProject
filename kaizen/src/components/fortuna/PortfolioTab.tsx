@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { AssetClassKey, CustomAssetClass } from '../../types/models';
-import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION, classBreakdown } from '../../core/plannerMath';
+import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION, classBreakdown, trackedFundsByClass } from '../../core/plannerMath';
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import RecurringInvestments from './RecurringInvestments';
@@ -24,6 +24,7 @@ const CLASS_SECTION: { key: AssetClassKey; label: string; field: keyof ReturnTyp
 export default function PortfolioTab({ plan, update }: FortunaTabProps) {
   const totals = useMemo(() => sectionTotals(plan.assets), [plan.assets]);
   const caps = useMemo(() => capBreakdown(plan.assets), [plan.assets]);
+  const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
   const a = plan.assets;
   const capTotal = caps.reduce((s, c) => s + c.value, 0);
   const [newClassId, setNewClassId] = useState<string | null>(null);
@@ -34,8 +35,23 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
   const on = (key: string) => !disabledSet.has(key);
   const customTotal = (c: CustomAssetClass) => c.holdings.reduce((s, r) => s + (Number(r.value) || 0), 0);
 
+  // Displayed section value per built-in class. Equity Mutual Funds & Debt also
+  // hold auto-tracked funds (from the Ledger/Pulse), so their headings must add
+  // those in — otherwise a portfolio tracked entirely on the Pulse tab shows a
+  // misleading ₹0 heading even though the funds below have value.
+  const trackedFor = (key: string) => (key === 'equity_mf' ? tracked.equity_mf ?? 0 : key === 'debt' ? tracked.debt ?? 0 : 0);
+  const secVal: Record<string, number> = {
+    real_estate: totals.realEstate,
+    domestic_equity: totals.equityStocks,
+    equity_mf: totals.equityMf + trackedFor('equity_mf'),
+    us_equity: totals.usEquity,
+    debt: totals.debt + trackedFor('debt'),
+    gold: totals.gold,
+    crypto: totals.crypto,
+  };
+
   const enabledTotal =
-    CLASS_SECTION.filter((c) => on(c.key)).reduce((s, c) => s + totals[c.field], 0) +
+    CLASS_SECTION.filter((c) => on(c.key)).reduce((s, c) => s + secVal[c.key], 0) +
     customClasses.filter((c) => on(c.id)).reduce((s, c) => s + customTotal(c), 0);
 
   const labels = plan.fixedLabels ?? {};
@@ -126,7 +142,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
         )}
 
         {on('domestic_equity') && (
-          <Section title="Equity Stocks" subtitle="Direct stocks" right={<HeadRight k="domestic_equity" value={totals.equityStocks} />} collapsible defaultOpen={false}>
+          <Section title="Equity Stocks" subtitle="Direct stocks" right={<HeadRight k="domestic_equity" value={secVal.domestic_equity} />} collapsible defaultOpen={false}>
             <ClassDist k="domestic_equity" />
             <div className="ft-sublabel">Stocks</div>
             <HoldingList
@@ -179,8 +195,12 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
         )}
 
         {on('equity_mf') && (
-          <Section title="Equity Mutual Funds" subtitle="Funds & ETFs (also auto-tracked on Pulse)" right={<HeadRight k="equity_mf" value={totals.equityMf} />} collapsible defaultOpen={false}>
+          <Section title="Equity Mutual Funds" subtitle="Funds & ETFs (also auto-tracked on Pulse)" right={<HeadRight k="equity_mf" value={secVal.equity_mf} />} collapsible defaultOpen={false}>
             <ClassDist k="equity_mf" />
+            {trackedFor('equity_mf') > 0 && (
+              <TotalRow label="Auto-tracked funds · edit in the Ledger" value={trackedFor('equity_mf')} />
+            )}
+            {a.domesticEquity.mutualFunds.length > 0 && <div className="ft-sublabel">Manually-entered funds</div>}
             <HoldingList
               rows={a.domesticEquity.mutualFunds}
               categories={EQUITY_CATS}
@@ -192,7 +212,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
         )}
 
         {on('us_equity') && (
-          <Section title="US Equity" right={<HeadRight k="us_equity" value={totals.usEquity} />} collapsible defaultOpen={false}>
+          <Section title="US Equity" right={<HeadRight k="us_equity" value={secVal.us_equity} />} collapsible defaultOpen={false}>
             <ClassDist k="us_equity" />
             <HoldingList
               rows={a.usEquity.others}
@@ -205,8 +225,11 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
         )}
 
         {on('debt') && (
-          <Section title="Debt" subtitle="Cash, FDs, debt funds, EPF/PPF/VPF" right={<HeadRight k="debt" value={totals.debt} />} collapsible defaultOpen={false}>
+          <Section title="Debt" subtitle="Cash, FDs, debt funds, EPF/PPF/VPF" right={<HeadRight k="debt" value={secVal.debt} />} collapsible defaultOpen={false}>
             <ClassDist k="debt" />
+            {trackedFor('debt') > 0 && (
+              <TotalRow label="Auto-tracked debt funds · edit in the Ledger" value={trackedFor('debt')} />
+            )}
             <RenamableMoneyRow label={fl('debt.liquidCash', 'Liquid (savings, cash, liquid fund)')} value={a.debt.liquidCash} onChange={(v) => update((d) => { d.assets.debt.liquidCash = v; })} onRename={(n) => rename('debt.liquidCash', n)} />
             <div className="ft-sublabel">Fixed deposits</div>
             <HoldingList rows={a.debt.fds} namePlaceholder="Bank name" onChange={(m) => update((d) => m(d.assets.debt.fds))} />
@@ -219,7 +242,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
         )}
 
         {on('gold') && (
-          <Section title="Gold" right={<HeadRight k="gold" value={totals.gold} />} collapsible defaultOpen={false}>
+          <Section title="Gold" right={<HeadRight k="gold" value={secVal.gold} />} collapsible defaultOpen={false}>
             <ClassDist k="gold" />
             <RenamableMoneyRow label={fl('gold.jewellery', 'Jewellery')} value={a.gold.jewellery} onChange={(v) => update((d) => { d.assets.gold.jewellery = v; })} onRename={(n) => rename('gold.jewellery', n)} />
             <RenamableMoneyRow label={fl('gold.sgb', 'SGB')} value={a.gold.sgb} onChange={(v) => update((d) => { d.assets.gold.sgb = v; })} onRename={(n) => rename('gold.sgb', n)} />
@@ -230,7 +253,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
         )}
 
         {on('crypto') && (
-          <Section title="Crypto" right={<HeadRight k="crypto" value={totals.crypto} />} collapsible defaultOpen={false}>
+          <Section title="Crypto" right={<HeadRight k="crypto" value={secVal.crypto} />} collapsible defaultOpen={false}>
             <ClassDist k="crypto" />
             <RenamableMoneyRow label={fl('crypto.crypto', 'Crypto')} value={a.crypto.crypto} onChange={(v) => update((d) => { d.assets.crypto.crypto = v; })} onRename={(n) => rename('crypto.crypto', n)} />
             <div className="ft-sublabel">Other holdings</div>
@@ -294,7 +317,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
             {CLASS_SECTION.filter((c) => disabledSet.has(c.key)).map((c) => (
               <div className="ft-disabledrow" key={c.key}>
                 <span className="ft-disabledrow__name">{c.label}</span>
-                <span className="ft-disabledrow__val">{formatINR(totals[c.field])}</span>
+                <span className="ft-disabledrow__val">{formatINR(secVal[c.key])}</span>
                 <Switch on={false} onChange={() => toggleClass(c.key, false)} label="Off" />
               </div>
             ))}

@@ -412,7 +412,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
               );
             })}
 
-            {adding ? (
+            {adding && (
               <AddTransaction
                 funds={funds}
                 classes={assignableClasses(plan)}
@@ -432,12 +432,14 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                   setAdding(false);
                 }}
               />
-            ) : (
-              <button className="btn ft-addclass" onClick={() => setAdding(true)}>
-                <AppIcon name="plus" size={18} /> Add transaction
-              </button>
             )}
           </>
+        )}
+
+        {!adding && (
+          <button className="ft-fab" onClick={() => setAdding(true)} aria-label="Add transaction" title="Add transaction">
+            <AppIcon name="plus" size={20} /> Add
+          </button>
         )}
       </div>
     </main>
