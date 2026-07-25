@@ -147,7 +147,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
       const parsed = JSON.parse(await file.text());
       if (
         !confirm(
-          'Import this Fortuna plan?\n\nIt REPLACES your current financial plan (cash flow, assets, goals, assumptions) with the file. Your other apps (expenses, notes, vault) are NOT affected.',
+          'Import this Fortuna plan?\n\nIt REPLACES your current financial plan (cash flow, assets, goals, assumptions) with the file. Your other apps (expenses, notes) are NOT affected.',
         )
       ) {
         return;
@@ -190,8 +190,8 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
 
         <Section title="Backup & restore" subtitle="Your whole app, in one file">
           <p className="ft-note" style={{ marginTop: 0 }}>
-            Export a single <strong>kaizen-backup.json</strong> with everything — your financial plan, expenses,
-            notes and vault. Keep it somewhere safe (iCloud / Drive). <strong>Import</strong> merges a backup into
+            Export a single <strong>kaizen-backup.json</strong> with everything — your financial plan, expenses and
+            notes. Keep it somewhere safe (iCloud / Drive). <strong>Import</strong> merges a backup into
             what’s here; <strong>Restore</strong> wipes everything first and rebuilds from the file.
           </p>
           <div className="ft-btnrow">
@@ -234,7 +234,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
           <p className="ft-note" style={{ marginTop: 0 }}>
             A <strong>Fortuna-only</strong> transfer, separate from the whole-app backup above. <strong>Import</strong>{' '}
             loads a <code>fortuna-plan.json</code> (e.g. one built from your spreadsheet) and replaces{' '}
-            <em>only</em> your financial plan — your expenses, notes and vault are untouched. <strong>Export</strong>{' '}
+            <em>only</em> your financial plan — your expenses and notes are untouched. <strong>Export</strong>{' '}
             saves just the plan as its own file. Everyday edits still just save automatically; use this only for a
             one-time pre-fill or to move the plan between devices.
           </p>
@@ -260,7 +260,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
             <AppIcon name="vault" size={18} /> Lock financial plan
           </button>
           <p className="ft-note">
-            Fortuna re-locks automatically when you switch to another app, and opens with your Vault PIN.
+            Fortuna re-locks automatically when you switch to another app, and opens with your PIN.
           </p>
         </Section>
 

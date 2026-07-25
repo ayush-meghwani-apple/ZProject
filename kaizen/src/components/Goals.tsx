@@ -22,6 +22,9 @@ import type {
 interface Props {
   version: number;
   onChange: () => void;
+  /** When embedded inside another tab (e.g. Fortuna Goals), skip the .page
+   *  wrapper so it doesn't double up the surrounding padding. */
+  embedded?: boolean;
 }
 
 /** Compact INR for big projected numbers, e.g. ₹12.5L / ₹1.2Cr. */
@@ -90,7 +93,7 @@ function newLumpsum(): GoalPlanItem {
   };
 }
 
-export default function Goals({ version, onChange }: Props) {
+export default function Goals({ version, onChange, embedded = false }: Props) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [draft, setDraft] = useState<Draft>(BLANK);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -201,7 +204,7 @@ export default function Goals({ version, onChange }: Props) {
   const totalMonths = Math.max(1, Math.round(draftDurationYears(draft) * 12));
 
   return (
-    <div className="page">
+    <div className={embedded ? 'ft-goalplanner' : 'page'}>
       {showForm ? (
         <div className="card">
           <h3>{editingId ? 'Edit Goal' : 'New Goal'}</h3>

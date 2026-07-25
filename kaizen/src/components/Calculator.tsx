@@ -16,7 +16,7 @@ function num(v: string): number {
 }
 
 /** Step-up SIP what-if. */
-function SipCalculator() {
+export function SipCalculator() {
   const [calc, setCalc] = useState({ monthly: 10000, stepUp: 10, years: 2, returnPct: 12 });
   const result = stepUpSipFutureValue(calc.monthly, calc.returnPct, calc.stepUp, calc.years);
 

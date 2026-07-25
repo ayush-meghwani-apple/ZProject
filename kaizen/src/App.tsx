@@ -2,16 +2,16 @@ import { useEffect, useState } from 'react';
 import ExpensifyApp from './components/ExpensifyApp';
 import GoalsApp from './components/GoalsApp';
 import NotesApp from './components/NotesApp';
-import VaultApp from './components/VaultApp';
 import FortunaApp from './components/FortunaApp';
 import RemindersInbox from './components/RemindersInbox';
 import BackupReminder from './components/BackupReminder';
 import AppIcon, { type IconName } from './components/AppIcon';
 import { RemindersRepository } from './repository/remindersRepository';
+import { VaultRepository } from './repository/vaultRepository';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
 
-type AppId = 'expensify' | 'goals' | 'notes' | 'vault' | 'fortuna';
+type AppId = 'expensify' | 'goals' | 'notes' | 'fortuna';
 
 interface AppDef {
   id: AppId;
@@ -25,7 +25,6 @@ const APPS: AppDef[] = [
   { id: 'fortuna', name: 'Fortuna', icon: 'investments', section: 'Planning' },
   { id: 'goals', name: 'Questify', icon: 'questify', section: 'Studio' },
   { id: 'notes', name: 'Slate', icon: 'slate', section: 'Studio' },
-  { id: 'vault', name: 'Vault', icon: 'vault', section: 'Private' },
 ];
 
 // Listed in the drawer but not yet built.
@@ -63,6 +62,13 @@ export default function App() {
     }
   }, []);
 
+  // The Vault sub-app was removed; purge its stored data once (the shared PIN
+  // in vaultLock stays — Fortuna's lock still uses it).
+  useEffect(() => {
+    if (localStorage.getItem('kaizen:vaultRemoved') === '1') return;
+    VaultRepository.clearAll().finally(() => localStorage.setItem('kaizen:vaultRemoved', '1'));
+  }, []);
+
   function openApp(id: AppId) {
     setActiveApp(id);
     setDrawerOpen(false);
@@ -89,6 +95,16 @@ export default function App() {
           <AppIcon name={current.icon} size={20} />
         </span>
         <span className="app__title">{current.name}</span>
+        {activeApp === 'expensify' && (
+          <button
+            className="topswitch"
+            onClick={() => setActiveApp('fortuna')}
+            aria-label="Open Fortuna"
+            title="Open Fortuna"
+          >
+            <AppIcon name="investments" size={20} />
+          </button>
+        )}
         <button
           className="bell"
           onClick={() => setInboxOpen(true)}
@@ -150,8 +166,6 @@ export default function App() {
           <GoalsApp />
         ) : activeApp === 'fortuna' ? (
           <FortunaApp />
-        ) : activeApp === 'vault' ? (
-          <VaultApp />
         ) : (
           <NotesApp />
         )}

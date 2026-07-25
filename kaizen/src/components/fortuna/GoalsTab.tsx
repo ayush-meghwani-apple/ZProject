@@ -6,6 +6,8 @@ import { computeGoal, horizonLabel, classLabelMap, computeCashFlow, activeAssump
 import { newId } from '../../core/util';
 import AppIcon from '../AppIcon';
 import { Section, MoneyRow, PercentRow, formatINR } from './shared';
+import Goals from '../Goals';
+import { SipCalculator } from '../Calculator';
 
 function newGoal(): FinancialGoalRow {
   return {
@@ -22,6 +24,8 @@ function newGoal(): FinancialGoalRow {
 
 export default function GoalsTab({ plan, update }: FortunaTabProps) {
   const [openId, setOpenId] = useState<string | null>(null);
+  // Drives the embedded Questify goal planner's reload after edits.
+  const [goalVersion, setGoalVersion] = useState(0);
   const assumptions = activeAssumptions(plan.assumptions, plan.disabledClasses ?? []);
   const horizons = plan.horizons;
   const goalTypes = plan.horizons ?? [];
@@ -224,6 +228,14 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
         <button className="btn ft-addgoal" onClick={addGoal}>
           <AppIcon name="plus" size={18} /> Add goal
         </button>
+
+        <Section title="Goal planner" subtitle="Visual goals with a scrubbable timeline">
+          <Goals embedded version={goalVersion} onChange={() => setGoalVersion((v) => v + 1)} />
+        </Section>
+
+        <Section title="Step-up SIP calculator" subtitle="Quick what-if — nothing saved" collapsible defaultOpen={false}>
+          <SipCalculator />
+        </Section>
 
         <Section title="How this works">
           <p className="ft-note">
