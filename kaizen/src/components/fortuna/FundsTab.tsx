@@ -661,12 +661,16 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
                 const sell = showSell && f.sellUnits > 0;
                 return (
                   <div className={`ft-harvest__hold ${sell ? 'ft-harvest__hold--sell' : ''}`} key={f.fundId}>
-                    <div className="ft-harvest__holdtop">
+                    <div className="ft-harvest__htop">
+                      <span className="ft-harvest__hicon"><AppIcon name="investments" size={17} /></span>
                       <span className="ft-harvest__name">{f.name}</span>
-                      <span className="ft-harvest__holdtot">{formatINR(f.currentValue)}</span>
+                      <span className="ft-harvest__hval">{formatINR(f.currentValue)}</span>
                     </div>
                     <div className="ft-harvest__holdsub">
-                      invested {formatINR(f.costValue)} · gain {f.currentValue - f.costValue >= 0 ? '+' : '−'}{formatINR(Math.abs(f.currentValue - f.costValue))}
+                      invested {formatINR(f.costValue)} · gain{' '}
+                      <span className={f.currentValue - f.costValue >= 0 ? 'ft-pos' : 'ft-neg'}>
+                        {f.currentValue - f.costValue >= 0 ? '+' : '−'}{formatINR(Math.abs(f.currentValue - f.costValue))}
+                      </span>
                     </div>
                     <div className="ft-harvest__bar" title={`${ltPct}% long-term`}>
                       <span className="ft-harvest__bar-lt" style={{ width: `${ltPct}%` }} />
@@ -688,10 +692,12 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
                         </li>
                       )}
                       {sell && (
-                        <li className="ft-harvest__line ft-harvest__line--sell">
-                          <span className="ft-harvest__lbl">Harvest</span>
-                          <span className="ft-harvest__amt">{formatINR(f.sellProceeds)}</span>
-                          <span className="ft-harvest__u">{fmtHUnits(f.sellUnits)}u · <b>{formatINR(f.sellGain)}</b> tax-free</span>
+                        <li className="ft-harvest__harvest">
+                          <span className="ft-harvest__hleaf"><AppIcon name="brand" size={15} /></span>
+                          <span className="ft-harvest__hword">Harvest</span>
+                          <span className="ft-harvest__hsell">{fmtHUnits(f.sellUnits)}u → {formatINR(f.sellProceeds)}</span>
+                          <span className="ft-harvest__hbooks">books <b>{formatINR(f.sellGain)}</b></span>
+                          <span className="ft-harvest__badge">tax-free</span>
                         </li>
                       )}
                     </ul>
