@@ -13,6 +13,12 @@ interface Props {
   initialId?: string;
   /** Externally-driven tab open: bump `nonce` to switch to `id`. */
   controlledOpen?: { id: string; nonce: number };
+  /**
+   * Whether horizontal swipe switches tabs. Some sub-apps (e.g. Fortuna) have
+   * their own horizontal gestures inside charts/sliders that this would fight,
+   * so they turn it off. Defaults to on.
+   */
+  swipeable?: boolean;
 }
 
 /**
@@ -20,7 +26,7 @@ interface Props {
  * a swipeable body with a directional slide transition, plus the bottom tab
  * bar. Each sub-app just hands it a list of tabs with render functions.
  */
-export default function TabbedApp({ tabs, initialId, controlledOpen }: Props) {
+export default function TabbedApp({ tabs, initialId, controlledOpen, swipeable = true }: Props) {
   const [activeId, setActiveId] = useState<string>(initialId ?? tabs[0].id);
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -64,6 +70,7 @@ export default function TabbedApp({ tabs, initialId, controlledOpen }: Props) {
         : null;
 
   function onTouchStart(e: React.TouchEvent) {
+    if (!swipeable) return;
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
     dirLock.current = null;
@@ -80,6 +87,7 @@ export default function TabbedApp({ tabs, initialId, controlledOpen }: Props) {
   }
 
   function onTouchMove(e: React.TouchEvent) {
+    if (!swipeable) return;
     const start = touchStart.current;
     if (!start || noSwipe.current) return;
     const t = e.touches[0];
@@ -100,6 +108,7 @@ export default function TabbedApp({ tabs, initialId, controlledOpen }: Props) {
   }
 
   function onTouchEnd() {
+    if (!swipeable) return;
     const horizontal = dirLock.current === 'h' && !noSwipe.current;
     const dx = swipeX;
     touchStart.current = null;

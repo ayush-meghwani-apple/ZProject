@@ -18,7 +18,9 @@ const SHORT_CLASS: Record<string, string> = {
   real_estate: 'RE',
 };
 
-export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
+/** The Returns/assumptions editor body (no page chrome). Lives inside the
+ *  Settings tab as a drill-in section. */
+export function AssumptionsContent({ plan, update }: FortunaTabProps) {
   const disabled = new Set(plan.disabledClasses ?? []);
   const [newTypeId, setNewTypeId] = useState<string | null>(null);
   const goalTypes = useMemo(() => planHorizons(plan.horizons), [plan.horizons]);
@@ -75,8 +77,7 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
   const cols = `minmax(60px, 86px) repeat(${activeWithIndex.length}, minmax(0, 1fr))`;
 
   return (
-    <main className="app__body">
-      <div className="page ft-page">
+    <>
         <Section title="Effective returns" subtitle="Blended annual return used for each goal type">
           <div className="ft-eff">
             {goalTypes.map((h) => (
@@ -158,8 +159,7 @@ export default function AssumptionsTab({ plan, update }: FortunaTabProps) {
             </p>
           )}
         </Section>
-      </div>
-    </main>
+    </>
   );
 }
 

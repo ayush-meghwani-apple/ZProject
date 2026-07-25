@@ -653,26 +653,24 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
                   <div className={`ft-harvest__hold ${sell ? 'ft-harvest__hold--sell' : ''}`} key={f.fundId}>
                     <div className="ft-harvest__holdtop">
                       <span className="ft-harvest__name">{f.name}</span>
-                      <span className="ft-harvest__holdtot">{fmtHUnits(f.currentUnits)}u · {formatINR(f.currentValue)}</span>
+                      <span className="ft-harvest__holdtot">{formatINR(f.currentValue)}</span>
                     </div>
-                    <div className="ft-harvest__holdsub">Invested {formatINR(f.costValue)} · gain {formatINR(f.currentValue - f.costValue)}</div>
+                    <div className="ft-harvest__holdsub">
+                      {fmtHUnits(f.currentUnits)}u · invested {formatINR(f.costValue)} · gain {f.currentValue - f.costValue >= 0 ? '+' : '−'}{formatINR(Math.abs(f.currentValue - f.costValue))}
+                    </div>
                     <div className="ft-harvest__bar" title={`${ltPct}% long-term`}>
                       <span className="ft-harvest__bar-lt" style={{ width: `${ltPct}%` }} />
                     </div>
                     <div className="ft-harvest__holdlegend">
-                      <span className="ft-harvest__lt">
-                        ● Long-term {fmtHUnits(f.longTermUnits)}u · {formatINR(f.longTermValue)}
-                        {f.longTermGain > 0 ? <b> (+{formatINR(f.longTermGain)})</b> : null}
-                      </span>
+                      <span className="ft-harvest__lt">● Long-term {formatINR(f.longTermValue)} · {fmtHUnits(f.longTermUnits)}u</span>
                       <span className="ft-harvest__st">
-                        ● New {fmtHUnits(f.shortTermUnits)}u · {formatINR(f.shortTermValue)}
-                        {f.nextLongTermDate && f.shortTermUnits > 0 ? ` · +${fmtHUnits(f.nextLongTermUnits ?? 0)}u turns long-term ${fmtDate(f.nextLongTermDate)}` : ''}
+                        ● New {formatINR(f.shortTermValue)} · {fmtHUnits(f.shortTermUnits)}u
+                        {f.nextLongTermDate && f.shortTermUnits > 0 ? ` · ${fmtHUnits(f.nextLongTermUnits ?? 0)}u ready ${fmtDate(f.nextLongTermDate)}` : ''}
                       </span>
                     </div>
                     {sell && (
                       <div className="ft-harvest__sellline">
-                        <AppIcon name="reviewed" size={13} /> Sell <b>{fmtHUnits(f.sellUnits)}u</b> → get {formatINR(f.sellProceeds)}
-                        <span> · invested {formatINR(f.sellProceeds - f.sellGain)} · books {formatINR(f.sellGain)} tax-free profit</span>
+                        <AppIcon name="reviewed" size={13} /> Harvest <b>{fmtHUnits(f.sellUnits)}u</b> → {formatINR(f.sellProceeds)} · books <b>{formatINR(f.sellGain)}</b> tax-free
                       </div>
                     )}
                   </div>

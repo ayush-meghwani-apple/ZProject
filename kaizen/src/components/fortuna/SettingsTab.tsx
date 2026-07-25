@@ -6,6 +6,7 @@ import { saveBackupFile, saveJsonFile } from '../../core/backupFile';
 import { unlock } from '../../core/vaultLock';
 import AppIcon from '../AppIcon';
 import { Section } from './shared';
+import { AssumptionsContent } from './AssumptionsTab';
 
 interface Props extends FortunaTabProps {
   onLock: () => void;
@@ -29,6 +30,8 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
   const planImportRef = useRef<HTMLInputElement>(null);
   const [lastBackup, setLastBackup] = useState<string | null>(BackupRepository.getLastBackupAt());
   const [busy, setBusy] = useState(false);
+  // Returns/assumptions used to be its own tab; it now lives here as a drill-in.
+  const [showReturns, setShowReturns] = useState(false);
   // Reset is dangerous, so it's gated: confirm → enter PIN → reset.
   const [resetStage, setResetStage] = useState<'idle' | 'confirm' | 'pin'>('idle');
   const [pin, setPin] = useState('');
@@ -159,9 +162,32 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
     }
   }
 
+  if (showReturns) {
+    return (
+      <main className="app__body">
+        <div className="page ft-page">
+          <button className="ft-backrow" onClick={() => setShowReturns(false)}>
+            <AppIcon name="back" size={18} /> Settings
+          </button>
+          <AssumptionsContent plan={plan} update={update} />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="app__body">
       <div className="page ft-page">
+        <Section title="Planning">
+          <button className="ft-navrow" onClick={() => setShowReturns(true)}>
+            <span className="ft-navrow__main">
+              <span className="ft-navrow__title">Returns &amp; assumptions</span>
+              <span className="ft-navrow__sub">Expected returns per asset class · goal-type weights</span>
+            </span>
+            <AppIcon name="chevronRight" size={18} />
+          </button>
+        </Section>
+
         <Section title="Backup & restore" subtitle="Your whole app, in one file">
           <p className="ft-note" style={{ marginTop: 0 }}>
             Export a single <strong>kaizen-backup.json</strong> with everything — your financial plan, expenses,

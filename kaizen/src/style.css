@@ -5025,8 +5025,8 @@ svg.lucide {
   background: var(--surface);
 }
 .ft-harvest--go {
-  border-color: color-mix(in srgb, #22c55e 45%, transparent);
-  background: linear-gradient(180deg, rgba(34, 197, 94, 0.08), transparent 60%);
+  border-color: color-mix(in srgb, #f59e0b 45%, transparent);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), transparent 60%);
 }
 .ft-harvest__head {
   width: 100%;
@@ -5054,7 +5054,7 @@ svg.lucide {
   color: var(--muted);
 }
 .ft-harvest--go .ft-harvest__lead {
-  color: #16a34a;
+  color: #d97706;
 }
 .ft-harvest__body {
   padding: 0 14px 14px;
@@ -5105,7 +5105,7 @@ svg.lucide {
 .ft-harvest__sell small {
   display: block;
   font-weight: 500;
-  color: #16a34a;
+  color: #d97706;
   font-size: 11px;
 }
 .ft-harvest__hint,
@@ -5177,7 +5177,7 @@ svg.lucide {
 .ft-harvest__bar-lt {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #22c55e, #16a34a);
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
 }
 .ft-harvest__holdlegend {
   display: flex;
@@ -5186,7 +5186,7 @@ svg.lucide {
   font-size: 11px;
 }
 .ft-harvest__lt {
-  color: #16a34a;
+  color: #d97706;
 }
 .ft-harvest__st {
   color: var(--muted);
@@ -5209,10 +5209,10 @@ svg.lucide {
 .ft-harvest__toggle input {
   width: 16px;
   height: 16px;
-  accent-color: #16a34a;
+  accent-color: #f59e0b;
 }
 .ft-harvest__hold--sell {
-  background: rgba(34, 197, 94, 0.08);
+  background: rgba(245, 158, 11, 0.10);
   margin: 0 -8px;
   padding: 8px;
   border-radius: 10px;
@@ -5229,11 +5229,55 @@ svg.lucide {
   margin-top: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #15803d;
+  color: #b45309;
 }
 .ft-harvest__sellline span {
   font-weight: 500;
-  color: #16a34a;
+  color: #d97706;
+}
+/* Settings drill-in rows (e.g. Returns & assumptions). */
+.ft-navrow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ft-navrow__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin-right: auto;
+}
+.ft-navrow__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.ft-navrow__sub {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.ft-backrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
 }
 .ft-led__item--pos .ft-led__main {
   cursor: default;
@@ -5524,6 +5568,7 @@ svg.lucide {
 .ft-chartctl {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   margin-bottom: 4px;
 }

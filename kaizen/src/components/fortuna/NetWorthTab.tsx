@@ -70,23 +70,8 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
   // tracking began and builds forward (no misleading back-to-inception jumps).
   const days = plan.daySnapshots ?? [];
   const [range, setRange] = useState<ChartRange>('1M');
-  const [metric, setMetric] = useState<string>('total');
-  const metricOptions = [
-    { k: 'total', label: 'Total assets' },
-    { k: 'networth', label: 'Net worth' },
-    ...mix.map((c) => ({ k: `class:${c.key}`, label: c.label })),
-    { k: 'stocks', label: 'Stocks' },
-    { k: 'mf', label: 'Mutual funds' },
-  ];
-  const valueOf = (s: DaySnapshot): number => {
-    if (metric === 'networth') return s.netWorth;
-    if (metric === 'stocks') return s.stocks;
-    if (metric === 'mf') return s.mfValue;
-    if (metric.startsWith('class:')) return s.byClass[metric.slice(6)] ?? 0;
-    return s.totalAssets;
-  };
+  const valueOf = (s: DaySnapshot): number => s.totalAssets;
   const chartDays = sliceDays(days, range);
-  const metricLabel = metricOptions.find((o) => o.k === metric)?.label ?? 'Total assets';
 
   return (
     <main className="app__body">
@@ -111,11 +96,6 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
 
         <Section title="Assets over time" subtitle="Builds from the day you start tracking">
           <div className="ft-chartctl">
-            <select className="input ft-chartctl__sel" value={metric} onChange={(e) => setMetric(e.target.value)}>
-              {metricOptions.map((o) => (
-                <option key={o.k} value={o.k}>{o.label}</option>
-              ))}
-            </select>
             <div className="ft-chartctl__ranges">
               {CHART_RANGES.map((r) => (
                 <button
@@ -131,7 +111,7 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
           </div>
           <LineChart
             labels={chartDays.map((s) => dayLabel(s.d))}
-            series={[{ label: metricLabel, color: '#6366f1', values: chartDays.map(valueOf) }]}
+            series={[{ label: 'Total assets', color: '#6366f1', values: chartDays.map(valueOf) }]}
             emptyHint="Open Fortuna over a few days and this chart of your assets will build up from today."
           />
         </Section>

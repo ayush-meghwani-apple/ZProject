@@ -12,7 +12,6 @@ import PortfolioTab from './fortuna/PortfolioTab';
 import FundsTab from './fortuna/FundsTab';
 import TransactionsTab from './fortuna/TransactionsTab';
 import GoalsTab from './fortuna/GoalsTab';
-import AssumptionsTab from './fortuna/AssumptionsTab';
 import SettingsTab from './fortuna/SettingsTab';
 
 /**
@@ -217,9 +216,8 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     { id: 'funds', label: 'Pulse', icon: <AppIcon name="investments" size={20} />, render: () => <FundsTab {...props} /> },
     { id: 'transactions', label: 'Ledger', icon: <AppIcon name="table" size={20} />, render: () => <TransactionsTab {...props} /> },
     { id: 'goals', label: 'Goals', icon: <AppIcon name="goals" size={20} />, render: () => <GoalsTab {...props} /> },
-    { id: 'assumptions', label: 'Returns', icon: <AppIcon name="assumptions" size={20} />, render: () => <AssumptionsTab {...props} /> },
     { id: 'settings', label: 'Settings', icon: <AppIcon name="settings" size={20} />, render: () => <SettingsTab {...props} reload={reload} onLock={() => { flush(); onLock(); }} /> },
   ];
 
-  return <TabbedApp tabs={tabs} initialId="networth" />;
+  return <TabbedApp tabs={tabs} initialId="networth" swipeable={false} />;
 }
