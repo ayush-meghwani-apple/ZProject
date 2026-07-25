@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import Goals from './Goals';
 import Calculator from './Calculator';
 import Settings from './Settings';
 import TabbedApp, { type TabDef } from './TabbedApp';
 import AppIcon from './AppIcon';
 
-/** Questify: plan financial goals and run quick money what-ifs. */
+/** Abacus: quick financial what-if calculators (step-up SIP, retirement, …).
+ *  (Formerly Questify — goal planning moved into Fortuna's Goals tab.) */
 export default function GoalsApp() {
   const [version, setVersion] = useState(0);
   const onChange = () => setVersion((v) => v + 1);
 
   const tabs: TabDef[] = [
-    { id: 'goals', label: 'Goals', icon: <AppIcon name="goals" size={22} />, render: () => <Goals version={version} onChange={onChange} /> },
-    { id: 'calculator', label: 'Calculator', icon: <AppIcon name="calculator" size={22} />, render: () => <Calculator /> },
+    { id: 'calculator', label: 'Calculators', icon: <AppIcon name="calculator" size={22} />, render: () => <Calculator /> },
     {
       id: 'settings',
       label: 'Settings',

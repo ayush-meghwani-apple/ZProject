@@ -39,4 +39,8 @@ export const GoalRepository = {
   async deleteGoal(id: ID): Promise<void> {
     await storage.goals.delete(id);
   },
+
+  async clearAll(): Promise<void> {
+    await storage.goals.clear();
+  },
 };

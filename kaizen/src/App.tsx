@@ -8,6 +8,7 @@ import BackupReminder from './components/BackupReminder';
 import AppIcon, { type IconName } from './components/AppIcon';
 import { RemindersRepository } from './repository/remindersRepository';
 import { VaultRepository } from './repository/vaultRepository';
+import { GoalRepository } from './repository/goalRepository';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
 
@@ -23,7 +24,7 @@ interface AppDef {
 const APPS: AppDef[] = [
   { id: 'expensify', name: 'Expensify', icon: 'expensify', section: 'Money' },
   { id: 'fortuna', name: 'Fortuna', icon: 'investments', section: 'Planning' },
-  { id: 'goals', name: 'Questify', icon: 'questify', section: 'Studio' },
+  { id: 'goals', name: 'Abacus', icon: 'calculator', section: 'Studio' },
   { id: 'notes', name: 'Slate', icon: 'slate', section: 'Studio' },
 ];
 
@@ -67,6 +68,13 @@ export default function App() {
   useEffect(() => {
     if (localStorage.getItem('kaizen:vaultRemoved') === '1') return;
     VaultRepository.clearAll().finally(() => localStorage.setItem('kaizen:vaultRemoved', '1'));
+  }, []);
+
+  // Questify's goal planner moved into Fortuna and the app is now Abacus
+  // (calculators only); purge the old standalone goal data once.
+  useEffect(() => {
+    if (localStorage.getItem('kaizen:questifyGoalsRemoved') === '1') return;
+    GoalRepository.clearAll().finally(() => localStorage.setItem('kaizen:questifyGoalsRemoved', '1'));
   }, []);
 
   function openApp(id: AppId) {

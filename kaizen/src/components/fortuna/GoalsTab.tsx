@@ -6,7 +6,6 @@ import { computeGoal, horizonLabel, classLabelMap, computeCashFlow, activeAssump
 import { newId, addMonths, formatMonthYear } from '../../core/util';
 import AppIcon from '../AppIcon';
 import { Section, MoneyRow, PercentRow, formatINR } from './shared';
-import { SipCalculator } from '../Calculator';
 
 /** Compact INR for goal projections, e.g. ₹12.5L / ₹1.2Cr. */
 function compactINR(n: number): string {
@@ -261,10 +260,6 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
         <button className="btn ft-addgoal" onClick={addGoal}>
           <AppIcon name="plus" size={18} /> Add goal
         </button>
-
-        <Section title="Step-up SIP calculator" subtitle="Quick what-if — nothing saved" collapsible defaultOpen={false}>
-          <SipCalculator />
-        </Section>
 
         <Section title="How this works">
           <p className="ft-note">
