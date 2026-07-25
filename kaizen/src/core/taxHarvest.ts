@@ -51,7 +51,12 @@ export interface FundHarvest {
   longTermValue: number;
   longTermGain: number; // unrealised gain on long-term lots (positive lots only)
   shortTermUnits: number;
+  shortTermValue: number;
   shortTermGain: number;
+  /** When the oldest still-short-term lot crosses 1 year (and how many units
+   *  cross then), so the owner can see what unlocks next. */
+  nextLongTermDate?: string;
+  nextLongTermUnits?: number;
   lots: HarvestLot[];
   // Suggested harvest for this fund (filled to fit the remaining FY allowance):
   sellUnits: number;
@@ -66,6 +71,7 @@ export interface HarvestPlan {
   realizedLtcgThisFy: number; // LTCG already booked this FY (from prior redeems)
   remainingExemption: number; // tax-free room left this FY
   funds: FundHarvest[]; // equity funds that hold long-term units (gain>0), richest first
+  holdings: FundHarvest[]; // ALL equity funds held (for the long-term vs short-term view)
   totalLongTermGain: number; // total unrealised LT gain available to harvest
   totalSuggestedGain: number;
   totalSuggestedProceeds: number;
@@ -171,7 +177,9 @@ export function computeHarvest(
     let longTermValue = 0;
     let longTermGain = 0;
     let shortTermUnits = 0;
+    let shortTermValue = 0;
     let shortTermGain = 0;
+    let oldestShort: HarvestLot | undefined;
     for (const l of lots) {
       currentUnits += l.units;
       currentValue += l.currentValue;
@@ -181,8 +189,17 @@ export function computeHarvest(
         if (l.gain > 0) longTermGain += l.gain;
       } else {
         shortTermUnits += l.units;
+        shortTermValue += l.currentValue;
         shortTermGain += l.gain;
+        if (!oldestShort || new Date(l.date) < new Date(oldestShort.date)) oldestShort = l;
       }
+    }
+    // When the oldest short-term lot crosses 1 year (what unlocks next).
+    let nextLongTermDate: string | undefined;
+    let nextLongTermUnits: number | undefined;
+    if (oldestShort) {
+      nextLongTermDate = new Date(new Date(oldestShort.date).getTime() + LONG_TERM_MS).toISOString();
+      nextLongTermUnits = oldestShort.units;
     }
 
     if (currentUnits <= EPS) continue;
@@ -197,7 +214,10 @@ export function computeHarvest(
       longTermValue,
       longTermGain,
       shortTermUnits,
+      shortTermValue,
       shortTermGain,
+      nextLongTermDate,
+      nextLongTermUnits,
       lots,
       sellUnits: 0,
       sellProceeds: 0,
@@ -248,6 +268,7 @@ export function computeHarvest(
     realizedLtcgThisFy,
     remainingExemption,
     funds: shownFunds,
+    holdings: [...fundViews].sort((a, b) => b.currentValue - a.currentValue),
     totalLongTermGain,
     totalSuggestedGain: shownFunds.reduce((s, f) => s + f.sellGain, 0),
     totalSuggestedProceeds: shownFunds.reduce((s, f) => s + f.sellProceeds, 0),

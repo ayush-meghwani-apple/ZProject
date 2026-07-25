@@ -195,9 +195,13 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
     return [...mfRows, ...genRows, ...holdRows].sort((x, y) => ts(y) - ts(x));
   }, [funds, ledger, plan]);
 
-  // Dropdown filter options: All, All mutual funds, per asset class, per MF cap.
+  // Dropdown filter options: All, Buys, Sells, All mutual funds, per asset class, per MF cap.
   const filterOptions = useMemo(() => {
     const opts: { key: string; label: string }[] = [{ key: 'all', label: 'All transactions' }];
+    if (rows.some((r) => r.isSell)) {
+      opts.push({ key: 'buys', label: 'Buys only' });
+      opts.push({ key: 'sells', label: 'Sells / redemptions' });
+    }
     if (rows.some((r) => r.isMF)) opts.push({ key: 'mf', label: 'All mutual funds' });
     const classes = new Map<string, string>();
     for (const r of rows) if (r.classKey && !classes.has(r.classKey)) classes.set(r.classKey, BUILTIN_CLASS_LABEL[r.classKey] ?? classLabel(plan, r.classKey));
@@ -210,6 +214,8 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
 
   const shown = rows.filter((r) => {
     if (filter === 'all') return true;
+    if (filter === 'buys') return r.source !== 'holding' && !r.isSell;
+    if (filter === 'sells') return r.isSell;
     if (filter === 'mf') return r.isMF;
     if (filter.startsWith('cls:')) return r.classKey === filter.slice(4);
     return r.groupKey === filter;
@@ -219,7 +225,11 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   const matchCount = (key: string) =>
     key === 'all'
       ? rows.length
-      : rows.filter((r) => (key === 'mf' ? r.isMF : key.startsWith('cls:') ? r.classKey === key.slice(4) : r.groupKey === key)).length;
+      : key === 'buys'
+        ? rows.filter((r) => r.source !== 'holding' && !r.isSell).length
+        : key === 'sells'
+          ? rows.filter((r) => r.isSell).length
+          : rows.filter((r) => (key === 'mf' ? r.isMF : key.startsWith('cls:') ? r.classKey === key.slice(4) : r.groupKey === key)).length;
 
   // ---- mutations ----------------------------------------------------------
   function editTxn(fundId: string, txnId: string, patch: Partial<MFTransaction>) {

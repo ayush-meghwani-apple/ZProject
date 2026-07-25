@@ -631,11 +631,41 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
             <p className="ft-harvest__hint">No units have crossed 1 year with a gain yet — nothing is long-term to harvest.</p>
           )}
 
+          {plan.holdings.length > 0 && (
+            <>
+              <div className="ft-harvest__breakhead">Each fund — long-term vs new units</div>
+              {plan.holdings.map((f) => {
+                const ltPct = f.currentValue > 0 ? Math.round((f.longTermValue / f.currentValue) * 100) : 0;
+                return (
+                  <div className="ft-harvest__hold" key={f.fundId}>
+                    <div className="ft-harvest__holdtop">
+                      <span className="ft-harvest__name">{f.name}</span>
+                      <span className="ft-harvest__holdtot">{fmtHUnits(f.currentUnits)} u · {formatINR(f.currentValue)}</span>
+                    </div>
+                    <div className="ft-harvest__bar" title={`${ltPct}% long-term`}>
+                      <span className="ft-harvest__bar-lt" style={{ width: `${ltPct}%` }} />
+                    </div>
+                    <div className="ft-harvest__holdlegend">
+                      <span className="ft-harvest__lt">
+                        ● Long-term {fmtHUnits(f.longTermUnits)}u · {formatINR(f.longTermValue)}
+                        {f.longTermGain > 0 ? <b> (+{formatINR(f.longTermGain)})</b> : null}
+                      </span>
+                      <span className="ft-harvest__st">
+                        ● New {fmtHUnits(f.shortTermUnits)}u · {formatINR(f.shortTermValue)}
+                        {f.nextLongTermDate && f.shortTermUnits > 0 ? ` · +${fmtHUnits(f.nextLongTermUnits ?? 0)}u turns long-term ${fmtDate(f.nextLongTermDate)}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
           <label className="ft-harvest__limit">
             <span>Tax-free LTCG limit / FY</span>
             <AmountInput className="input" value={limit} onChange={(v) => setLimit(v || LTCG_EXEMPTION)} placeholder="125000" />
           </label>
-          <p className="ft-harvest__disc">Equity funds only, held &gt; 12 months. An estimate to plan with — confirm with your CA / broker capital-gains statement.</p>
+          <p className="ft-harvest__disc">Equity funds only, held &gt; 12 months. Debt/international funds excluded. An estimate to plan with — confirm with your CA / broker capital-gains statement.</p>
         </div>
       )}
     </div>

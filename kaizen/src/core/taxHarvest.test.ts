@@ -68,6 +68,35 @@ describe('computeHarvest — long/short split', () => {
   });
 });
 
+describe('computeHarvest — holdings breakdown (long vs short)', () => {
+  it('reports every equity fund with a long/short split and when the next lot matures', () => {
+    const f = fund({
+      latestNav: 200,
+      transactions: [
+        txn('2023-01-01', 100, 100), // long-term
+        txn('2026-01-10', 50, 180), // short-term (oldest short lot)
+      ],
+    });
+    const plan = computeHarvest([f], { asOf: ASOF });
+    expect(plan.holdings).toHaveLength(1);
+    const h = plan.holdings[0];
+    expect(h.longTermUnits).toBe(100);
+    expect(h.longTermValue).toBe(20000); // 100 × 200
+    expect(h.shortTermUnits).toBe(50);
+    expect(h.shortTermValue).toBe(10000); // 50 × 200
+    // The 2026-01-10 lot turns long-term one year later.
+    expect(h.nextLongTermDate?.slice(0, 10)).toBe('2027-01-10');
+    expect(h.nextLongTermUnits).toBe(50);
+  });
+
+  it('debt funds are absent from holdings', () => {
+    const eq = fund({ id: 'e', latestNav: 120, transactions: [txn('2023-01-01', 10, 100)] });
+    const dt = fund({ id: 'd', category: 'debt', latestNav: 120, transactions: [txn('2023-01-01', 10, 100)] });
+    const plan = computeHarvest([eq, dt], { asOf: ASOF });
+    expect(plan.holdings.map((h) => h.fundId)).toEqual(['e']);
+  });
+});
+
 describe('computeHarvest — FIFO redeems', () => {
   it('sells oldest units first and records realised LTCG within the FY', () => {
     const f = fund({

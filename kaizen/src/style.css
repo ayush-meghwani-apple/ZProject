@@ -5076,6 +5076,60 @@ svg.lucide {
   max-width: 140px;
   text-align: right;
 }
+/* Per-fund long-term vs new-units breakdown. */
+.ft-harvest__breakhead {
+  margin: 16px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ft-harvest__hold {
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.ft-harvest__holdtop {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.ft-harvest__holdtop .ft-harvest__name {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ft-harvest__holdtot {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ft-harvest__bar {
+  height: 7px;
+  border-radius: 999px;
+  background: #64748b55;
+  overflow: hidden;
+  margin: 5px 0;
+}
+.ft-harvest__bar-lt {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+.ft-harvest__holdlegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  font-size: 11px;
+}
+.ft-harvest__lt {
+  color: #16a34a;
+}
+.ft-harvest__st {
+  color: var(--muted);
+}
 .ft-led__item--pos .ft-led__main {
   cursor: default;
 }
