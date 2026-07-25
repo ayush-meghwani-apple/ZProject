@@ -398,10 +398,10 @@ export const MF_CATEGORIES: { value: MFCategory; label: string }[] = [
 export interface MFTransaction {
   id: ID;
   date: ISODate; // purchase date (local-midnight ISO)
-  amount: number; // INR invested
-  units: number; // units allotted
-  nav: number; // NAV on the purchase date
-  kind: 'sip' | 'lumpsum';
+  amount: number; // INR invested (a redeem/sell stores this NEGATIVE = −proceeds)
+  units: number; // units allotted (a redeem/sell stores this NEGATIVE = units sold)
+  nav: number; // NAV on the purchase / sale date
+  kind: 'sip' | 'lumpsum' | 'redeem';
   auto?: boolean; // true = auto-generated from the SIP rule (untouched by user)
   reviewed?: boolean; // user has acknowledged an auto-added buy (clears the review hint)
 }

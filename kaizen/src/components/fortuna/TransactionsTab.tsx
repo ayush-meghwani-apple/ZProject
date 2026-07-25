@@ -99,24 +99,27 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
 
   const rows = useMemo<UnifiedRow[]>(() => {
     const mfRows: UnifiedRow[] = funds.flatMap((f) =>
-      f.transactions.map((t) => ({
-        id: t.id,
-        source: 'mf' as const,
-        date: t.date,
-        name: f.name,
-        classKey: f.category === 'debt' ? 'debt' : 'equity_mf',
-        isMF: true,
-        groupKey: `mf:${f.category}`,
-        groupLabel: mfCatLabel(f.category),
-        amount: Number(t.amount) || 0,
-        units: Number(t.units) || 0,
-        nav: t.nav,
-        isSip: t.kind === 'sip',
-        isSell: false,
-        auto: t.auto === true,
-        reviewed: t.reviewed === true,
-        fundId: f.id,
-      })),
+      f.transactions.map((t) => {
+        const redeem = t.kind === 'redeem';
+        return {
+          id: t.id,
+          source: 'mf' as const,
+          date: t.date,
+          name: f.name,
+          classKey: f.category === 'debt' ? 'debt' : 'equity_mf',
+          isMF: true,
+          groupKey: `mf:${f.category}`,
+          groupLabel: mfCatLabel(f.category),
+          amount: Math.abs(Number(t.amount) || 0),
+          units: Math.abs(Number(t.units) || 0),
+          nav: t.nav,
+          isSip: t.kind === 'sip',
+          isSell: redeem,
+          auto: t.auto === true,
+          reviewed: t.reviewed === true,
+          fundId: f.id,
+        };
+      }),
     );
     const genRows: UnifiedRow[] = ledger.map((e) => ({
       id: e.id,
@@ -369,16 +372,16 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                             onChange={(e) => editTxn(r.fundId!, r.id, { date: new Date(e.target.value + 'T00:00:00').toISOString() })}
                           />
                           <label className="ft-mf__txnf">
-                            <span>₹ Amount</span>
-                            <AmountInput className="input" value={r.amount} onChange={(v) => editTxn(r.fundId!, r.id, { amount: v })} placeholder="0" />
+                            <span>{r.isSell ? '₹ Proceeds' : '₹ Amount'}</span>
+                            <AmountInput className="input" value={r.amount} onChange={(v) => editTxn(r.fundId!, r.id, { amount: r.isSell ? -v : v })} placeholder="0" />
                           </label>
                           <label className="ft-mf__txnf">
                             <span>NAV</span>
                             <DecimalInput value={r.nav ?? 0} onChange={(v) => editTxn(r.fundId!, r.id, { nav: v })} placeholder="0" />
                           </label>
                           <label className="ft-mf__txnf">
-                            <span>Units</span>
-                            <DecimalInput value={r.units} onChange={(v) => editTxn(r.fundId!, r.id, { units: v })} placeholder="0" />
+                            <span>{r.isSell ? 'Units sold' : 'Units'}</span>
+                            <DecimalInput value={r.units} onChange={(v) => editTxn(r.fundId!, r.id, { units: r.isSell ? -v : v })} placeholder="0" />
                           </label>
                           <button
                             className="iconbtn ft-mf__txndel"
@@ -528,7 +531,7 @@ function AddTransaction({
   // MF — pick an existing fund, or '__new__' to search AMFI for a new one.
   const [fundId, setFundId] = useState(funds[0]?.id ?? '__new__');
   const [nav, setNav] = useState(0);
-  const [kind, setKind] = useState<'sip' | 'lumpsum'>('lumpsum');
+  const [kind, setKind] = useState<'sip' | 'lumpsum' | 'redeem'>('lumpsum');
   const isNewFund = fundId === '__new__';
   // New-fund scheme search (AMFI, like the Pulse tab).
   const [query, setQuery] = useState('');
@@ -573,14 +576,20 @@ function AddTransaction({
     };
   }, [query, isNewFund, picked]);
 
-  const buildTxn = (): MFTransaction => ({
-    id: newId(),
-    date: new Date(date + 'T00:00:00').toISOString(),
-    amount,
-    units: units || (nav > 0 ? amount / nav : 0),
-    nav,
-    kind,
-  });
+  const buildTxn = (): MFTransaction => {
+    const u = units || (nav > 0 ? amount / nav : 0);
+    const redeem = kind === 'redeem';
+    // A redeem stores NEGATIVE units + NEGATIVE amount (= −proceeds) so every
+    // holdings/returns sum stays correct and FIFO can consume it.
+    return {
+      id: newId(),
+      date: new Date(date + 'T00:00:00').toISOString(),
+      amount: redeem ? -amount : amount,
+      units: redeem ? -u : u,
+      nav,
+      kind,
+    };
+  };
 
   const mfDisabled = amount <= 0 || (isNewFund ? !picked : !fundId);
 
@@ -658,23 +667,24 @@ function AddTransaction({
                 </label>
                 <label>
                   <span>Kind</span>
-                  <select className="input" value={kind} onChange={(e) => setKind(e.target.value as 'sip' | 'lumpsum')}>
+                  <select className="input" value={kind} onChange={(e) => setKind(e.target.value as 'sip' | 'lumpsum' | 'redeem')}>
                     <option value="lumpsum">Lumpsum</option>
                     <option value="sip">SIP</option>
+                    {!isNewFund && <option value="redeem">Redeem (sell)</option>}
                   </select>
                 </label>
               </div>
               <div className="ft-mf__sipfields">
                 <label>
-                  <span>₹ Amount</span>
+                  <span>{kind === 'redeem' ? '₹ Proceeds' : '₹ Amount'}</span>
                   <AmountInput className="input" value={amount} onChange={setAmount} placeholder="0" />
                 </label>
                 <label>
-                  <span>NAV</span>
+                  <span>{kind === 'redeem' ? 'Sell NAV' : 'NAV'}</span>
                   <DecimalInput value={nav} onChange={setNav} placeholder="0" />
                 </label>
                 <label>
-                  <span>Units</span>
+                  <span>{kind === 'redeem' ? 'Units sold' : 'Units'}</span>
                   <DecimalInput value={units} onChange={setUnits} placeholder="0" />
                 </label>
               </div>

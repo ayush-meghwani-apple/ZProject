@@ -260,7 +260,7 @@ function migrateMutualFunds(raw: unknown): MutualFundHolding[] {
             amount: num(t.amount),
             units: num(t.units),
             nav: num(t.nav),
-            kind: t.kind === 'lumpsum' ? ('lumpsum' as const) : ('sip' as const),
+            kind: t.kind === 'lumpsum' ? ('lumpsum' as const) : t.kind === 'redeem' ? ('redeem' as const) : ('sip' as const),
             auto: t.auto === true,
             reviewed: t.reviewed === true,
           }))

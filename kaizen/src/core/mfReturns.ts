@@ -115,7 +115,7 @@ export function summarize(
   const firstMs = dates.length ? Math.min(...dates) : null;
 
   const flows: Flow[] = txns
-    .filter((t) => Number(t.amount) > 0)
+    .filter((t) => Number(t.amount) !== 0)
     .map((t) => ({ date: new Date(t.date), amount: -Number(t.amount) }));
   if (currentValue > 0) flows.push({ date: asOf, amount: currentValue });
   const xr = flows.length >= 2 ? xirr(flows) : null;

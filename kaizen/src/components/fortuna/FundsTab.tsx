@@ -6,6 +6,7 @@ import { formatINR, newId, now } from '../../core/util';
 import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch } from '../../core/amfi';
 import { generateSipInstallments } from '../../core/mfSip';
 import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
+import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
 import LineChart from './LineChart';
 import { sliceDays, dayLabel, type ChartRange } from '../../core/planSnapshot';
 import AmountInput from '../AmountInput';
@@ -272,6 +273,8 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
           </div>
         )}
 
+        {funds.length > 0 && <HarvestCard funds={funds} asOf={asOf} />}
+
         {funds.length > 0 && (
           <div className="ft-mf__seg">
             <button className={view === 'all' ? 'active' : ''} onClick={() => setView('all')}>
@@ -523,8 +526,9 @@ function SipEditor({ fund, mutate }: { fund: MutualFundHolding; mutate: (fn: (f:
 }
 
 function TxnRow({ txn, onChange, onDelete }: { txn: MFTransaction; onChange: (patch: Partial<MFTransaction>) => void; onDelete: () => void }) {
+  const redeem = txn.kind === 'redeem';
   return (
-    <div className={`ft-mf__txn ${txn.auto ? 'ft-mf__txn--auto' : ''}`}>
+    <div className={`ft-mf__txn ${txn.auto ? 'ft-mf__txn--auto' : ''} ${redeem ? 'ft-mf__txn--sell' : ''}`}>
       <input
         className="input ft-mf__txndate"
         type="date"
@@ -533,16 +537,16 @@ function TxnRow({ txn, onChange, onDelete }: { txn: MFTransaction; onChange: (pa
         onChange={(e) => onChange({ date: new Date(e.target.value + 'T00:00:00').toISOString() })}
       />
       <label className="ft-mf__txnf">
-        <span>₹ Amount</span>
-        <AmountInput className="input" value={txn.amount} onChange={(v) => onChange({ amount: v })} placeholder="0" />
+        <span>{redeem ? '₹ Proceeds' : '₹ Amount'}</span>
+        <AmountInput className="input" value={Math.abs(txn.amount)} onChange={(v) => onChange({ amount: redeem ? -v : v })} placeholder="0" />
       </label>
       <label className="ft-mf__txnf">
-        <span>NAV</span>
+        <span>{redeem ? 'Sell NAV' : 'NAV'}</span>
         <DecimalInput value={txn.nav} onChange={(v) => onChange({ nav: v })} placeholder="0" />
       </label>
       <label className="ft-mf__txnf">
-        <span>Units</span>
-        <DecimalInput value={txn.units} onChange={(v) => onChange({ units: v })} placeholder="0" />
+        <span>{redeem ? 'Units sold' : 'Units'}</span>
+        <DecimalInput value={Math.abs(txn.units)} onChange={(v) => onChange({ units: redeem ? -v : v })} placeholder="0" />
       </label>
       <button
         className="iconbtn ft-mf__txndel"
@@ -559,6 +563,84 @@ function TxnRow({ txn, onChange, onDelete }: { txn: MFTransaction; onChange: (pa
 }
 
 // --- add-fund flow ---------------------------------------------------------
+
+const fmtHUnits = (n: number) => (Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
+
+/** LTCG tax-harvest planner for equity mutual funds (Pulse tab). Shows how much
+ *  long-held gain can be sold this financial year within the tax-free limit. */
+function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }) {
+  const [open, setOpen] = useState(false);
+  const [limit, setLimit] = useState(LTCG_EXEMPTION);
+  const plan = computeHarvest(funds, { asOf, exemptionLimit: limit });
+  const hasEquity = funds.some((f) => f.category !== 'debt');
+  if (!hasEquity) return null;
+
+  return (
+    <div className={`ft-harvest ${plan.totalSuggestedGain > 0 ? 'ft-harvest--go' : ''}`}>
+      <button className="ft-harvest__head" onClick={() => setOpen((o) => !o)}>
+        <span className="ft-harvest__title">
+          <AppIcon name="reviewed" size={16} /> LTCG tax harvest · FY {plan.fyLabel}
+        </span>
+        <span className="ft-harvest__lead">
+          {plan.totalSuggestedGain > 0 ? `Sell ~${formatINR(plan.totalSuggestedProceeds)}` : 'Nothing to harvest'}
+        </span>
+        <AppIcon name={open ? 'chevronUp' : 'chevronDown'} size={16} className="ft-mf__chev" />
+      </button>
+
+      {open && (
+        <div className="ft-harvest__body">
+          <div className="ft-harvest__stats">
+            <div>
+              <span>Tax-free room left</span>
+              <b>{formatINR(plan.remainingExemption)}</b>
+            </div>
+            <div>
+              <span>Long-term gain available</span>
+              <b>{formatINR(plan.totalLongTermGain)}</b>
+            </div>
+            {plan.realizedLtcgThisFy > 0 && (
+              <div>
+                <span>Already booked this FY</span>
+                <b>{formatINR(plan.realizedLtcgThisFy)}</b>
+              </div>
+            )}
+          </div>
+
+          {plan.totalSuggestedGain > 0 ? (
+            <>
+              <p className="ft-harvest__note">
+                To harvest <b>{formatINR(plan.totalSuggestedGain)}</b> of gains tax-free, sell about:
+              </p>
+              {plan.funds.filter((f) => f.sellUnits > 0).map((f) => (
+                <div className="ft-harvest__row" key={f.fundId}>
+                  <span className="ft-harvest__name">{f.name}</span>
+                  <span className="ft-harvest__sell">
+                    {fmtHUnits(f.sellUnits)} units · {formatINR(f.sellProceeds)}
+                    <small>+{formatINR(f.sellGain)} gain</small>
+                  </span>
+                </div>
+              ))}
+              <p className="ft-harvest__hint">
+                These are long-held units (&gt; 1 year). After you sell in your broker, record it here as a{' '}
+                <b>Redeem</b> on the Ledger so next year’s numbers stay right — then you can re-buy to reset your cost.
+              </p>
+            </>
+          ) : plan.totalLongTermGain > 0 ? (
+            <p className="ft-harvest__hint">You’ve already used this year’s ₹{(limit / 100000).toFixed(2)} L tax-free LTCG limit. Nothing more to harvest tax-free this FY.</p>
+          ) : (
+            <p className="ft-harvest__hint">No units have crossed 1 year with a gain yet — nothing is long-term to harvest.</p>
+          )}
+
+          <label className="ft-harvest__limit">
+            <span>Tax-free LTCG limit / FY</span>
+            <AmountInput className="input" value={limit} onChange={(v) => setLimit(v || LTCG_EXEMPTION)} placeholder="125000" />
+          </label>
+          <p className="ft-harvest__disc">Equity funds only, held &gt; 12 months. An estimate to plan with — confirm with your CA / broker capital-gains statement.</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AddFund({
   onCancel,
