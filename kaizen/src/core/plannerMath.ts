@@ -154,6 +154,23 @@ export function sipRequired(fv: number, years: number, eff: number, stepUpPct: n
   return factor > 0 ? fv / factor : 0;
 }
 
+/**
+ * Forward value of a (possibly stepped) monthly SIP after `months`, at annual
+ * return `eff`. The inverse of `sipRequired` — used to trace a goal's corpus
+ * month by month for the timeline.
+ */
+export function sipAccumulated(sip: number, months: number, eff: number, stepUpPct: number): number {
+  if (sip <= 0 || months <= 0) return 0;
+  const m = Math.pow(1 + eff, 1 / 12) - 1;
+  const g = pct(stepUpPct);
+  let total = 0;
+  for (let k = 0; k < months; k++) {
+    const contrib = sip * Math.pow(1 + g, Math.floor(k / 12));
+    total += contrib * Math.pow(1 + m, months - k - 1);
+  }
+  return total;
+}
+
 export function computeGoal(
   goal: FinancialGoalRow,
   assumptions: AssetClassAssumption[],

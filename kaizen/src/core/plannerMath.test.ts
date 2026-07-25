@@ -17,6 +17,7 @@ import {
   goalTypeIdOf,
   amountRequiredFuture,
   sipRequired,
+  sipAccumulated,
   computeNetWorth,
   totalLiabilities,
   activeAssumptions,
@@ -119,6 +120,23 @@ describe('sipRequired', () => {
   });
   it('splits a zero-return target evenly across the months', () => {
     expect(sipRequired(1200, 1, 0, 0)).toBeCloseTo(100, 6); // 12 months
+  });
+});
+
+describe('sipAccumulated (inverse of sipRequired)', () => {
+  it('a level SIP grows back to its target FV', () => {
+    const fv = 500000;
+    const sip = sipRequired(fv, 5, 0.12, 0);
+    expect(sipAccumulated(sip, 60, 0.12, 0)).toBeCloseTo(fv, 2);
+  });
+  it('a stepped-up SIP grows back to its target FV', () => {
+    const fv = 1000000;
+    const sip = sipRequired(fv, 8, 0.11, 10);
+    expect(sipAccumulated(sip, 96, 0.11, 10)).toBeCloseTo(fv, 2);
+  });
+  it('is 0 for no contribution or no time', () => {
+    expect(sipAccumulated(0, 60, 0.1, 0)).toBe(0);
+    expect(sipAccumulated(1000, 0, 0.1, 0)).toBe(0);
   });
 });
 

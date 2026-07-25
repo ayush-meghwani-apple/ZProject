@@ -40,6 +40,7 @@ export default function LineChart({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(320);
   const [active, setActive] = useState<number | null>(null);
+  const dragging = useRef(false);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -102,6 +103,31 @@ export default function LineChart({
     setActive(Math.max(0, Math.min(n - 1, i)));
   }
 
+  // Capture the pointer on press so a finger that drifts vertically (following a
+  // rising/falling line) keeps scrubbing horizontally instead of the browser
+  // stealing the gesture as a page scroll. touch-action:none on the svg does the
+  // same for the initial move.
+  function onDown(e: React.PointerEvent) {
+    dragging.current = true;
+    try {
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    } catch {
+      /* not supported — touch-action still prevents scroll hijack */
+    }
+    onMove(e);
+  }
+  function onDrag(e: React.PointerEvent) {
+    if (dragging.current) onMove(e);
+  }
+  function onUp(e: React.PointerEvent) {
+    dragging.current = false;
+    try {
+      (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  }
+
   return (
     <div className="ft-chart" ref={wrapRef}>
       {/* Readout sits ABOVE the plot so the box never covers the line. */}
@@ -128,11 +154,11 @@ export default function LineChart({
         className="ft-chart__svg"
         width={w}
         height={height}
-        onPointerDown={onMove}
-        onPointerMove={(e) => {
-          if (e.buttons || e.pointerType === 'touch') onMove(e);
-        }}
-        onPointerLeave={() => setActive(null)}
+        style={{ touchAction: 'none' }}
+        onPointerDown={onDown}
+        onPointerMove={onDrag}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
       >
         {yTicks.map((t, i) => {
           const y = yFor(t);

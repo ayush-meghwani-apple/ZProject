@@ -90,6 +90,11 @@ function ReturnPills({ s }: { s: ReturnSummary }) {
   );
 }
 
+/** Session cache of fetched NAV histories (schemeCode → points), so re-mounting
+ *  the Pulse tab redraws the same performance curve immediately (no flicker)
+ *  while a fresh sync runs. */
+const NAV_CACHE: Record<number, NavPoint[]> = {};
+
 export default function FundsTab({ plan, update }: FortunaTabProps) {
   const funds = plan.mutualFunds ?? [];
   const [status, setStatus] = useState<'idle' | 'syncing' | 'ok' | 'partial'>('idle');
@@ -98,8 +103,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = useState<'all' | 'active' | 'inactive'>('all');
   // NAV histories (schemeCode → points, newest-first), captured during sync so
-  // the Pulse graph can be re-traced from the very first transaction.
-  const [navs, setNavs] = useState<Record<number, NavPoint[]>>({});
+  // the Pulse graph can be re-traced from the very first transaction. Seeded
+  // from a module-level cache so switching back to Pulse redraws the same curve
+  // instantly instead of flickering from a fallback shape while NAVs refetch.
+  const [navs, setNavs] = useState<Record<number, NavPoint[]>>(() => ({ ...NAV_CACHE }));
   const [perfMonths, setPerfMonths] = useState(12);
 
   // A fund is "active" if it has a running SIP; otherwise it's held but not
@@ -153,7 +160,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
       // value-vs-invested curve back to the first transaction.
       const navMap: Record<number, NavPoint[]> = {};
       for (const r of results) if (r.ok && r.points) navMap[r.schemeCode] = r.points;
-      if (Object.keys(navMap).length) setNavs((prev) => ({ ...prev, ...navMap }));
+      if (Object.keys(navMap).length) {
+        Object.assign(NAV_CACHE, navMap);
+        setNavs((prev) => ({ ...prev, ...navMap }));
+      }
       setStatus(failed ? 'partial' : 'ok');
       setNote(
         failed
@@ -656,23 +666,32 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
                       <span className="ft-harvest__holdtot">{formatINR(f.currentValue)}</span>
                     </div>
                     <div className="ft-harvest__holdsub">
-                      {fmtHUnits(f.currentUnits)}u · invested {formatINR(f.costValue)} · gain {f.currentValue - f.costValue >= 0 ? '+' : '−'}{formatINR(Math.abs(f.currentValue - f.costValue))}
+                      invested {formatINR(f.costValue)} · gain {f.currentValue - f.costValue >= 0 ? '+' : '−'}{formatINR(Math.abs(f.currentValue - f.costValue))}
                     </div>
                     <div className="ft-harvest__bar" title={`${ltPct}% long-term`}>
                       <span className="ft-harvest__bar-lt" style={{ width: `${ltPct}%` }} />
                     </div>
-                    <div className="ft-harvest__holdlegend">
-                      <span className="ft-harvest__lt">● Long-term {formatINR(f.longTermValue)} · {fmtHUnits(f.longTermUnits)}u</span>
-                      <span className="ft-harvest__st">
-                        ● New {formatINR(f.shortTermValue)} · {fmtHUnits(f.shortTermUnits)}u
-                        {f.nextLongTermDate && f.shortTermUnits > 0 ? ` · ${fmtHUnits(f.nextLongTermUnits ?? 0)}u ready ${fmtDate(f.nextLongTermDate)}` : ''}
-                      </span>
-                    </div>
-                    {sell && (
-                      <div className="ft-harvest__sellline">
-                        <AppIcon name="reviewed" size={13} /> Harvest <b>{fmtHUnits(f.sellUnits)}u</b> → {formatINR(f.sellProceeds)} · books <b>{formatINR(f.sellGain)}</b> tax-free
-                      </div>
-                    )}
+                    <ul className="ft-harvest__lines">
+                      <li className="ft-harvest__line ft-harvest__line--lt">
+                        <span className="ft-harvest__lbl">Long-term</span>
+                        <span className="ft-harvest__val">{formatINR(f.longTermValue)} · {fmtHUnits(f.longTermUnits)}u</span>
+                      </li>
+                      {f.shortTermUnits > 0 && (
+                        <li className="ft-harvest__line ft-harvest__line--st">
+                          <span className="ft-harvest__lbl">New</span>
+                          <span className="ft-harvest__val">
+                            {formatINR(f.shortTermValue)} · {fmtHUnits(f.shortTermUnits)}u
+                            {f.nextLongTermDate ? ` · ${fmtHUnits(f.nextLongTermUnits ?? 0)}u ready ${fmtDate(f.nextLongTermDate)}` : ''}
+                          </span>
+                        </li>
+                      )}
+                      {sell && (
+                        <li className="ft-harvest__line ft-harvest__line--sell">
+                          <span className="ft-harvest__lbl">Harvest</span>
+                          <span className="ft-harvest__val">{fmtHUnits(f.sellUnits)}u → {formatINR(f.sellProceeds)} · <b>{formatINR(f.sellGain)}</b> tax-free</span>
+                        </li>
+                      )}
+                    </ul>
                   </div>
                 );
               })}

@@ -2,12 +2,18 @@ import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { FinancialGoalRow, GoalPriority } from '../../types/models';
 import { GOAL_PRIORITIES } from '../../types/models';
-import { computeGoal, horizonLabel, classLabelMap, computeCashFlow, activeAssumptions } from '../../core/plannerMath';
-import { newId } from '../../core/util';
+import { computeGoal, horizonLabel, classLabelMap, computeCashFlow, activeAssumptions, sipAccumulated } from '../../core/plannerMath';
+import { newId, addMonths, formatMonthYear } from '../../core/util';
 import AppIcon from '../AppIcon';
 import { Section, MoneyRow, PercentRow, formatINR } from './shared';
-import Goals from '../Goals';
 import { SipCalculator } from '../Calculator';
+
+/** Compact INR for goal projections, e.g. ₹12.5L / ₹1.2Cr. */
+function compactINR(n: number): string {
+  if (n >= 1e7) return `₹${(n / 1e7).toFixed(2)}Cr`;
+  if (n >= 1e5) return `₹${(n / 1e5).toFixed(2)}L`;
+  return formatINR(Math.round(n));
+}
 
 function newGoal(): FinancialGoalRow {
   return {
@@ -24,8 +30,6 @@ function newGoal(): FinancialGoalRow {
 
 export default function GoalsTab({ plan, update }: FortunaTabProps) {
   const [openId, setOpenId] = useState<string | null>(null);
-  // Drives the embedded Questify goal planner's reload after edits.
-  const [goalVersion, setGoalVersion] = useState(0);
   const assumptions = activeAssumptions(plan.assumptions, plan.disabledClasses ?? []);
   const horizons = plan.horizons;
   const goalTypes = plan.horizons ?? [];
@@ -82,6 +86,14 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
         {plan.goals.map((g, i) => {
           const c = computeGoal(g, assumptions, horizons);
           const open = openId === g.id;
+          const months = Math.max(1, Math.round((g.yearsLeft || 0) * 12));
+          const futureCost = (g.amountRequiredToday || 0) * Math.pow(1 + (g.inflationPct || 0) / 100, g.yearsLeft || 0);
+          const fundedPct =
+            g.amountRequiredToday > 0
+              ? Math.max(0, Math.min(100, (g.amountAvailableToday / g.amountRequiredToday) * 100))
+              : g.amountAvailableToday > 0
+                ? 100
+                : 0;
           return (
             <div className={`ft-goal ${open ? 'ft-goal--open' : ''}`} key={g.id}>
               <button className="ft-goal__head" onClick={() => setOpenId(open ? null : g.id)}>
@@ -97,6 +109,16 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
                 </span>
                 <AppIcon name={open ? 'chevronUp' : 'chevronDown'} size={18} />
               </button>
+
+              <div className="ft-goal__track">
+                <div className="ft-goal__trackbar">
+                  <span className="ft-goal__trackfill" style={{ width: `${fundedPct}%` }} />
+                </div>
+                <div className="ft-goal__trackmeta">
+                  <span>{compactINR(g.amountAvailableToday || 0)} of {compactINR(g.amountRequiredToday || 0)} saved</span>
+                  <span>{Math.round(fundedPct)}%</span>
+                </div>
+              </div>
 
               {open && (
                 <div className="ft-goal__body">
@@ -210,6 +232,17 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
                     </div>
                   )}
 
+                  {c.sipRequired > 0 && futureCost > 0 && (
+                    <GoalTimelineFt
+                      available={g.amountAvailableToday || 0}
+                      sip={c.sipRequired}
+                      eff={c.effReturn}
+                      stepUp={g.stepUpPct || 0}
+                      months={months}
+                      target={futureCost}
+                    />
+                  )}
+
                   <button
                     className="btn btn--danger ft-goal__del"
                     onClick={() => {
@@ -229,10 +262,6 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
           <AppIcon name="plus" size={18} /> Add goal
         </button>
 
-        <Section title="Goal planner" subtitle="Visual goals with a scrubbable timeline">
-          <Goals embedded version={goalVersion} onChange={() => setGoalVersion((v) => v + 1)} />
-        </Section>
-
         <Section title="Step-up SIP calculator" subtitle="Quick what-if — nothing saved" collapsible defaultOpen={false}>
           <SipCalculator />
         </Section>
@@ -246,5 +275,54 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
         </Section>
       </div>
     </main>
+  );
+}
+
+/** A scrubbable month-by-month view of a goal: drag to any month between today
+ *  and the goal date to see the projected corpus and how far it is from target. */
+function GoalTimelineFt({
+  available,
+  sip,
+  eff,
+  stepUp,
+  months,
+  target,
+}: {
+  available: number;
+  sip: number;
+  eff: number;
+  stepUp: number;
+  months: number;
+  target: number;
+}) {
+  const [t, setT] = useState(months);
+  const corpus = available * Math.pow(1 + eff, t / 12) + sipAccumulated(sip, t, eff, stepUp);
+  const gap = target - corpus;
+  const onTrack = gap <= 0.5;
+  const date = addMonths(new Date(), t);
+  const tag = t <= 0 ? ' · today' : t >= months ? ' · goal date' : '';
+  return (
+    <div className="ft-gtl">
+      <div className="ft-gtl__head">
+        <span className="muted">By {formatMonthYear(date)}{tag}</span>
+        <strong>{compactINR(corpus)}</strong>
+      </div>
+      <input
+        className="ft-gtl__range"
+        type="range"
+        min={0}
+        max={months}
+        value={t}
+        onChange={(e) => setT(Number(e.target.value))}
+        aria-label="Scrub goal timeline"
+        data-noswipe
+      />
+      <div className="ft-gtl__read">
+        <span className={onTrack ? 'ft-pos' : 'ft-neg'}>
+          {onTrack ? 'Surplus' : 'Short by'} {compactINR(Math.abs(gap))}
+        </span>
+        <span className="muted">target {compactINR(target)}</span>
+      </div>
+    </div>
   );
 }
