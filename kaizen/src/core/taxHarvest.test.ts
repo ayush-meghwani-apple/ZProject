@@ -82,6 +82,8 @@ describe('computeHarvest — holdings breakdown (long vs short)', () => {
     const h = plan.holdings[0];
     expect(h.longTermUnits).toBe(100);
     expect(h.longTermValue).toBe(20000); // 100 × 200
+    expect(h.costValue).toBe(19000); // 100×100 + 50×180
+    expect(h.longTermCost).toBe(10000); // 100×100
     expect(h.shortTermUnits).toBe(50);
     expect(h.shortTermValue).toBe(10000); // 50 × 200
     // The 2026-01-10 lot turns "safely long-term" a year + 25-day buffer later.

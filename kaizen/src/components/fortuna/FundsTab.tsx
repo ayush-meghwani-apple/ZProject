@@ -3,17 +3,16 @@ import type { FortunaTabProps } from '../FortunaApp';
 import type { MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
 import { formatINR, newId, now } from '../../core/util';
-import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch } from '../../core/amfi';
+import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
 import { generateSipInstallments } from '../../core/mfSip';
 import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
+import { mfMonthlyTrend } from '../../core/mfTrend';
 import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
 import LineChart from './LineChart';
-import { sliceDays, dayLabel, type ChartRange } from '../../core/planSnapshot';
 import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
 
 const catLabel = (c: MFCategory) => MF_CATEGORIES.find((x) => x.value === c)?.label ?? 'Other';
-const CHART_RANGES: ChartRange[] = ['1W', '1M', '3M', 'MAX'];
 
 function fmtDate(iso?: string): string {
   if (!iso) return '—';
@@ -98,7 +97,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = useState<'all' | 'active' | 'inactive'>('all');
-  const [range, setRange] = useState<ChartRange>('1M');
+  // NAV histories (schemeCode → points, newest-first), captured during sync so
+  // the Pulse graph can be re-traced from the very first transaction.
+  const [navs, setNavs] = useState<Record<number, NavPoint[]>>({});
+  const [perfMonths, setPerfMonths] = useState(12);
 
   // A fund is "active" if it has a running SIP; otherwise it's held but not
   // being added to (inactive).
@@ -147,6 +149,11 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
       });
       const failed = results.filter((r) => !r.ok).length;
       const added = results.reduce((s, r) => s + (r.ok && r.newTxns ? r.newTxns.length : 0), 0);
+      // Stash the fetched NAV histories so the Pulse graph can reconstruct the
+      // value-vs-invested curve back to the first transaction.
+      const navMap: Record<number, NavPoint[]> = {};
+      for (const r of results) if (r.ok && r.points) navMap[r.schemeCode] = r.points;
+      if (Object.keys(navMap).length) setNavs((prev) => ({ ...prev, ...navMap }));
       setStatus(failed ? 'partial' : 'ok');
       setNote(
         failed
@@ -169,12 +176,21 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const asOf = new Date();
   const { groups, total } = byCategory(shownFunds, asOf);
 
-  // Fund performance from today onward, from daily snapshots (no back-to-2020 jump).
-  const perfDays = sliceDays(plan.daySnapshots ?? [], range).filter((s) => s.mfInvested > 0 || s.mfValue > 0);
-  const perfFirst = perfDays[0];
-  const perfLast = perfDays[perfDays.length - 1];
-  const perfDelta = perfDays.length >= 2 ? perfLast.mfValue - perfFirst.mfValue : 0;
-  const perfPct = perfDays.length >= 2 && perfFirst.mfValue > 0 ? (perfDelta / perfFirst.mfValue) * 100 : 0;
+  // Pulse performance re-traced from the FIRST transaction: a month-by-month
+  // invested-vs-value curve, pricing each month's cumulative units at that
+  // month's NAV (from the fetched history; falls back to the latest NAV offline).
+  const perfTrend = mfMonthlyTrend(funds, navs, perfMonths, asOf);
+  const perfFirst = perfTrend[0];
+  const perfLast = perfTrend[perfTrend.length - 1];
+  const perfDelta = perfTrend.length >= 2 ? perfLast.value - perfFirst.value : 0;
+  const perfPct = perfTrend.length >= 2 && perfFirst.value > 0 ? (perfDelta / perfFirst.value) * 100 : 0;
+  const monthLabel = (ym: string) => {
+    const [y, m] = ym.split('-');
+    return `${new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-IN', { month: 'short' })} '${y.slice(2)}`;
+  };
+  const PERF_RANGES: { m: number; l: string }[] = [
+    { m: 6, l: '6M' }, { m: 12, l: '1Y' }, { m: 36, l: '3Y' }, { m: 9999, l: 'Max' },
+  ];
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
     const id = newId();
@@ -237,8 +253,8 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
             <ReturnPills s={total} />
             <div className="ft-trend">
               <div className="ft-trend__head">
-                <span className="ft-trend__title">Performance</span>
-                {perfDays.length >= 2 && (
+                <span className="ft-trend__title">Performance · since first investment</span>
+                {perfTrend.length >= 2 && (
                   <span className={`ft-trend__delta ${perfDelta > 0 ? 'ft-mf__pos' : perfDelta < 0 ? 'ft-mf__neg' : ''}`}>
                     {perfDelta > 0 ? '\u25b2' : perfDelta < 0 ? '\u25bc' : '\u25a0'} {formatINR(Math.abs(perfDelta))}{' '}
                     <small>({perfPct >= 0 ? '+' : ''}{perfPct.toFixed(1)}%)</small>
@@ -246,24 +262,24 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
                 )}
               </div>
               <LineChart
-                labels={perfDays.map((s) => dayLabel(s.d))}
+                labels={perfTrend.map((p) => monthLabel(p.ym))}
                 series={[
-                  { label: 'Value', color: '#6366f1', values: perfDays.map((s) => s.mfValue) },
-                  { label: 'Invested', color: '#94a3b8', values: perfDays.map((s) => s.mfInvested), dashed: true },
+                  { label: 'Value', color: '#6366f1', values: perfTrend.map((p) => p.value) },
+                  { label: 'Invested', color: '#94a3b8', values: perfTrend.map((p) => p.invested), dashed: true },
                 ]}
                 height={170}
-                emptyHint="Your fund performance charts here from today onward, building up as the days pass."
+                emptyHint="Add a fund and its performance will chart here, back to your first transaction."
               />
               <div className="ft-trend__foot">
                 <div className="ft-trend__ranges">
-                  {CHART_RANGES.map((r) => (
+                  {PERF_RANGES.map((r) => (
                     <button
-                      key={r}
-                      className={range === r ? 'active' : ''}
+                      key={r.l}
+                      className={perfMonths === r.m ? 'active' : ''}
                       onPointerDown={(e) => e.preventDefault()}
-                      onClick={() => setRange(r)}
+                      onClick={() => setPerfMonths(r.m)}
                     >
-                      {r === 'MAX' ? 'Max' : r}
+                      {r.l}
                     </button>
                   ))}
                 </div>
@@ -637,8 +653,9 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
                   <div className={`ft-harvest__hold ${sell ? 'ft-harvest__hold--sell' : ''}`} key={f.fundId}>
                     <div className="ft-harvest__holdtop">
                       <span className="ft-harvest__name">{f.name}</span>
-                      <span className="ft-harvest__holdtot">{fmtHUnits(f.currentUnits)} u · {formatINR(f.currentValue)}</span>
+                      <span className="ft-harvest__holdtot">{fmtHUnits(f.currentUnits)}u · {formatINR(f.currentValue)}</span>
                     </div>
+                    <div className="ft-harvest__holdsub">Invested {formatINR(f.costValue)} · gain {formatINR(f.currentValue - f.costValue)}</div>
                     <div className="ft-harvest__bar" title={`${ltPct}% long-term`}>
                       <span className="ft-harvest__bar-lt" style={{ width: `${ltPct}%` }} />
                     </div>
@@ -654,8 +671,8 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
                     </div>
                     {sell && (
                       <div className="ft-harvest__sellline">
-                        <AppIcon name="reviewed" size={13} /> Sell <b>{fmtHUnits(f.sellUnits)}u</b> · {formatINR(f.sellProceeds)}
-                        <span> (+{formatINR(f.sellGain)} tax-free)</span>
+                        <AppIcon name="reviewed" size={13} /> Sell <b>{fmtHUnits(f.sellUnits)}u</b> → get {formatINR(f.sellProceeds)}
+                        <span> · invested {formatINR(f.sellProceeds - f.sellGain)} · books {formatINR(f.sellGain)} tax-free profit</span>
                       </div>
                     )}
                   </div>

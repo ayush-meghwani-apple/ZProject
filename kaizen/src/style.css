@@ -4935,6 +4935,19 @@ svg.lucide {
   padding: 2px 0;
   cursor: pointer;
 }
+.ft-led__customdates {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ft-led__customdates label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
 .ft-led__filtersel {
   width: 100%;
   padding: 9px 34px 9px 12px;
@@ -4973,6 +4986,28 @@ svg.lucide {
 }
 .ft-fab:active {
   transform: translateY(1px);
+}
+/* Add-transaction modal (centred popup, so focus lands on the form). */
+.ft-addmodal {
+  width: min(460px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.ft-addmodal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ft-addmodal__head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.ft-addmodal .ft-mf__add {
+  border: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* A redeem (sell) row in a fund's transaction list. */
@@ -5126,6 +5161,11 @@ svg.lucide {
 .ft-harvest__holdtot {
   color: var(--muted);
   white-space: nowrap;
+}
+.ft-harvest__holdsub {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 2px 0 1px;
 }
 .ft-harvest__bar {
   height: 7px;
@@ -5425,6 +5465,34 @@ svg.lucide {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   pointer-events: none;
   z-index: 3;
+}
+/* Inline readout row shown ABOVE the plot (never covers the line). */
+.ft-chart__readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 20px;
+  margin-bottom: 4px;
+  font-size: 11.5px;
+}
+.ft-chart__rodate {
+  font-weight: 700;
+  color: var(--text);
+}
+.ft-chart__roitem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+.ft-chart__roitem b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.ft-chart__rohint {
+  color: var(--muted);
+  opacity: 0.8;
 }
 .ft-chart__tipdate {
   font-size: 10.5px;

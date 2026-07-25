@@ -102,10 +102,28 @@ export default function LineChart({
     setActive(Math.max(0, Math.min(n - 1, i)));
   }
 
-  const tipLeft = active != null ? Math.max(4, Math.min(w - 132, xFor(active) - 66)) : 0;
-
   return (
     <div className="ft-chart" ref={wrapRef}>
+      {/* Readout sits ABOVE the plot so the box never covers the line. */}
+      <div className="ft-chart__readout">
+        {active != null ? (
+          <>
+            <span className="ft-chart__rodate">{lbls[active]}</span>
+            {srs.map((s) => {
+              const v = s.values[active];
+              if (v == null || !Number.isFinite(v)) return null;
+              return (
+                <span className="ft-chart__roitem" key={s.label}>
+                  <span className="ft-chart__tipdot" style={{ background: s.color }} />
+                  {s.label} <b>{fullINR(v)}</b>
+                </span>
+              );
+            })}
+          </>
+        ) : (
+          <span className="ft-chart__rohint">Tap the chart to read any day’s values</span>
+        )}
+      </div>
       <svg
         className="ft-chart__svg"
         width={w}
@@ -153,22 +171,6 @@ export default function LineChart({
           </>
         )}
       </svg>
-      {active != null && (
-        <div className="ft-chart__tip" style={{ left: tipLeft }}>
-          <div className="ft-chart__tipdate">{lbls[active]}</div>
-          {srs.map((s) => {
-            const v = s.values[active];
-            if (v == null || !Number.isFinite(v)) return null;
-            return (
-              <div key={s.label} className="ft-chart__tiprow">
-                <span className="ft-chart__tipdot" style={{ background: s.color }} />
-                <span className="ft-chart__tiplabel">{s.label}</span>
-                <span className="ft-chart__tipval">{fullINR(v)}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

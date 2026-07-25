@@ -56,8 +56,10 @@ export interface FundHarvest {
   latestNav: number;
   currentUnits: number;
   currentValue: number;
+  costValue: number; // total invested (cost) of the units still held
   longTermUnits: number;
   longTermValue: number;
+  longTermCost: number; // invested (cost) of the long-term units
   longTermGain: number; // unrealised gain on long-term lots (positive lots only)
   shortTermUnits: number;
   shortTermValue: number;
@@ -182,8 +184,10 @@ export function computeHarvest(
 
     let currentUnits = 0;
     let currentValue = 0;
+    let costValue = 0;
     let longTermUnits = 0;
     let longTermValue = 0;
+    let longTermCost = 0;
     let longTermGain = 0;
     let shortTermUnits = 0;
     let shortTermValue = 0;
@@ -192,9 +196,11 @@ export function computeHarvest(
     for (const l of lots) {
       currentUnits += l.units;
       currentValue += l.currentValue;
+      costValue += l.costValue;
       if (l.longTerm) {
         longTermUnits += l.units;
         longTermValue += l.currentValue;
+        longTermCost += l.costValue;
         if (l.gain > 0) longTermGain += l.gain;
       } else {
         shortTermUnits += l.units;
@@ -219,8 +225,10 @@ export function computeHarvest(
       latestNav,
       currentUnits,
       currentValue,
+      costValue,
       longTermUnits,
       longTermValue,
+      longTermCost,
       longTermGain,
       shortTermUnits,
       shortTermValue,

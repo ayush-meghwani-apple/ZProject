@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { LedgerEntry, LedgerKind, MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
@@ -100,6 +101,8 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   const [fType, setFType] = useState('all');
   const [fKind, setFKind] = useState<'all' | 'buys' | 'sells'>('all');
   const [fRange, setFRange] = useState('all');
+  const [fFrom, setFFrom] = useState('');
+  const [fTo, setFTo] = useState('');
 
   const rows = useMemo<UnifiedRow[]>(() => {
     const mfRows: UnifiedRow[] = funds.flatMap((f) =>
@@ -213,19 +216,37 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   const hasSells = rows.some((r) => r.isSell);
   const hasFundTypes = typeOptions.length > 1;
 
-  // Start of the selected date window (−Infinity = all time). FY = Indian Apr–Mar.
-  const rangeStart = useMemo(() => {
+  // Start/end of the selected date window (±Infinity = open). FY = Indian Apr–Mar.
+  const rangeWindow = useMemo(() => {
     const now = new Date();
+    const end0 = now.getTime();
     switch (fRange) {
-      case 'fy': { const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; return new Date(y, 3, 1).getTime(); }
-      case 'cy': return new Date(now.getFullYear(), 0, 1).getTime();
-      case '12m': return now.getTime() - 365 * 86400000;
-      case '6m': return now.getTime() - 182 * 86400000;
-      case '90d': return now.getTime() - 90 * 86400000;
-      case '30d': return now.getTime() - 30 * 86400000;
-      default: return -Infinity;
+      case 'fy': { const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; return { start: new Date(y, 3, 1).getTime(), end: new Date(y + 1, 2, 31, 23, 59, 59, 999).getTime() }; }
+      case 'cy': return { start: new Date(now.getFullYear(), 0, 1).getTime(), end: end0 };
+      case '12m': return { start: end0 - 365 * 86400000, end: end0 };
+      case '6m': return { start: end0 - 182 * 86400000, end: end0 };
+      case '90d': return { start: end0 - 90 * 86400000, end: end0 };
+      case '30d': return { start: end0 - 30 * 86400000, end: end0 };
+      case 'custom': return { start: fFrom ? new Date(fFrom + 'T00:00:00').getTime() : -Infinity, end: fTo ? new Date(fTo + 'T23:59:59').getTime() : Infinity };
+      default: return { start: -Infinity, end: Infinity };
     }
-  }, [fRange]);
+  }, [fRange, fFrom, fTo]);
+
+  // Date-range option labels with the exact window spelled out.
+  const rangeOptions = useMemo(() => {
+    const now = new Date();
+    const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    return [
+      { key: 'all', label: 'All time' },
+      { key: 'fy', label: `This FY (Apr ${y} – Mar ${y + 1})` },
+      { key: 'cy', label: `This year (Jan – Dec ${now.getFullYear()})` },
+      { key: '12m', label: 'Last 12 months' },
+      { key: '6m', label: 'Last 6 months' },
+      { key: '90d', label: 'Last 90 days' },
+      { key: '30d', label: 'Last 30 days' },
+      { key: 'custom', label: 'Custom range…' },
+    ];
+  }, []);
 
   const shown = rows.filter((r) => {
     if (fCls !== 'all' && r.classKey !== fCls) return false;
@@ -234,7 +255,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
     if (fKind === 'sells' && !r.isSell) return false;
     if (fRange !== 'all') {
       const t = new Date(r.date).getTime();
-      if (!Number.isFinite(t) || t < rangeStart) return false; // undated positions drop out of a date window
+      if (!Number.isFinite(t) || t < rangeWindow.start || t > rangeWindow.end) return false; // undated positions drop out of a date window
     }
     return true;
   });
@@ -351,16 +372,24 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                 </select>
               )}
               <select className="input ft-led__filtersel" value={fRange} onChange={(e) => setFRange(e.target.value)} aria-label="Filter by date">
-                <option value="all">All time</option>
-                <option value="fy">This financial year</option>
-                <option value="cy">This calendar year</option>
-                <option value="12m">Last 12 months</option>
-                <option value="6m">Last 6 months</option>
-                <option value="90d">Last 90 days</option>
-                <option value="30d">Last 30 days</option>
+                {rangeOptions.map((o) => (
+                  <option key={o.key} value={o.key}>{o.label}</option>
+                ))}
               </select>
+              {fRange === 'custom' && (
+                <div className="ft-led__customdates">
+                  <label>
+                    <span>From</span>
+                    <input className="input" type="date" value={fFrom} max={fTo || todayInput()} onChange={(e) => setFFrom(e.target.value)} />
+                  </label>
+                  <label>
+                    <span>To</span>
+                    <input className="input" type="date" value={fTo} min={fFrom} max={todayInput()} onChange={(e) => setFTo(e.target.value)} />
+                  </label>
+                </div>
+              )}
               {anyFilter && (
-                <button className="ft-led__clearfilter" onClick={() => { setFCls('all'); setFType('all'); setFKind('all'); setFRange('all'); }}>
+                <button className="ft-led__clearfilter" onClick={() => { setFCls('all'); setFType('all'); setFKind('all'); setFRange('all'); setFFrom(''); setFTo(''); }}>
                   Clear filters
                 </button>
               )}
@@ -504,52 +533,66 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
               );
             })}
 
-            {adding && (
-              <AddTransaction
-                funds={funds}
-                classes={assignableClasses(plan)}
-                onCancel={() => setAdding(false)}
-                onAddMf={(fundId, txn) => {
-                  update((d) => {
-                    const f = (d.mutualFunds ?? []).find((x) => x.id === fundId);
-                    if (f) { f.transactions.push(txn); f.updatedAt = now(); }
-                  });
-                  setAdding(false);
-                }}
-                onAddNewFund={(match, category, txn) => {
-                  update((d) => {
-                    (d.mutualFunds ??= []).push({
-                      id: newId(),
-                      schemeCode: match.schemeCode,
-                      name: match.schemeName,
-                      category,
-                      transactions: [txn],
-                      // Seed a value immediately from the buy NAV; the Pulse tab
-                      // refreshes the live NAV on its next sync.
-                      latestNav: txn.nav || undefined,
-                      latestNavDate: txn.nav ? txn.date : undefined,
-                      createdAt: now(),
-                      updatedAt: now(),
-                    });
-                  });
-                  setAdding(false);
-                }}
-                onAddEntry={(entry) => {
-                  update((d) => {
-                    (d.ledger ??= []).push(entry);
-                    syncEntryHolding(d, entry);
-                  });
-                  setAdding(false);
-                }}
-              />
+            {adding && createPortal(
+              <div className="modal__backdrop" onClick={() => setAdding(false)}>
+                <div className="modal__card ft-addmodal" onClick={(e) => e.stopPropagation()}>
+                  <div className="ft-addmodal__head">
+                    <h3>Add transaction</h3>
+                    <button className="iconbtn" aria-label="Close" onClick={() => setAdding(false)}>
+                      <AppIcon name="close" size={18} />
+                    </button>
+                  </div>
+                  <AddTransaction
+                    funds={funds}
+                    classes={assignableClasses(plan)}
+                    onCancel={() => setAdding(false)}
+                    onAddMf={(fundId, txn) => {
+                      update((d) => {
+                        const f = (d.mutualFunds ?? []).find((x) => x.id === fundId);
+                        if (f) { f.transactions.push(txn); f.updatedAt = now(); }
+                      });
+                      setAdding(false);
+                    }}
+                    onAddNewFund={(match, category, txn) => {
+                      update((d) => {
+                        (d.mutualFunds ??= []).push({
+                          id: newId(),
+                          schemeCode: match.schemeCode,
+                          name: match.schemeName,
+                          category,
+                          transactions: [txn],
+                          // Seed a value immediately from the buy NAV; the Pulse tab
+                          // refreshes the live NAV on its next sync.
+                          latestNav: txn.nav || undefined,
+                          latestNavDate: txn.nav ? txn.date : undefined,
+                          createdAt: now(),
+                          updatedAt: now(),
+                        });
+                      });
+                      setAdding(false);
+                    }}
+                    onAddEntry={(entry) => {
+                      update((d) => {
+                        (d.ledger ??= []).push(entry);
+                        syncEntryHolding(d, entry);
+                      });
+                      setAdding(false);
+                    }}
+                  />
+                </div>
+              </div>,
+              document.body,
             )}
           </>
         )}
 
-        {!adding && (
+        {/* Floating Add — portalled to <body> so the tab-slide transform can't
+            make its fixed position flicker/jump when switching tabs. */}
+        {!adding && createPortal(
           <button className="ft-fab" onClick={() => setAdding(true)} aria-label="Add transaction" title="Add transaction">
             <AppIcon name="plus" size={20} /> Add
-          </button>
+          </button>,
+          document.body,
         )}
       </div>
     </main>
