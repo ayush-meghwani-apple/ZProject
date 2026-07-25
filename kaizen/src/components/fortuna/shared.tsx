@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import AmountInput from '../AmountInput';
-import AppIcon from '../AppIcon';
+import AppIcon, { type IconName } from '../AppIcon';
 import { formatINR } from '../../core/util';
 
 /** A titled card section used across Fortuna tabs. When `collapsible` is set the
@@ -13,6 +13,8 @@ export function Section({
   children,
   collapsible,
   defaultOpen = true,
+  icon,
+  danger,
 }: {
   title: string;
   subtitle?: string;
@@ -20,16 +22,24 @@ export function Section({
   children: ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  icon?: IconName;
+  danger?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const showBody = !collapsible || open;
+  const iconEl = icon ? (
+    <span className={`ft-section__icon ${danger ? 'ft-section__icon--danger' : ''}`}>
+      <AppIcon name={icon} size={20} />
+    </span>
+  ) : null;
 
   if (collapsible) {
     return (
       <section className={`ft-section ft-section--collapsible ${open ? 'ft-section--open' : ''}`}>
         <button className="ft-section__toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
           <span className="ft-section__togglehead">
-            <span>
+            {iconEl}
+            <span className="ft-section__headtext">
               <span className="ft-section__title">{title}</span>
               {subtitle && <span className="ft-section__sub">{subtitle}</span>}
             </span>
@@ -45,7 +55,8 @@ export function Section({
   return (
     <section className="ft-section">
       <div className="ft-section__head">
-        <div>
+        {iconEl}
+        <div className="ft-section__headtext">
           <h3 className="ft-section__title">{title}</h3>
           {subtitle && <p className="ft-section__sub">{subtitle}</p>}
         </div>

@@ -78,18 +78,21 @@ export function AssumptionsContent({ plan, update }: FortunaTabProps) {
 
   return (
     <>
-        <Section title="Effective returns" subtitle="Blended annual return used for each goal type">
+        <Section title="Effective returns" subtitle="Blended annual return used for each goal type" icon="investments">
           <div className="ft-eff">
             {goalTypes.map((h) => (
               <div className="ft-eff__cell" key={h.id}>
-                <span className="ft-eff__k">{h.label}</span>
-                <span className="ft-eff__v">{((eff[h.id] ?? 0) * 100).toFixed(1)}%</span>
+                <span className="ft-eff__icon"><AppIcon name="investments" size={16} /></span>
+                <span className="ft-eff__text">
+                  <span className="ft-eff__k">{h.label}</span>
+                  <span className="ft-eff__v">{((eff[h.id] ?? 0) * 100).toFixed(1)}%</span>
+                </span>
               </div>
             ))}
           </div>
         </Section>
 
-        <Section title="Goal types" subtitle="Your own goal buckets — tap a row to rename or edit it">
+        <Section title="Goal types" subtitle="Your own goal buckets — tap a row to rename or edit it" icon="goals">
           {goalTypes.map((h) => (
             <GoalTypeRow
               key={h.id}
@@ -105,7 +108,7 @@ export function AssumptionsContent({ plan, update }: FortunaTabProps) {
           </button>
         </Section>
 
-        <Section title="Asset classes" subtitle="Rows are goal types; columns are your asset classes">
+        <Section title="Asset classes" subtitle="Rows are goal types; columns are your asset classes" icon="portfolio">
           <div className="ft-mx" style={{ gridTemplateColumns: cols }}>
             <div className="ft-mx__corner" />
             {activeWithIndex.map(({ a }) => (

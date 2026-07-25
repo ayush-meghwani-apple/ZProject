@@ -3476,10 +3476,29 @@ svg.lucide {
 }
 .ft-section__head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.ft-section__headtext {
+  flex: 1;
+  min-width: 0;
+}
+.ft-section__icon {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+}
+.ft-section__icon--danger {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
 }
 .ft-section__title {
   margin: 0;
@@ -3909,22 +3928,41 @@ svg.lucide {
   gap: 10px;
 }
 .ft-eff__cell {
-  flex: 1 1 90px;
+  flex: 1 1 120px;
   background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  flex-direction: row;
+  gap: 10px;
   align-items: center;
+}
+.ft-eff__icon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-strong) 20%, transparent);
+}
+.ft-eff__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
 }
 .ft-eff__k {
   color: var(--muted);
   font-size: 12px;
 }
 .ft-eff__v {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
+  color: var(--accent);
 }
 
 /* Assumptions grid */
@@ -4594,13 +4632,13 @@ svg.lucide {
 .ft-section__togglehead {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
 }
-.ft-section__togglehead > span:first-child {
+.ft-section__togglehead .ft-section__headtext {
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
   gap: 2px;

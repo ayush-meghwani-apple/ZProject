@@ -178,7 +178,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
   return (
     <main className="app__body">
       <div className="page ft-page">
-        <Section title="Planning">
+        <Section title="Planning" subtitle="Plan your investments and financial goals" icon="assumptions">
           <button className="ft-navrow" onClick={() => setShowReturns(true)}>
             <span className="ft-navrow__main">
               <span className="ft-navrow__title">Returns &amp; assumptions</span>
@@ -188,7 +188,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
           </button>
         </Section>
 
-        <Section title="Backup & restore" subtitle="Your whole app, in one file">
+        <Section title="Backup & restore" subtitle="Your whole app, in one file" icon="backup">
           <p className="ft-note" style={{ marginTop: 0 }}>
             Export a single <strong>kaizen-backup.json</strong> with everything — your financial plan, expenses and
             notes. Keep it somewhere safe (iCloud / Drive). <strong>Import</strong> merges a backup into
@@ -228,6 +228,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
         <Section
           title="Fortuna plan — import / export"
           subtitle="Advanced · rarely used"
+          icon="folder"
           collapsible
           defaultOpen={false}
         >
@@ -255,7 +256,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
           />
         </Section>
 
-        <Section title="Privacy">
+        <Section title="Privacy" subtitle="Lock Fortuna behind your PIN" icon="vault">
           <button className="btn btn--ghost ft-btn ft-btn--full" onClick={onLock}>
             <AppIcon name="vault" size={18} /> Lock financial plan
           </button>
@@ -264,10 +265,10 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
           </p>
         </Section>
 
-        <Section title="About">
+        <Section title="About" subtitle="Version & build info" icon="settings">
           <div className="ft-total" style={{ borderTop: 'none', paddingTop: 0 }}>
             <span>Version</span>
-            <span className="ft-pill">v{__APP_VERSION__}</span>
+            <span className="ft-pill ft-pill--ok">v{__APP_VERSION__}</span>
           </div>
           <div className="ft-total">
             <span>Last updated</span>
@@ -279,7 +280,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
           </p>
         </Section>
 
-        <Section title="Danger zone">
+        <Section title="Danger zone" subtitle="Irreversible — be careful" icon="trash" danger>
           <button className="btn btn--ghost btn--danger ft-btn ft-btn--full" onClick={resetPlan}>
             <AppIcon name="trash" size={18} /> Reset financial plan
           </button>
