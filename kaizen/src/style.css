@@ -4914,6 +4914,27 @@ svg.lucide {
 .ft-led__filterbar {
   margin-top: 12px;
 }
+/* Multi-filter grid: asset · fund type · buy/sell · dates. */
+.ft-led__filtergrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ft-led__filtergrid .ft-led__filtersel {
+  width: 100%;
+}
+.ft-led__clearfilter {
+  grid-column: 1 / -1;
+  justify-self: start;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 0;
+  cursor: pointer;
+}
 .ft-led__filtersel {
   width: 100%;
   padding: 9px 34px 9px 12px;
@@ -5129,6 +5150,50 @@ svg.lucide {
 }
 .ft-harvest__st {
   color: var(--muted);
+}
+/* Combined harvest CTA + per-fund sell highlight. */
+.ft-harvest__cta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+.ft-harvest__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text);
+  cursor: pointer;
+}
+.ft-harvest__toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #16a34a;
+}
+.ft-harvest__hold--sell {
+  background: rgba(34, 197, 94, 0.08);
+  margin: 0 -8px;
+  padding: 8px;
+  border-radius: 10px;
+  border-top: none;
+}
+.ft-harvest__hold--sell + .ft-harvest__hold {
+  border-top: none;
+}
+.ft-harvest__sellline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #15803d;
+}
+.ft-harvest__sellline span {
+  font-weight: 500;
+  color: #16a34a;
 }
 .ft-led__item--pos .ft-led__main {
   cursor: default;

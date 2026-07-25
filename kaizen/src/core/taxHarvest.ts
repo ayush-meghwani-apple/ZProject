@@ -18,8 +18,17 @@
 
 import type { MFTransaction, MutualFundHolding } from '../types/models';
 
-/** Units held longer than this are long-term (LTCG). 12 months. */
-const LONG_TERM_MS = 365 * 24 * 60 * 60 * 1000;
+/** The legal LTCG holding period for equity: 12 months. Used to classify gains
+ *  that PAST redemptions realised (a historical fact). */
+const LEGAL_LONG_TERM_MS = 365 * 24 * 60 * 60 * 1000;
+
+/** For the FORWARD recommendation we treat a unit as "safely long-term" only
+ *  once it's held 12 months **plus a ~25-day buffer**. This guards against the
+ *  registrar allotting a SIP a few days late (holiday/processing delay): a lot
+ *  that looks like it just crossed a year might actually be a few days short and
+ *  still be taxed as short-term, so we never recommend selling a borderline lot. */
+const SAFETY_BUFFER_DAYS = 25;
+const LONG_TERM_MS = (365 + SAFETY_BUFFER_DAYS) * 24 * 60 * 60 * 1000;
 
 /** Default tax-free LTCG allowance per financial year (₹1.25 lakh, post-Jul-2024). */
 export const LTCG_EXEMPTION = 125000;
@@ -114,7 +123,7 @@ function replayFifo(txns: MFTransaction[]): { open: OpenLot[]; realizedLt: { dat
         const lot = open[0];
         const take = Math.min(lot.units, toSell);
         const heldMs = saleDate.getTime() - new Date(lot.date).getTime();
-        if (heldMs >= LONG_TERM_MS) realizedLt.push({ date: saleDate, gain: take * (nav - lot.nav) });
+        if (heldMs >= LEGAL_LONG_TERM_MS) realizedLt.push({ date: saleDate, gain: take * (nav - lot.nav) });
         lot.units -= take;
         toSell -= take;
         if (lot.units <= EPS) open.shift();
@@ -228,17 +237,26 @@ export function computeHarvest(
   const totalLongTermGain = fundViews.reduce((s, f) => s + f.longTermGain, 0);
   const remainingExemption = Math.max(0, exemptionLimit - Math.max(0, realizedLtcgThisFy));
 
-  // Fill the remaining allowance from long-term, positive-gain lots. Sell the
-  // oldest eligible units first (FIFO-friendly), partial on the lot that tips
-  // over the limit so realised gain lands exactly on the free allowance.
+  // Selling STRATEGY (chosen for the least friction + most compounding kept):
+  // exhaust the fund with the BIGGEST harvestable long-term gain first, and
+  // within a fund sell the units with the HIGHEST gain-per-unit first. This
+  // realises the ₹1.25L allowance with the FEWEST units sold and the FEWEST
+  // funds/redemptions touched — lower exit-load/STT/rebuy slippage, and you keep
+  // the most units untouched (their long holding period intact) — rather than
+  // nibbling small amounts from many funds (more transactions, same tax saved).
   let budget = remainingExemption;
+  const gpu = (l: HarvestLot) => l.currentValue / l.units - l.buyNav; // latestNav − buyNav
   const eligible = fundViews
     .flatMap((fv) => fv.lots.filter((l) => l.longTerm && l.gain > EPS).map((l) => ({ fv, l })))
-    .sort((a, b) => a.l.ageDays === b.l.ageDays ? 0 : b.l.ageDays - a.l.ageDays); // oldest first
+    .sort((a, b) =>
+      b.fv.longTermGain !== a.fv.longTermGain
+        ? b.fv.longTermGain - a.fv.longTermGain // biggest-gain fund first
+        : gpu(b.l) - gpu(a.l), // then most-appreciated units first
+    );
 
   for (const { fv, l } of eligible) {
     if (budget <= EPS) break;
-    const gainPerUnit = l.currentValue / l.units - l.buyNav; // latestNav − buyNav
+    const gainPerUnit = gpu(l);
     if (gainPerUnit <= EPS) continue;
     let units: number;
     let gain: number;
@@ -268,7 +286,9 @@ export function computeHarvest(
     realizedLtcgThisFy,
     remainingExemption,
     funds: shownFunds,
-    holdings: [...fundViews].sort((a, b) => b.currentValue - a.currentValue),
+    // Every equity fund, biggest long-term gain first (so the harvest-relevant
+    // funds sit at the top of the breakdown).
+    holdings: [...fundViews].sort((a, b) => b.longTermGain - a.longTermGain || b.currentValue - a.currentValue),
     totalLongTermGain,
     totalSuggestedGain: shownFunds.reduce((s, f) => s + f.sellGain, 0),
     totalSuggestedProceeds: shownFunds.reduce((s, f) => s + f.sellProceeds, 0),

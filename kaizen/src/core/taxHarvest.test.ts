@@ -84,8 +84,8 @@ describe('computeHarvest — holdings breakdown (long vs short)', () => {
     expect(h.longTermValue).toBe(20000); // 100 × 200
     expect(h.shortTermUnits).toBe(50);
     expect(h.shortTermValue).toBe(10000); // 50 × 200
-    // The 2026-01-10 lot turns long-term one year later.
-    expect(h.nextLongTermDate?.slice(0, 10)).toBe('2027-01-10');
+    // The 2026-01-10 lot turns "safely long-term" a year + 25-day buffer later.
+    expect(h.nextLongTermDate?.slice(0, 10)).toBe('2027-02-04');
     expect(h.nextLongTermUnits).toBe(50);
   });
 
@@ -94,6 +94,34 @@ describe('computeHarvest — holdings breakdown (long vs short)', () => {
     const dt = fund({ id: 'd', category: 'debt', latestNav: 120, transactions: [txn('2023-01-01', 10, 100)] });
     const plan = computeHarvest([eq, dt], { asOf: ASOF });
     expect(plan.holdings.map((h) => h.fundId)).toEqual(['e']);
+  });
+});
+
+describe('computeHarvest — 12-month + buffer safety window', () => {
+  it('a lot just over 12 months but inside the buffer is still short-term', () => {
+    // ~370 days before ASOF (2026-03-15) → past 365 but inside the 25-day buffer.
+    const f = fund({ latestNav: 200, transactions: [txn('2025-03-10', 100, 100)] });
+    const plan = computeHarvest([f], { asOf: ASOF });
+    expect(plan.holdings[0].longTermUnits).toBe(0);
+    expect(plan.holdings[0].shortTermUnits).toBe(100);
+  });
+  it('a lot well past 12 months + buffer is long-term', () => {
+    const f = fund({ latestNav: 200, transactions: [txn('2025-01-01', 100, 100)] }); // ~438 days
+    const plan = computeHarvest([f], { asOf: ASOF });
+    expect(plan.holdings[0].longTermUnits).toBe(100);
+  });
+});
+
+describe('computeHarvest — strategy exhausts the biggest-gain fund first', () => {
+  it('fills the allowance from the highest-gain fund before touching others', () => {
+    const big = fund({ id: 'big', name: 'Big', latestNav: 300, transactions: [txn('2023-01-01', 2000, 100)] }); // gain 400000
+    const small = fund({ id: 'small', name: 'Small', latestNav: 150, transactions: [txn('2023-01-01', 100, 100)] }); // gain 5000
+    const plan = computeHarvest([big, small], { asOf: ASOF });
+    const bigV = plan.funds.find((f) => f.fundId === 'big')!;
+    const smallV = plan.funds.find((f) => f.fundId === 'small')!;
+    // ₹1.25L allowance is fully realised from 'big'; 'small' is left untouched.
+    expect(bigV.sellGain).toBeCloseTo(125000, 2);
+    expect(smallV.sellGain).toBe(0);
   });
 });
 

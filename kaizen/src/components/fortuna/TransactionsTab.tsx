@@ -95,7 +95,11 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   const ledger = plan.ledger ?? [];
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [filter, setFilter] = useState<string>('all'); // 'all' | groupKey
+  // Independent filters: asset class · fund type · buy/sell · date range.
+  const [fCls, setFCls] = useState('all');
+  const [fType, setFType] = useState('all');
+  const [fKind, setFKind] = useState<'all' | 'buys' | 'sells'>('all');
+  const [fRange, setFRange] = useState('all');
 
   const rows = useMemo<UnifiedRow[]>(() => {
     const mfRows: UnifiedRow[] = funds.flatMap((f) =>
@@ -195,41 +199,48 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
     return [...mfRows, ...genRows, ...holdRows].sort((x, y) => ts(y) - ts(x));
   }, [funds, ledger, plan]);
 
-  // Dropdown filter options: All, Buys, Sells, All mutual funds, per asset class, per MF cap.
-  const filterOptions = useMemo(() => {
-    const opts: { key: string; label: string }[] = [{ key: 'all', label: 'All transactions' }];
-    if (rows.some((r) => r.isSell)) {
-      opts.push({ key: 'buys', label: 'Buys only' });
-      opts.push({ key: 'sells', label: 'Sells / redemptions' });
-    }
-    if (rows.some((r) => r.isMF)) opts.push({ key: 'mf', label: 'All mutual funds' });
+  // Filter option lists (multi-filter: asset class · fund type · buy/sell · dates).
+  const clsOptions = useMemo(() => {
     const classes = new Map<string, string>();
     for (const r of rows) if (r.classKey && !classes.has(r.classKey)) classes.set(r.classKey, BUILTIN_CLASS_LABEL[r.classKey] ?? classLabel(plan, r.classKey));
-    for (const [k, l] of classes) opts.push({ key: `cls:${k}`, label: `All ${l.toLowerCase()}` });
+    return [{ key: 'all', label: 'All assets' }, ...[...classes].map(([k, l]) => ({ key: k, label: l }))];
+  }, [rows, plan]);
+  const typeOptions = useMemo(() => {
     const caps = new Map<string, string>();
     for (const r of rows) if (r.isMF && r.groupKey.startsWith('mf:') && !caps.has(r.groupKey)) caps.set(r.groupKey, r.groupLabel);
-    for (const [k, l] of caps) opts.push({ key: k, label: l });
-    return opts;
-  }, [rows, plan]);
+    return [{ key: 'all', label: 'All fund types' }, ...[...caps].map(([k, l]) => ({ key: k, label: l }))];
+  }, [rows]);
+  const hasSells = rows.some((r) => r.isSell);
+  const hasFundTypes = typeOptions.length > 1;
+
+  // Start of the selected date window (−Infinity = all time). FY = Indian Apr–Mar.
+  const rangeStart = useMemo(() => {
+    const now = new Date();
+    switch (fRange) {
+      case 'fy': { const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; return new Date(y, 3, 1).getTime(); }
+      case 'cy': return new Date(now.getFullYear(), 0, 1).getTime();
+      case '12m': return now.getTime() - 365 * 86400000;
+      case '6m': return now.getTime() - 182 * 86400000;
+      case '90d': return now.getTime() - 90 * 86400000;
+      case '30d': return now.getTime() - 30 * 86400000;
+      default: return -Infinity;
+    }
+  }, [fRange]);
 
   const shown = rows.filter((r) => {
-    if (filter === 'all') return true;
-    if (filter === 'buys') return r.source !== 'holding' && !r.isSell;
-    if (filter === 'sells') return r.isSell;
-    if (filter === 'mf') return r.isMF;
-    if (filter.startsWith('cls:')) return r.classKey === filter.slice(4);
-    return r.groupKey === filter;
+    if (fCls !== 'all' && r.classKey !== fCls) return false;
+    if (fType !== 'all' && r.groupKey !== fType) return false;
+    if (fKind === 'buys' && (r.isSell || r.source === 'holding')) return false;
+    if (fKind === 'sells' && !r.isSell) return false;
+    if (fRange !== 'all') {
+      const t = new Date(r.date).getTime();
+      if (!Number.isFinite(t) || t < rangeStart) return false; // undated positions drop out of a date window
+    }
+    return true;
   });
+  const anyFilter = fCls !== 'all' || fType !== 'all' || fKind !== 'all' || fRange !== 'all';
   const invested = shown.reduce((s, r) => (r.source === 'holding' ? s : s + (r.isSell ? -r.amount : r.amount)), 0);
   const needsReview = rows.filter((r) => r.auto && !r.reviewed).length;
-  const matchCount = (key: string) =>
-    key === 'all'
-      ? rows.length
-      : key === 'buys'
-        ? rows.filter((r) => r.source !== 'holding' && !r.isSell).length
-        : key === 'sells'
-          ? rows.filter((r) => r.isSell).length
-          : rows.filter((r) => (key === 'mf' ? r.isMF : key.startsWith('cls:') ? r.classKey === key.slice(4) : r.groupKey === key)).length;
 
   // ---- mutations ----------------------------------------------------------
   function editTxn(fundId: string, txnId: string, patch: Partial<MFTransaction>) {
@@ -301,7 +312,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
           <>
             <div className="ft-mf__total">
               <div className="ft-mf__totalrow">
-                <span>{filter === 'all' ? 'Net invested (all buys)' : 'Net invested (filtered)'}</span>
+                <span>{anyFilter ? 'Net invested (filtered)' : 'Net invested (all buys)'}</span>
                 <b>{formatINR(invested)}</b>
               </div>
               <div className="ft-mf__totalrow ft-mf__muted">
@@ -317,17 +328,43 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
               )}
             </div>
 
-            {filterOptions.length > 2 && (
-              <div className="ft-led__filterbar">
-                <select className="input ft-led__filtersel" value={filter} onChange={(e) => setFilter(e.target.value)}>
-                  {filterOptions.map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label} ({matchCount(o.key)})
-                    </option>
+            <div className="ft-led__filtergrid">
+              {clsOptions.length > 1 && (
+                <select className="input ft-led__filtersel" value={fCls} onChange={(e) => setFCls(e.target.value)} aria-label="Filter by asset">
+                  {clsOptions.map((o) => (
+                    <option key={o.key} value={o.key}>{o.label}</option>
                   ))}
                 </select>
-              </div>
-            )}
+              )}
+              {hasFundTypes && (
+                <select className="input ft-led__filtersel" value={fType} onChange={(e) => setFType(e.target.value)} aria-label="Filter by fund type">
+                  {typeOptions.map((o) => (
+                    <option key={o.key} value={o.key}>{o.label}</option>
+                  ))}
+                </select>
+              )}
+              {hasSells && (
+                <select className="input ft-led__filtersel" value={fKind} onChange={(e) => setFKind(e.target.value as 'all' | 'buys' | 'sells')} aria-label="Filter buys or sells">
+                  <option value="all">Buys & sells</option>
+                  <option value="buys">Buys only</option>
+                  <option value="sells">Sells / redemptions</option>
+                </select>
+              )}
+              <select className="input ft-led__filtersel" value={fRange} onChange={(e) => setFRange(e.target.value)} aria-label="Filter by date">
+                <option value="all">All time</option>
+                <option value="fy">This financial year</option>
+                <option value="cy">This calendar year</option>
+                <option value="12m">Last 12 months</option>
+                <option value="6m">Last 6 months</option>
+                <option value="90d">Last 90 days</option>
+                <option value="30d">Last 30 days</option>
+              </select>
+              {anyFilter && (
+                <button className="ft-led__clearfilter" onClick={() => { setFCls('all'); setFType('all'); setFKind('all'); setFRange('all'); }}>
+                  Clear filters
+                </button>
+              )}
+            </div>
 
             {shown.map((r) => {
               const review = r.auto && !r.reviewed;

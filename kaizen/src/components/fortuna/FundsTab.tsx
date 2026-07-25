@@ -570,10 +570,12 @@ const fmtHUnits = (n: number) => (Number(n) || 0).toLocaleString('en-IN', { maxi
  *  long-held gain can be sold this financial year within the tax-free limit. */
 function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }) {
   const [open, setOpen] = useState(false);
+  const [showSell, setShowSell] = useState(true);
   const [limit, setLimit] = useState(LTCG_EXEMPTION);
   const plan = computeHarvest(funds, { asOf, exemptionLimit: limit });
   const hasEquity = funds.some((f) => f.category !== 'debt');
   if (!hasEquity) return null;
+  const canHarvest = plan.remainingExemption > 0 && plan.totalSuggestedGain > 0;
 
   return (
     <div className={`ft-harvest ${plan.totalSuggestedGain > 0 ? 'ft-harvest--go' : ''}`}>
@@ -606,38 +608,33 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
             )}
           </div>
 
-          {plan.totalSuggestedGain > 0 ? (
-            <>
+          {canHarvest ? (
+            <div className="ft-harvest__cta">
               <p className="ft-harvest__note">
-                To harvest <b>{formatINR(plan.totalSuggestedGain)}</b> of gains tax-free, sell about:
+                You can book <b>{formatINR(plan.totalSuggestedGain)}</b> of gains tax-free — about{' '}
+                <b>{formatINR(plan.totalSuggestedProceeds)}</b> to sell, taken from your biggest-gain funds first (highlighted below).
               </p>
-              {plan.funds.filter((f) => f.sellUnits > 0).map((f) => (
-                <div className="ft-harvest__row" key={f.fundId}>
-                  <span className="ft-harvest__name">{f.name}</span>
-                  <span className="ft-harvest__sell">
-                    {fmtHUnits(f.sellUnits)} units · {formatINR(f.sellProceeds)}
-                    <small>+{formatINR(f.sellGain)} gain</small>
-                  </span>
-                </div>
-              ))}
-              <p className="ft-harvest__hint">
-                These are long-held units (&gt; 1 year). After you sell in your broker, record it here as a{' '}
-                <b>Redeem</b> on the Ledger so next year’s numbers stay right — then you can re-buy to reset your cost.
-              </p>
-            </>
+              <label className="ft-harvest__toggle">
+                <input type="checkbox" checked={showSell} onChange={(e) => setShowSell(e.target.checked)} />
+                <span>Show amounts to sell</span>
+              </label>
+            </div>
           ) : plan.totalLongTermGain > 0 ? (
             <p className="ft-harvest__hint">You’ve already used this year’s ₹{(limit / 100000).toFixed(2)} L tax-free LTCG limit. Nothing more to harvest tax-free this FY.</p>
           ) : (
-            <p className="ft-harvest__hint">No units have crossed 1 year with a gain yet — nothing is long-term to harvest.</p>
+            <p className="ft-harvest__hint">No units have safely crossed 1 year with a gain yet — nothing is long-term to harvest.</p>
           )}
 
           {plan.holdings.length > 0 && (
             <>
-              <div className="ft-harvest__breakhead">Each fund — long-term vs new units</div>
+              <div className="ft-harvest__breakhead">
+                Each fund — long-term vs new units{showSell && canHarvest ? ' · harvest plan' : ''}
+              </div>
               {plan.holdings.map((f) => {
                 const ltPct = f.currentValue > 0 ? Math.round((f.longTermValue / f.currentValue) * 100) : 0;
+                const sell = showSell && f.sellUnits > 0;
                 return (
-                  <div className="ft-harvest__hold" key={f.fundId}>
+                  <div className={`ft-harvest__hold ${sell ? 'ft-harvest__hold--sell' : ''}`} key={f.fundId}>
                     <div className="ft-harvest__holdtop">
                       <span className="ft-harvest__name">{f.name}</span>
                       <span className="ft-harvest__holdtot">{fmtHUnits(f.currentUnits)} u · {formatINR(f.currentValue)}</span>
@@ -655,9 +652,20 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
                         {f.nextLongTermDate && f.shortTermUnits > 0 ? ` · +${fmtHUnits(f.nextLongTermUnits ?? 0)}u turns long-term ${fmtDate(f.nextLongTermDate)}` : ''}
                       </span>
                     </div>
+                    {sell && (
+                      <div className="ft-harvest__sellline">
+                        <AppIcon name="reviewed" size={13} /> Sell <b>{fmtHUnits(f.sellUnits)}u</b> · {formatINR(f.sellProceeds)}
+                        <span> (+{formatINR(f.sellGain)} tax-free)</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
+              {showSell && canHarvest && (
+                <p className="ft-harvest__hint">
+                  After you sell in your broker, record each as a <b>Redeem</b> on the Ledger so next year’s numbers stay right — then re-buy to reset your cost basis.
+                </p>
+              )}
             </>
           )}
 
@@ -665,7 +673,7 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
             <span>Tax-free LTCG limit / FY</span>
             <AmountInput className="input" value={limit} onChange={(v) => setLimit(v || LTCG_EXEMPTION)} placeholder="125000" />
           </label>
-          <p className="ft-harvest__disc">Equity funds only, held &gt; 12 months. Debt/international funds excluded. An estimate to plan with — confirm with your CA / broker capital-gains statement.</p>
+          <p className="ft-harvest__disc">Equity funds only, held &gt; 12 months (with a ~25-day safety buffer). Debt/international funds excluded. An estimate to plan with — confirm with your CA / broker capital-gains statement.</p>
         </div>
       )}
     </div>
