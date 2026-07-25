@@ -3,8 +3,16 @@ import type { FortunaTabProps } from '../FortunaApp';
 import type { HorizonDef } from '../../types/models';
 import { effectiveReturns, activeAssumptions, planHorizons } from '../../core/plannerMath';
 import { newId } from '../../core/util';
-import AppIcon from '../AppIcon';
+import AppIcon, { type IconName } from '../AppIcon';
 import { Section } from './shared';
+
+/** A fitting glyph for a goal type (Short / Medium / Long …). */
+function goalTypeIcon(label: string): IconName {
+  const n = label.toLowerCase();
+  if (/medium|mid/.test(n)) return 'calendar';
+  if (/long/.test(n)) return 'mountain';
+  return 'goals';
+}
 
 /** Short column headers for the asset-class matrix, so the 6 classes fit the
  *  screen width without horizontal scrolling. */
@@ -229,6 +237,7 @@ function GoalTypeRow({
 
   return (
     <button className="ft-readrow ft-readrow--tap ft-gtype__read" onClick={() => setEditing(true)}>
+      <span className="ft-gtype__readicon"><AppIcon name={goalTypeIcon(def.label)} size={16} /></span>
       <span className="ft-gtype__readmain">
         <span className="ft-gtype__readname">{def.label.trim() || 'Untitled goal type'}</span>
         {def.description && <span className="ft-gtype__readdesc">{def.description}</span>}

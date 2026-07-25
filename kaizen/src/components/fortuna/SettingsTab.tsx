@@ -178,7 +178,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
   return (
     <main className="app__body">
       <div className="page ft-page">
-        <Section title="Planning" subtitle="Plan your investments and financial goals" icon="assumptions">
+        <Section title="Planning" subtitle="Plan your investments and financial goals" icon="calendar">
           <button className="ft-navrow" onClick={() => setShowReturns(true)}>
             <span className="ft-navrow__main">
               <span className="ft-navrow__title">Returns &amp; assumptions</span>
@@ -265,7 +265,7 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
           </p>
         </Section>
 
-        <Section title="About" subtitle="Version & build info" icon="settings">
+        <Section title="About" subtitle="Version & build info" icon="info">
           <div className="ft-total" style={{ borderTop: 'none', paddingTop: 0 }}>
             <span>Version</span>
             <span className="ft-pill ft-pill--ok">v{__APP_VERSION__}</span>

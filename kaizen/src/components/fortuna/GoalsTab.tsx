@@ -4,8 +4,22 @@ import type { FinancialGoalRow, GoalPriority } from '../../types/models';
 import { GOAL_PRIORITIES } from '../../types/models';
 import { computeGoal, horizonLabel, classLabelMap, computeCashFlow, activeAssumptions, sipAccumulated } from '../../core/plannerMath';
 import { newId, addMonths, formatMonthYear } from '../../core/util';
-import AppIcon from '../AppIcon';
+import AppIcon, { type IconName } from '../AppIcon';
 import { Section, MoneyRow, PercentRow, formatINR } from './shared';
+
+/** Pick a fitting glyph for a goal from its name (falls back to a target). */
+function goalIcon(name: string): IconName {
+  const n = name.toLowerCase();
+  if (/emergenc|contingen|rainy/.test(n)) return 'backup';
+  if (/retire|pension|\bfire\b/.test(n)) return 'expensify';
+  if (/marriage|wedding|shaadi|shadi/.test(n)) return 'family';
+  if (/child|kid|educat|college|school|study|tuition|degree/.test(n)) return 'education';
+  if (/\bcar\b|bike|vehicle|scooter|motor/.test(n)) return 'car';
+  if (/home|house|flat|apartment|property|plot/.test(n)) return 'home';
+  if (/vacation|travel|trip|holiday|tour|europe|abroad/.test(n)) return 'travel';
+  if (/phone|laptop|gadget|electron|watch|iphone/.test(n)) return 'investments';
+  return 'goals';
+}
 
 /** Compact INR for goal projections, e.g. ₹12.5L / ₹1.2Cr. */
 function compactINR(n: number): string {
@@ -59,11 +73,11 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
           {surplus > 0 && (
             <div className="ft-hero__split">
               <div className="ft-hero__cell">
-                <span className="ft-hero__k">Monthly surplus</span>
+                <span className="ft-hero__k"><span className="ft-hero__ki"><AppIcon name="calendar" size={12} /></span> Monthly surplus</span>
                 <span className="ft-hero__v">{formatINR(surplus)}</span>
               </div>
               <div className="ft-hero__cell">
-                <span className="ft-hero__k">{overCommitted ? 'Shortfall' : 'Spare'}</span>
+                <span className="ft-hero__k"><span className="ft-hero__ki"><AppIcon name="goals" size={12} /></span> {overCommitted ? 'Shortfall' : 'Spare'}</span>
                 <span className={`ft-hero__v ${overCommitted ? 'ft-neg' : ''}`}>
                   {formatINR(Math.abs(surplus - totalSip))}
                 </span>
@@ -96,7 +110,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
           return (
             <div className={`ft-goal ${open ? 'ft-goal--open' : ''}`} key={g.id}>
               <button className="ft-goal__head" onClick={() => setOpenId(open ? null : g.id)}>
-                <span className="ft-goal__icon"><AppIcon name="goals" size={18} /></span>
+                <span className="ft-goal__icon"><AppIcon name={goalIcon(g.name)} size={18} /></span>
                 <span className="ft-goal__title">
                   <span className="ft-goal__name">{g.name.trim() || 'Untitled goal'}</span>
                   <span className="ft-goal__meta">

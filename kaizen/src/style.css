@@ -3449,8 +3449,15 @@ svg.lucide {
   min-width: 0;
 }
 .ft-hero__k {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   color: var(--muted);
   font-size: 11px;
+}
+.ft-hero__ki {
+  display: inline-flex;
+  color: var(--accent);
 }
 .ft-hero__v {
   font-size: 14px;
@@ -4406,6 +4413,17 @@ svg.lucide {
   flex: 0 0 auto;
   color: var(--accent);
   margin-top: 2px;
+}
+.ft-gtype__readicon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-strong) 18%, transparent);
 }
 .ft-gtype__readmain {
   display: flex;

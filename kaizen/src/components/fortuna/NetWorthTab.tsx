@@ -80,15 +80,15 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
           <Stat label="Total Net Worth" value={nw.netWorth} tone={nw.netWorth < 0 ? 'neg' : 'pos'} />
           <div className="ft-hero__split">
             <div className="ft-hero__cell">
-              <span className="ft-hero__k">Assets</span>
+              <span className="ft-hero__k"><span className="ft-hero__ki"><AppIcon name="expensify" size={12} /></span> Assets</span>
               <span className="ft-hero__v">{formatINR(nw.totalAssets)}</span>
             </div>
             <div className="ft-hero__cell">
-              <span className="ft-hero__k">Liabilities</span>
+              <span className="ft-hero__k"><span className="ft-hero__ki"><AppIcon name="cashflow" size={12} /></span> Liabilities</span>
               <span className="ft-hero__v ft-neg">{formatINR(nw.totalLiabilities)}</span>
             </div>
             <div className="ft-hero__cell">
-              <span className="ft-hero__k">Liquid</span>
+              <span className="ft-hero__k"><span className="ft-hero__ki"><AppIcon name="liquid" size={12} /></span> Liquid</span>
               <span className="ft-hero__v">{formatINR(nw.liquid)}</span>
             </div>
           </div>

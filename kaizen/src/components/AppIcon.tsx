@@ -46,6 +46,15 @@ import {
   Undo2,
   Wallet,
   X,
+  CalendarDays,
+  Car,
+  Droplet,
+  GraduationCap,
+  Home,
+  Info,
+  Mountain,
+  Plane,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -113,6 +122,16 @@ const ICONS = {
   chevronRight: ChevronRight,
   chevronDown: ChevronDown,
   chevronUp: ChevronUp,
+  // Contextual glyphs (goals, goal types, hero cells, settings).
+  calendar: CalendarDays,
+  car: Car,
+  liquid: Droplet,
+  education: GraduationCap,
+  home: Home,
+  info: Info,
+  mountain: Mountain,
+  travel: Plane,
+  family: Users,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
