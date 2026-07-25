@@ -1,9 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
-import type { LedgerEntry, LedgerKind, MFTransaction, MutualFundHolding } from '../../types/models';
+import type { LedgerEntry, LedgerKind, MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
 import { formatINR, newId, now } from '../../core/util';
-import { assignableClasses, classLabel, removeEntryHolding, syncEntryHolding } from '../../core/ledger';
+import {
+  assignableClasses,
+  assignableSubcats,
+  classLabel,
+  editPosition,
+  removeEntryHolding,
+  syncEntryHolding,
+  type PositionSource,
+} from '../../core/ledger';
+import { searchSchemes, type SchemeMatch } from '../../core/amfi';
 import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
 
@@ -66,6 +75,9 @@ interface UnifiedRow {
   reviewed: boolean;
   fundId?: string;
   entryId?: string;
+  /** For read-only Portfolio positions: where the value lives, so it can be
+   *  edited in place from the Ledger. */
+  posSource?: PositionSource;
 }
 
 const BUILTIN_CLASS_LABEL: Record<string, string> = {
@@ -130,7 +142,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
     const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
     const holdRows: UnifiedRow[] = [];
     let hid = 0;
-    const pos = (classKey: string, name: string, value: number, units = 0, isMF = false) => {
+    const pos = (classKey: string, name: string, value: number, source: PositionSource, units = 0, isMF = false) => {
       if (!(value > 0)) return;
       holdRows.push({
         id: `hold:${hid++}`,
@@ -147,28 +159,31 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
         isSell: false,
         auto: false,
         reviewed: true,
+        posSource: source,
       });
     };
-    for (const r of a.domesticEquity.stocks) pos('domestic_equity', r.name || 'Stock', num(r.value), num(r.units));
-    for (const r of a.domesticEquity.mutualFunds) pos('equity_mf', r.name || 'Fund', num(r.value), num(r.units), true);
-    if (num(a.misc.smallcase) > 0) pos('domestic_equity', 'Smallcase', num(a.misc.smallcase));
-    if (num(a.misc.ulips) > 0) pos('domestic_equity', 'ULIPs / insurance', num(a.misc.ulips));
-    for (const r of a.usEquity.others) pos('us_equity', r.name || 'US holding', num(r.value), num(r.units));
-    if (num(a.debt.liquidCash) > 0) pos('debt', 'Liquid / cash', num(a.debt.liquidCash));
-    for (const r of a.debt.fds) pos('debt', r.name || 'FD', num(r.value));
-    for (const r of a.debt.debtFunds) pos('debt', r.name || 'Debt fund', num(r.value), num(r.units), true);
-    for (const r of a.debt.epfPpfVpf) pos('debt', r.name || 'EPF / PPF', num(r.value));
-    if (num(a.gold.goldEtf) > 0) pos('gold', 'Gold ETF', num(a.gold.goldEtf));
-    if (num(a.gold.jewellery) > 0) pos('gold', 'Jewellery', num(a.gold.jewellery));
-    if (num(a.gold.sgb) > 0) pos('gold', 'SGB', num(a.gold.sgb));
-    for (const r of a.gold.others) pos('gold', r.name || 'Gold', num(r.value));
-    if (num(a.crypto.crypto) > 0) pos('crypto', 'Crypto', num(a.crypto.crypto));
-    for (const r of a.crypto.others) pos('crypto', r.name || 'Crypto', num(r.value));
-    if (num(a.realEstate.home) > 0) pos('real_estate', 'Home', num(a.realEstate.home));
-    if (num(a.realEstate.otherRealEstate) > 0) pos('real_estate', 'Other real estate', num(a.realEstate.otherRealEstate));
-    if (num(a.realEstate.reits) > 0) pos('real_estate', 'REITs', num(a.realEstate.reits));
-    for (const r of a.realEstate.others) pos('real_estate', r.name || 'Property', num(r.value));
-    for (const c of plan.customClasses ?? []) for (const r of c.holdings) pos(c.id, r.name || 'Holding', num(r.value), num(r.units));
+    const rowSrc = (classKey: string, array: string, id: string): PositionSource => ({ kind: 'row', classKey, array, id });
+    const scalar = (path: string): PositionSource => ({ kind: 'scalar', path });
+    for (const r of a.domesticEquity.stocks) pos('domestic_equity', r.name || 'Stock', num(r.value), rowSrc('domestic_equity', 'domesticEquity.stocks', r.id), num(r.units));
+    for (const r of a.domesticEquity.mutualFunds) pos('equity_mf', r.name || 'Fund', num(r.value), rowSrc('equity_mf', 'domesticEquity.mutualFunds', r.id), num(r.units), true);
+    if (num(a.misc.smallcase) > 0) pos('domestic_equity', 'Smallcase', num(a.misc.smallcase), scalar('misc.smallcase'));
+    if (num(a.misc.ulips) > 0) pos('domestic_equity', 'ULIPs / insurance', num(a.misc.ulips), scalar('misc.ulips'));
+    for (const r of a.usEquity.others) pos('us_equity', r.name || 'US holding', num(r.value), rowSrc('us_equity', 'usEquity.others', r.id), num(r.units));
+    if (num(a.debt.liquidCash) > 0) pos('debt', 'Liquid / cash', num(a.debt.liquidCash), scalar('debt.liquidCash'));
+    for (const r of a.debt.fds) pos('debt', r.name || 'FD', num(r.value), rowSrc('debt', 'debt.fds', r.id));
+    for (const r of a.debt.debtFunds) pos('debt', r.name || 'Debt fund', num(r.value), rowSrc('debt', 'debt.debtFunds', r.id), num(r.units), true);
+    for (const r of a.debt.epfPpfVpf) pos('debt', r.name || 'EPF / PPF', num(r.value), rowSrc('debt', 'debt.epfPpfVpf', r.id));
+    if (num(a.gold.goldEtf) > 0) pos('gold', 'Gold ETF', num(a.gold.goldEtf), scalar('gold.goldEtf'));
+    if (num(a.gold.jewellery) > 0) pos('gold', 'Jewellery', num(a.gold.jewellery), scalar('gold.jewellery'));
+    if (num(a.gold.sgb) > 0) pos('gold', 'SGB', num(a.gold.sgb), scalar('gold.sgb'));
+    for (const r of a.gold.others) pos('gold', r.name || 'Gold', num(r.value), rowSrc('gold', 'gold.others', r.id));
+    if (num(a.crypto.crypto) > 0) pos('crypto', 'Crypto', num(a.crypto.crypto), scalar('crypto.crypto'));
+    for (const r of a.crypto.others) pos('crypto', r.name || 'Crypto', num(r.value), rowSrc('crypto', 'crypto.others', r.id));
+    if (num(a.realEstate.home) > 0) pos('real_estate', 'Home', num(a.realEstate.home), scalar('realEstate.home'));
+    if (num(a.realEstate.otherRealEstate) > 0) pos('real_estate', 'Other real estate', num(a.realEstate.otherRealEstate), scalar('realEstate.otherRealEstate'));
+    if (num(a.realEstate.reits) > 0) pos('real_estate', 'REITs', num(a.realEstate.reits), scalar('realEstate.reits'));
+    for (const r of a.realEstate.others) pos('real_estate', r.name || 'Property', num(r.value), rowSrc('real_estate', 'realEstate.others', r.id));
+    for (const c of plan.customClasses ?? []) for (const r of c.holdings) pos(c.id, r.name || 'Holding', num(r.value), rowSrc(c.id, `custom:${c.id}`, r.id), num(r.units));
 
     const ts = (r: UnifiedRow) => {
       const t = new Date(r.date).getTime();
@@ -250,6 +265,9 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
       syncEntryHolding(d, e); // keep the linked portfolio holding in step
     });
   }
+  function editPos(source: PositionSource, patch: { name?: string; value?: number; units?: number }) {
+    update((d) => editPosition(d, source, patch));
+  }
 
   return (
     <main className="app__body">
@@ -304,7 +322,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
               return (
                 <div className={`ft-led__item ${review ? 'ft-led__item--review' : ''} ${isPos ? 'ft-led__item--pos' : ''}`} key={r.id}>
                   <div className="ft-led__row">
-                    <button className="ft-led__main" onClick={isPos ? undefined : () => setOpenId((id) => (id === r.id ? null : r.id))}>
+                    <button className="ft-led__main" onClick={() => setOpenId((id) => (id === r.id ? null : r.id))}>
                       {r.isSip && (
                         <span className="ft-led__badge ft-led__badge--sip" title="SIP installment">
                           <AppIcon name="recurring" size={12} />
@@ -323,7 +341,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                         {r.isSell ? '−' : ''}
                         {formatINR(r.amount)}
                       </b>
-                      {!isPos && <AppIcon name={openId === r.id ? 'chevronUp' : 'chevronDown'} size={16} className="ft-mf__chev" />}
+                      <AppIcon name={openId === r.id ? 'chevronUp' : 'chevronDown'} size={16} className="ft-mf__chev" />
                     </button>
                     {review && (
                       <button
@@ -408,6 +426,30 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                       )}
                     </div>
                   )}
+
+                  {openId === r.id && isPos && r.posSource && (
+                    <div className="ft-mf__fundbody">
+                      <p className="ft-led__posnote">Edits sync straight to your Portfolio.</p>
+                      <div className="ft-mf__txn">
+                        {r.posSource.kind === 'row' ? (
+                          <label className="ft-mf__txnf ft-led__txnname">
+                            <span>Name</span>
+                            <input className="input" value={r.name} onChange={(e) => editPos(r.posSource!, { name: e.target.value })} />
+                          </label>
+                        ) : null}
+                        <label className="ft-mf__txnf">
+                          <span>₹ Value</span>
+                          <AmountInput className="input" value={r.amount} onChange={(v) => editPos(r.posSource!, { value: v })} placeholder="0" />
+                        </label>
+                        {r.posSource.kind === 'row' && (
+                          <label className="ft-mf__txnf">
+                            <span>Units (optional)</span>
+                            <DecimalInput value={r.units} onChange={(v) => editPos(r.posSource!, { units: v })} placeholder="0" />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -421,6 +463,24 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                   update((d) => {
                     const f = (d.mutualFunds ?? []).find((x) => x.id === fundId);
                     if (f) { f.transactions.push(txn); f.updatedAt = now(); }
+                  });
+                  setAdding(false);
+                }}
+                onAddNewFund={(match, category, txn) => {
+                  update((d) => {
+                    (d.mutualFunds ??= []).push({
+                      id: newId(),
+                      schemeCode: match.schemeCode,
+                      name: match.schemeName,
+                      category,
+                      transactions: [txn],
+                      // Seed a value immediately from the buy NAV; the Pulse tab
+                      // refreshes the live NAV on its next sync.
+                      latestNav: txn.nav || undefined,
+                      latestNavDate: txn.nav ? txn.date : undefined,
+                      createdAt: now(),
+                      updatedAt: now(),
+                    });
                   });
                   setAdding(false);
                 }}
@@ -451,31 +511,83 @@ function AddTransaction({
   classes,
   onCancel,
   onAddMf,
+  onAddNewFund,
   onAddEntry,
 }: {
   funds: MutualFundHolding[];
   classes: { key: string; label: string }[];
   onCancel: () => void;
   onAddMf: (fundId: string, txn: MFTransaction) => void;
+  onAddNewFund: (match: SchemeMatch, category: MFCategory, txn: MFTransaction) => void;
   onAddEntry: (entry: LedgerEntry) => void;
 }) {
-  const [mode, setMode] = useState<'mf' | 'other'>(funds.length ? 'mf' : 'other');
+  const [mode, setMode] = useState<'mf' | 'other'>('mf');
   const [date, setDate] = useState(todayInput());
   const [amount, setAmount] = useState(0);
   const [units, setUnits] = useState(0);
-  // MF
-  const [fundId, setFundId] = useState(funds[0]?.id ?? '');
+  // MF — pick an existing fund, or '__new__' to search AMFI for a new one.
+  const [fundId, setFundId] = useState(funds[0]?.id ?? '__new__');
   const [nav, setNav] = useState(0);
   const [kind, setKind] = useState<'sip' | 'lumpsum'>('lumpsum');
+  const isNewFund = fundId === '__new__';
+  // New-fund scheme search (AMFI, like the Pulse tab).
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SchemeMatch[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchErr, setSearchErr] = useState('');
+  const [picked, setPicked] = useState<SchemeMatch | null>(null);
+  const [newCat, setNewCat] = useState<MFCategory>('flexicap');
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Other asset
   const [classKey, setClassKey] = useState(classes[0]?.key ?? 'gold');
   const [name, setName] = useState('');
   const [entryKind, setEntryKind] = useState<LedgerKind>('buy');
+  const subcats = assignableSubcats(classKey);
+  const [subKey, setSubKey] = useState<string>(subcats[0]?.key ?? '');
+  // Keep the sub-category valid when the asset class changes.
+  useEffect(() => {
+    const subs = assignableSubcats(classKey);
+    setSubKey(subs[0]?.key ?? '');
+  }, [classKey]);
+
+  useEffect(() => {
+    if (!isNewFund || picked) return;
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    if (query.trim().length < 3) {
+      setResults([]);
+      return;
+    }
+    searchDebounce.current = setTimeout(async () => {
+      setSearching(true);
+      setSearchErr('');
+      try {
+        setResults((await searchSchemes(query)).slice(0, 25));
+      } catch {
+        setSearchErr('Couldn’t search AMFI (offline?). Try again.');
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+    return () => {
+      if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    };
+  }, [query, isNewFund, picked]);
+
+  const buildTxn = (): MFTransaction => ({
+    id: newId(),
+    date: new Date(date + 'T00:00:00').toISOString(),
+    amount,
+    units: units || (nav > 0 ? amount / nav : 0),
+    nav,
+    kind,
+  });
+
+  const mfDisabled = amount <= 0 || (isNewFund ? !picked : !fundId);
 
   return (
     <div className="ft-mf__add">
       <div className="ft-led__modeseg">
-        <button className={mode === 'mf' ? 'active' : ''} disabled={!funds.length} onClick={() => setMode('mf')}>
+        <button className={mode === 'mf' ? 'active' : ''} onClick={() => setMode('mf')}>
           Mutual fund
         </button>
         <button className={mode === 'other' ? 'active' : ''} onClick={() => setMode('other')}>
@@ -484,47 +596,91 @@ function AddTransaction({
       </div>
 
       {mode === 'mf' ? (
-        funds.length === 0 ? (
-          <p className="ft-mf__note">Add a mutual fund on the Pulse tab first.</p>
-        ) : (
-          <>
-            <label className="ft-mf__addf">
-              <span>Fund</span>
-              <select className="input" value={fundId} onChange={(e) => setFundId(e.target.value)}>
-                {funds.map((f) => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-            </label>
-            <div className="ft-mf__sipfields">
-              <label>
-                <span>Date</span>
-                <input className="input" type="date" value={date} max={todayInput()} onChange={(e) => setDate(e.target.value)} />
-              </label>
-              <label>
-                <span>Kind</span>
-                <select className="input" value={kind} onChange={(e) => setKind(e.target.value as 'sip' | 'lumpsum')}>
-                  <option value="lumpsum">Lumpsum</option>
-                  <option value="sip">SIP</option>
-                </select>
-              </label>
-            </div>
-            <div className="ft-mf__sipfields">
-              <label>
-                <span>₹ Amount</span>
-                <AmountInput className="input" value={amount} onChange={setAmount} placeholder="0" />
-              </label>
-              <label>
-                <span>NAV</span>
-                <DecimalInput value={nav} onChange={setNav} placeholder="0" />
-              </label>
-              <label>
-                <span>Units</span>
-                <DecimalInput value={units} onChange={setUnits} placeholder="0" />
-              </label>
-            </div>
-          </>
-        )
+        <>
+          <label className="ft-mf__addf">
+            <span>Fund</span>
+            <select className="input" value={fundId} onChange={(e) => { setFundId(e.target.value); setPicked(null); }}>
+              {funds.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+              <option value="__new__">＋ Add a new fund…</option>
+            </select>
+          </label>
+
+          {isNewFund && (
+            picked ? (
+              <>
+                <div className="ft-mf__addpicked">
+                  <b>{picked.schemeName}</b>
+                  <button className="ft-mf__link" onClick={() => setPicked(null)}>Change</button>
+                </div>
+                <label className="ft-mf__addf">
+                  <span>Category</span>
+                  <select className="input" value={newCat} onChange={(e) => setNewCat(e.target.value as MFCategory)}>
+                    {MF_CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : (
+              <>
+                <input
+                  className="input"
+                  value={query}
+                  autoFocus
+                  placeholder="Search fund name (e.g. Parag Parikh Flexi Cap Direct)"
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                {searching && <p className="ft-mf__hint">Searching…</p>}
+                {searchErr && <p className="ft-mf__note ft-mf__note--warn">{searchErr}</p>}
+                <div className="ft-mf__results">
+                  {results.map((r) => {
+                    const already = funds.some((f) => f.schemeCode === r.schemeCode);
+                    return (
+                      <button key={r.schemeCode} className="ft-mf__result" disabled={already} onClick={() => setPicked(r)}>
+                        <span>{r.schemeName}</span>
+                        {already && <span className="ft-mf__added">Added</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )
+          )}
+
+          {(!isNewFund || picked) && (
+            <>
+              <div className="ft-mf__sipfields">
+                <label>
+                  <span>Date</span>
+                  <input className="input" type="date" value={date} max={todayInput()} onChange={(e) => setDate(e.target.value)} />
+                </label>
+                <label>
+                  <span>Kind</span>
+                  <select className="input" value={kind} onChange={(e) => setKind(e.target.value as 'sip' | 'lumpsum')}>
+                    <option value="lumpsum">Lumpsum</option>
+                    <option value="sip">SIP</option>
+                  </select>
+                </label>
+              </div>
+              <div className="ft-mf__sipfields">
+                <label>
+                  <span>₹ Amount</span>
+                  <AmountInput className="input" value={amount} onChange={setAmount} placeholder="0" />
+                </label>
+                <label>
+                  <span>NAV</span>
+                  <DecimalInput value={nav} onChange={setNav} placeholder="0" />
+                </label>
+                <label>
+                  <span>Units</span>
+                  <DecimalInput value={units} onChange={setUnits} placeholder="0" />
+                </label>
+              </div>
+            </>
+          )}
+        </>
       ) : (
         <>
           <div className="ft-mf__sipfields">
@@ -536,6 +692,16 @@ function AddTransaction({
                 ))}
               </select>
             </label>
+            {subcats.length > 0 && (
+              <label>
+                <span>Sub-category</span>
+                <select className="input" value={subKey} onChange={(e) => setSubKey(e.target.value)}>
+                  {subcats.map((s) => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label>
               <span>Kind</span>
               <select className="input" value={entryKind} onChange={(e) => setEntryKind(e.target.value as LedgerKind)}>
@@ -546,7 +712,7 @@ function AddTransaction({
           </div>
           <label className="ft-mf__addf">
             <span>Name</span>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Gold coin 10g" />
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Gold coin 10g, SBI FD, AAPL" />
           </label>
           <div className="ft-mf__sipfields">
             <label>
@@ -570,17 +736,11 @@ function AddTransaction({
         {mode === 'mf' ? (
           <button
             className="btn"
-            disabled={!fundId}
-            onClick={() =>
-              onAddMf(fundId, {
-                id: newId(),
-                date: new Date(date + 'T00:00:00').toISOString(),
-                amount,
-                units: units || (nav > 0 ? amount / nav : 0),
-                nav,
-                kind,
-              })
-            }
+            disabled={mfDisabled}
+            onClick={() => {
+              if (isNewFund && picked) onAddNewFund(picked, newCat, buildTxn());
+              else if (!isNewFund) onAddMf(fundId, buildTxn());
+            }}
           >
             Add
           </button>
@@ -597,6 +757,7 @@ function AddTransaction({
                 amount,
                 units: units || undefined,
                 kind: entryKind,
+                subKey: subKey || undefined,
                 reviewed: true,
                 createdAt: now(),
                 updatedAt: now(),

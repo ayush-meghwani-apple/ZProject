@@ -145,7 +145,7 @@ export default function HoldingList({
           <button className="ft-readrow ft-readrow--tap" key={row.id} onClick={() => setEditingId(row.id)}>
             <span className="ft-readrow__name">
               {row.name.trim() || '—'}
-              {categories && row.category && <span className="ft-readrow__cat">{row.category}</span>}
+              {row.category && <span className="ft-readrow__cat">{row.category}</span>}
               {showUnits && row.units ? <span className="ft-readrow__cat">{row.units.toLocaleString('en-IN', { maximumFractionDigits: 3 })} units</span> : null}
             </span>
             <span className="ft-readrow__val">{formatINR(row.value)}</span>

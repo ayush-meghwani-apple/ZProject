@@ -454,6 +454,10 @@ export interface LedgerEntry {
   units?: number; // optional quantity (coins, grams, shares)
   price?: number; // optional per-unit price
   kind: LedgerKind;
+  /** Optional sub-category within the asset class (e.g. a Debt entry that is a
+   *  Fixed deposit vs a Debt fund; a Gold entry that is Jewellery vs an ETF).
+   *  Routes the linked holding into the right Portfolio bucket and tags it. */
+  subKey?: string;
   note?: string;
   auto?: boolean; // added automatically (kept for parity; user reviews it)
   reviewed?: boolean; // user acknowledged an auto-added entry
