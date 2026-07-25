@@ -928,17 +928,34 @@ input.pmrow__nameinput {
   text-align: center;
   padding: 24px 20px;
 }
+.vaultlock__card h2 {
+  font-size: 22px;
+  margin: 4px 0 6px;
+}
 
 .vaultlock__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.45);
+}
+
+.vaultlock__btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 14px;
+  font-size: 16px;
+  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.45);
 }
 
 .vaultlock__form {
@@ -3390,10 +3407,11 @@ svg.lucide {
 
 /* Hero stat block */
 .ft-hero {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.14));
-  border: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(168, 85, 247, 0.16));
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 30%, var(--border));
   border-radius: var(--radius);
   padding: 16px;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.14);
 }
 .ft-stat {
   display: flex;
@@ -3454,6 +3472,7 @@ svg.lucide {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
 }
 .ft-section__head {
   display: flex;
@@ -4380,9 +4399,21 @@ svg.lucide {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 }
 .ft-goal--open {
   border-color: var(--accent);
+}
+.ft-goal__icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
 }
 .ft-goal__head {
   display: flex;

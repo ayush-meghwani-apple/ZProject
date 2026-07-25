@@ -96,6 +96,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
           return (
             <div className={`ft-goal ${open ? 'ft-goal--open' : ''}`} key={g.id}>
               <button className="ft-goal__head" onClick={() => setOpenId(open ? null : g.id)}>
+                <span className="ft-goal__icon"><AppIcon name="goals" size={18} /></span>
                 <span className="ft-goal__title">
                   <span className="ft-goal__name">{g.name.trim() || 'Untitled goal'}</span>
                   <span className="ft-goal__meta">

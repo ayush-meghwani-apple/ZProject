@@ -112,13 +112,17 @@ function FortunaLock({ onUnlock }: { onUnlock: () => void }) {
             )}
             {err && <div className="vaultlock__err">{err}</div>}
             <button
-              className="btn"
+              className="btn vaultlock__btn"
               type="submit"
               disabled={busy}
               onPointerDown={(e) => e.preventDefault()}
               onMouseDown={(e) => e.preventDefault()}
             >
-              {busy ? 'Working…' : creating ? 'Create & open' : 'Unlock'}
+              {busy ? 'Working…' : (
+                <>
+                  <AppIcon name="vault" size={18} /> {creating ? 'Create & open' : 'Unlock'}
+                </>
+              )}
             </button>
           </form>
         </div>
