@@ -5261,9 +5261,9 @@ svg.lucide {
 }
 .ft-harvest__line {
   display: grid;
-  grid-template-columns: 12px 66px 1fr;
+  grid-template-columns: 12px 58px auto 1fr;
   align-items: baseline;
-  gap: 6px;
+  column-gap: 6px;
   font-size: 11.5px;
   color: var(--text);
 }
@@ -5286,8 +5286,16 @@ svg.lucide {
   color: var(--accent);
   font-weight: 600;
 }
-.ft-harvest__line--sell .ft-harvest__val b {
+.ft-harvest__amt {
+  text-align: right;
+  white-space: nowrap;
+}
+.ft-harvest__u {
+  color: var(--muted);
+}
+.ft-harvest__line--sell .ft-harvest__u b {
   color: var(--accent);
+  font-weight: 600;
 }
 /* Combined harvest CTA + per-fund sell highlight. */
 .ft-harvest__cta {

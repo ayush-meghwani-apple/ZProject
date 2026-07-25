@@ -674,13 +674,15 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
                     <ul className="ft-harvest__lines">
                       <li className="ft-harvest__line ft-harvest__line--lt">
                         <span className="ft-harvest__lbl">Long-term</span>
-                        <span className="ft-harvest__val">{formatINR(f.longTermValue)} · {fmtHUnits(f.longTermUnits)}u</span>
+                        <span className="ft-harvest__amt">{formatINR(f.longTermValue)}</span>
+                        <span className="ft-harvest__u">{fmtHUnits(f.longTermUnits)}u</span>
                       </li>
                       {f.shortTermUnits > 0 && (
                         <li className="ft-harvest__line ft-harvest__line--st">
                           <span className="ft-harvest__lbl">New</span>
-                          <span className="ft-harvest__val">
-                            {formatINR(f.shortTermValue)} · {fmtHUnits(f.shortTermUnits)}u
+                          <span className="ft-harvest__amt">{formatINR(f.shortTermValue)}</span>
+                          <span className="ft-harvest__u">
+                            {fmtHUnits(f.shortTermUnits)}u
                             {f.nextLongTermDate ? ` · ${fmtHUnits(f.nextLongTermUnits ?? 0)}u ready ${fmtDate(f.nextLongTermDate)}` : ''}
                           </span>
                         </li>
@@ -688,7 +690,8 @@ function HarvestCard({ funds, asOf }: { funds: MutualFundHolding[]; asOf: Date }
                       {sell && (
                         <li className="ft-harvest__line ft-harvest__line--sell">
                           <span className="ft-harvest__lbl">Harvest</span>
-                          <span className="ft-harvest__val">{fmtHUnits(f.sellUnits)}u → {formatINR(f.sellProceeds)} · <b>{formatINR(f.sellGain)}</b> tax-free</span>
+                          <span className="ft-harvest__amt">{formatINR(f.sellProceeds)}</span>
+                          <span className="ft-harvest__u">{fmtHUnits(f.sellUnits)}u · <b>{formatINR(f.sellGain)}</b> tax-free</span>
                         </li>
                       )}
                     </ul>
