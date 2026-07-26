@@ -1806,9 +1806,35 @@ select option {
   right: 12px;
   z-index: 5;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 9px;
+}
+.reels__toprow {
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+/* Instagram-style segmented progress across the cycle's reels. */
+.reels__progress {
+  display: flex;
+  gap: 4px;
+  padding: 0 2px;
+}
+.reels__seg {
+  flex: 1;
+  height: 3px;
+  min-width: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.reels__seg--done {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.reels__seg--on {
+  background: linear-gradient(90deg, var(--accent-strong), var(--accent-2));
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
 }
 
 .reels__nav {
@@ -3660,12 +3686,16 @@ svg.lucide {
 .ft-legend__pct {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-  width: 42px;
+  width: 38px;
   text-align: right;
+  flex: 0 0 auto;
 }
 .ft-legend__val {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  min-width: 96px;
+  text-align: right;
 }
 
 /* Per-class sub-category distribution bar shown inside each Portfolio section. */
@@ -5142,6 +5172,16 @@ svg.lucide {
 }
 .ft-mf__refresh {
   flex: 0 0 auto;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  border-radius: 10px;
+}
+.ft-mf__refresh--ok {
+  color: var(--good);
+  background: rgba(52, 211, 153, 0.16);
+}
+.ft-mf__refresh--err {
+  color: var(--bad);
+  background: rgba(248, 113, 113, 0.16);
 }
 .ft-mf__spin {
   animation: ft-mf-spin 0.9s linear infinite;
@@ -6131,22 +6171,26 @@ svg.lucide {
 /* Inline readout row shown ABOVE the plot (never covers the line). */
 .ft-chart__readout {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 4px 12px;
+  gap: 2px 8px;
   min-height: 20px;
   margin-bottom: 4px;
-  font-size: 11.5px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .ft-chart__rodate {
   font-weight: 700;
   color: var(--text);
+  flex: 0 0 auto;
 }
 .ft-chart__roitem {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   color: var(--muted);
+  flex: 0 0 auto;
 }
 .ft-chart__roitem b {
   color: var(--text);
@@ -6412,6 +6456,7 @@ svg.lucide {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+  align-items: flex-end;
 }
 .ft-mf__sipfields label,
 .ft-mf__addf,
@@ -6425,7 +6470,21 @@ svg.lucide {
   min-width: 0;
 }
 .ft-mf__sipfields label:first-child {
-  flex: 1.4;
+  flex: 1;
+}
+/* SIP: Day is small, Start (a date) needs enough room so it isn't clipped. */
+.ft-mf__sipfields label:nth-child(2) {
+  flex: 0 0 54px;
+}
+.ft-mf__sipfields label:nth-child(3) {
+  flex: 0 0 130px;
+}
+.ft-mf__sipfields .input {
+  font-size: 13px;
+}
+.ft-mf__sipfields input[type='date'] {
+  padding-left: 6px;
+  padding-right: 4px;
 }
 .ft-mf__hint {
   margin: 8px 0 0;
@@ -6478,7 +6537,7 @@ svg.lucide {
 }
 .ft-mf__txn {
   display: flex;
-  gap: 6px;
+  gap: 3px;
   align-items: flex-end;
   padding: 6px 0;
   border-top: 1px dashed var(--border);
@@ -6486,14 +6545,39 @@ svg.lucide {
 .ft-mf__txn--auto {
   opacity: 0.92;
 }
+.ft-mf__txn .input {
+  font-size: 11px;
+  padding-left: 5px;
+  padding-right: 3px;
+  min-width: 0;
+}
+.ft-mf__txnf {
+  font-size: 9.5px !important;
+}
+.ft-mf__txnf .input {
+  text-align: right;
+}
+.ft-mf__txnf > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ft-mf__txndate {
-  flex: 0 0 auto;
-  width: 120px;
+  flex: 0 0 96px;
+  width: 96px;
   align-self: center;
+  font-size: 11px;
+  padding-left: 4px !important;
+  padding-right: 0 !important;
 }
 .ft-mf__txndel {
   flex: 0 0 auto;
   align-self: center;
+  padding: 2px;
+}
+.ft-mf__txndel svg {
+  width: 14px;
+  height: 14px;
 }
 .ft-mf__fundactions {
   display: flex;
@@ -6576,4 +6660,403 @@ svg.lucide {
 }
 .ft-mf__addactions .btn {
   flex: 1;
+}
+
+/* =====================================================================
+   Expensify redesign v2 — Reels, Categories, Summary, Settings
+   ===================================================================== */
+
+/* ---- Reels ---- */
+.reel {
+  gap: 12px;
+  padding: 100px 24px 30px;
+}
+.reel__amount {
+  font-size: 52px;
+  text-shadow: 0 2px 26px rgba(0, 0, 0, 0.45);
+}
+.reel--big .reel__amount {
+  text-shadow: 0 0 22px rgba(244, 63, 94, 0.55);
+}
+
+/* Category emoji in a glowing circular ring (matches the mockup). */
+.reel__icon {
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  font-size: 58px;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow:
+    0 0 0 6px rgba(99, 102, 241, 0.05),
+    0 0 60px 10px rgba(99, 102, 241, 0.2),
+    inset 0 2px 12px rgba(255, 255, 255, 0.05);
+}
+.reel--big .reel__icon {
+  border-color: rgba(244, 114, 182, 0.55);
+  box-shadow: 0 0 60px 12px rgba(244, 63, 94, 0.28);
+}
+.reel--reviewed .reel__icon {
+  border-color: rgba(52, 211, 153, 0.55);
+  box-shadow: 0 0 60px 12px rgba(16, 185, 129, 0.24);
+}
+
+/* Merchant / category name — the bold line under the amount. */
+.reel__cat {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+/* Sub-category shown as a clean outlined pill. */
+.reel__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(22, 29, 51, 0.45);
+}
+
+.reel__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.reel__date svg {
+  color: var(--muted);
+}
+
+.reel__methodchip {
+  padding: 7px 16px;
+  font-size: 13.5px;
+}
+
+/* Reviewed badge → soft outlined green pill (no pulse). */
+.reel__flame--ok {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  color: #6ee7b7;
+  box-shadow: none;
+}
+
+/* Note shown as a quote card with a decorative opening quote. */
+.reel__note {
+  position: relative;
+  max-width: 360px;
+  background: rgba(22, 29, 51, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 13px 18px 13px 42px;
+  font-size: 15.5px;
+  line-height: 1.5;
+  text-align: left;
+}
+.reel__note::before {
+  content: '\201C';
+  position: absolute;
+  left: 13px;
+  top: 8px;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent);
+  font-style: normal;
+}
+.reel__note--raw {
+  font-style: normal;
+  color: var(--muted);
+  padding-left: 18px;
+}
+.reel__note--raw::before {
+  content: none;
+}
+
+/* Action buttons → one grouped bar with divider lines (icon on top). */
+.reel__actions:has(.reel__act) {
+  gap: 0;
+  margin-top: 18px;
+  flex-wrap: nowrap;
+  background: rgba(22, 29, 51, 0.55);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 4px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+}
+.reel__act {
+  position: relative;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 8px;
+  border-radius: 13px;
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+.reel__act + .reel__act::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 1px;
+  background: var(--border);
+}
+.reel__act span {
+  color: var(--text);
+  font-weight: 600;
+}
+.reel__act--del svg {
+  color: #f87171;
+}
+.reel__act--rev svg {
+  color: var(--accent);
+}
+.reel__act--rem svg {
+  color: #34d399;
+}
+.reel__act--edit svg {
+  color: #60a5fa;
+}
+
+/* ---- Categories ---- */
+.page--cats .card {
+  padding: 14px 16px;
+}
+/* Highlight the expanded category card (toggle reads "Collapse" when open). */
+.page--cats .card:has(.cat__toggle[aria-label='Collapse']) {
+  border-color: color-mix(in srgb, var(--accent-strong) 45%, var(--border));
+  box-shadow: 0 10px 26px rgba(99, 102, 241, 0.16);
+}
+.page--cats .dot {
+  width: 11px;
+  height: 11px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, transparent);
+}
+.page--cats .cat__count {
+  background: rgba(99, 102, 241, 0.16);
+  color: var(--accent);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+.page--cats .row .inline .iconbtn,
+.page--cats .inline--actions .iconbtn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.page--cats .row .inline .iconbtn:last-child,
+.page--cats .inline--actions .iconbtn:last-child {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+.page--cats .subrow {
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  margin-top: 6px;
+}
+.page--cats .subrow__name {
+  font-weight: 600;
+}
+.page--cats .pill--btn {
+  padding: 5px 12px;
+  font-weight: 600;
+}
+.page--cats .cats__addsub {
+  border: 1px dashed color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: 12px;
+  padding: 8px;
+  background: rgba(99, 102, 241, 0.05);
+}
+.page--cats .cats__addsub .btn {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+}
+
+/* ---- Summary ---- */
+.page--summary .grid-2 .card:first-child {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.12));
+  border-color: color-mix(in srgb, var(--accent-strong) 30%, var(--border));
+}
+.page--summary .grid-2 .card:first-child .stat {
+  color: var(--accent);
+}
+
+/* ---- Settings ---- */
+.page--settings .card > h3 {
+  position: relative;
+  padding-left: 12px;
+}
+.page--settings .card > h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  bottom: 3px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(var(--accent-strong), var(--accent-2));
+}
+.page--settings > .card:first-child {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.12));
+  border-color: color-mix(in srgb, var(--accent-strong) 30%, var(--border));
+}
+.page--settings > .card:first-child > h3::before {
+  display: none;
+}
+.page--settings > .card:first-child .stat {
+  color: var(--accent);
+}
+
+/* ---- Demo mode toggle + banner ---- */
+.demotoggle {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 5px 7px;
+  border-radius: 9px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+.demotoggle:active {
+  background: var(--surface-2);
+}
+.demotoggle--on {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+.demobanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 7px 14px;
+  color: #fff;
+  font-size: 12.5px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(168, 85, 247, 0.9));
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+}
+.demobanner svg {
+  flex: 0 0 auto;
+}
+.demobanner strong {
+  font-weight: 800;
+}
+.ft-about__built {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+/* ---- Settings: Cycle card ---- */
+.cyc__current {
+  background: rgba(11, 16, 32, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 4px 0 6px;
+}
+.cyc__curlabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.cyc__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 8px var(--good);
+}
+.cyc__name {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+  margin-top: 5px;
+}
+.cyc__range {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.cyc__info {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 22%, var(--border));
+  border-radius: 10px;
+  padding: 9px 11px;
+  margin-top: 10px;
+}
+.cyc__info svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+  margin-top: 1px;
+}
+
+/* ---- Stock rows as avatar cards (Portfolio → Equity Stocks) ---- */
+.ft-readrow--card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 30px 10px 10px;
+  margin-bottom: 8px;
+  gap: 11px;
+}
+.ft-readrow--card:active {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--accent-strong) 40%, var(--border));
+}
+.ft-readrow__avatar {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.ft-readrow--card .ft-readrow__name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-weight: 700;
+  white-space: normal;
+}
+.ft-readrow--card .ft-readrow__val {
+  font-size: 15px;
+  font-weight: 800;
 }

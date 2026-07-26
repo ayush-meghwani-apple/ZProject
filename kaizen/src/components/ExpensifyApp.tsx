@@ -8,8 +8,11 @@ import TabbedApp, { type TabDef } from './TabbedApp';
 import AppIcon from './AppIcon';
 import { RecurringRepository } from '../repository/recurringRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
+import { isDemoMode } from '../core/demoMode';
 
-const CHAT_KEY = 'expense:chat';
+// Chat history lives in localStorage; demo mode uses a separate key so your real
+// typed messages are never shown in (or affected by) demo mode.
+const CHAT_KEY = isDemoMode() ? 'expense:chat:demo' : 'expense:chat';
 
 function loadChat(): ChatMessage[] {
   try {

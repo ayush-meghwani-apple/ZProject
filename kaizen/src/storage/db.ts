@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { activeDbName } from '../core/demoMode';
 import type {
   Activity,
   Alias,
@@ -44,7 +45,7 @@ export class ExpenseDB extends Dexie {
   plannerDocs!: Table<FinancialPlan, string>;
 
   constructor() {
-    super('expense-tracker');
+    super(activeDbName());
 
     // ---- Version 1 -------------------------------------------------------
     // Only fields used for lookups/sorting need to be indexed.

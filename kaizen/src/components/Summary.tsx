@@ -260,7 +260,7 @@ export default function Summary({ version }: Props) {
   }
 
   return (
-    <div className="page">
+    <div className="page page--summary">
       <CycleFilter cycles={cycles} value={selected} onChange={setSelected} />
 
       <div className="grid-2">

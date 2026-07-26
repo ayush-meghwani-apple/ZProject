@@ -268,33 +268,50 @@ export default function Reels({ version, onChange }: Props) {
   return (
     <div className="reels">
       <div className="reels__top">
-        <div className="reels__bar">
-          <button
-            className="reels__nav"
-            onClick={goOlder}
-            disabled={!hasOlder}
-            aria-label="Older cycle"
-          >
-            ‹
-          </button>
-          <div className="reels__cycle">
-            <span className="reels__cycle-name">{cycleTitle}</span>
-            <span className="reels__cycle-sub">
-              {formatINR(total)} · {reels.length} expense{reels.length === 1 ? '' : 's'}
-            </span>
+        <div className="reels__toprow">
+          <div className="reels__bar">
+            <button
+              className="reels__nav"
+              onClick={goOlder}
+              disabled={!hasOlder}
+              aria-label="Older cycle"
+            >
+              ‹
+            </button>
+            <div className="reels__cycle">
+              <span className="reels__cycle-name">{cycleTitle}</span>
+              <span className="reels__cycle-sub">
+                {formatINR(total)} · {reels.length} expense{reels.length === 1 ? '' : 's'}
+              </span>
+            </div>
+            <button
+              className="reels__nav"
+              onClick={goNewer}
+              disabled={!hasNewer}
+              aria-label="Newer cycle"
+            >
+              ›
+            </button>
           </div>
-          <button
-            className="reels__nav"
-            onClick={goNewer}
-            disabled={!hasNewer}
-            aria-label="Newer cycle"
-          >
-            ›
-          </button>
+          {notes.length + reels.length > 0 && (
+            <div className="reels__counter">
+              {Math.min(active + 1, notes.length + reels.length)} / {notes.length + reels.length}
+            </div>
+          )}
         </div>
-        {notes.length + reels.length > 0 && (
-          <div className="reels__counter">
-            {Math.min(active + 1, notes.length + reels.length)} / {notes.length + reels.length}
+        {notes.length + reels.length > 1 && (
+          <div className="reels__progress">
+            {(() => {
+              const len = notes.length + reels.length;
+              const segs = Math.min(len, 40);
+              const activeSeg = Math.round((active / (len - 1)) * (segs - 1));
+              return Array.from({ length: segs }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`reels__seg${i < activeSeg ? ' reels__seg--done' : i === activeSeg ? ' reels__seg--on' : ''}`}
+                />
+              ));
+            })()}
           </div>
         )}
       </div>
@@ -391,7 +408,7 @@ export default function Reels({ version, onChange }: Props) {
                     </span>
                   )}
 
-                  <div className="reel__date">{formatDate(e.date)}</div>
+                  <div className="reel__date"><AppIcon name="calendar" size={14} /> {formatDate(e.date)}</div>
 
                   <div className="reel__methodwrap" data-noswipe>
                     <button
@@ -438,24 +455,24 @@ export default function Reels({ version, onChange }: Props) {
                   )}
 
                   {e.note ? (
-                    <div className="reel__note">“{e.note}”</div>
+                    <div className="reel__note">{e.note}</div>
                   ) : !isRecurring && e.rawText ? (
                     <div className="reel__note reel__note--raw">{e.rawText}</div>
                   ) : null}
 
                   <div className="reel__actions">
-                    <button className="reel__act" onClick={() => handleDelete(e.id)}>
+                    <button className="reel__act reel__act--del" onClick={() => handleDelete(e.id)}>
                       <AppIcon name="trash" size={17} /> <span>Delete</span>
                     </button>
                     {isBig && (
-                      <button className="reel__act" onClick={() => toggleReviewed(e)}>
+                      <button className="reel__act reel__act--rev" onClick={() => toggleReviewed(e)}>
                         {e.reviewed ? <AppIcon name="undo" size={17} /> : <AppIcon name="reviewed" size={17} />} <span>{e.reviewed ? 'Unreview' : 'Reviewed'}</span>
                       </button>
                     )}
-                    <button className="reel__act" onClick={() => setRemindExpense(e)}>
+                    <button className="reel__act reel__act--rem" onClick={() => setRemindExpense(e)}>
                       <AppIcon name="remind" size={17} /> <span>Remind</span>
                     </button>
-                    <button className="reel__act" onClick={() => setEditing(e)}>
+                    <button className="reel__act reel__act--edit" onClick={() => setEditing(e)}>
                       <AppIcon name="edit" size={17} /> <span>Edit</span>
                     </button>
                   </div>

@@ -5,6 +5,20 @@ import AmountInput from '../AmountInput';
 import AppIcon, { type IconName } from '../AppIcon';
 import { formatINR } from './shared';
 
+/** Deterministic colour + initials for a stock avatar (image-71 look). */
+const AVATAR_COLORS = ['#6366f1', '#0ea5e9', '#22c55e', '#f59e0b', '#a855f7', '#ef4444', '#14b8a6', '#ec4899', '#f97316', '#84cc16'];
+function stockInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '—';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+function avatarColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 /** A decimal units input backed by local text (so a trailing "." while typing a
  *  fractional unit count isn't lost). */
 function UnitsField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -47,6 +61,7 @@ export default function HoldingList({
   totalLabel = 'Total',
   showUnits = false,
   iconFor,
+  avatar = false,
   onChange,
 }: {
   rows: HoldingRow[];
@@ -57,6 +72,7 @@ export default function HoldingList({
   totalLabel?: string;
   showUnits?: boolean;
   iconFor?: (row: HoldingRow) => IconName;
+  avatar?: boolean;
   onChange: (mutate: (rows: HoldingRow[]) => void) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -144,7 +160,15 @@ export default function HoldingList({
             </div>
           </div>
         ) : (
-          <button className="ft-readrow ft-readrow--tap" key={row.id} onClick={() => setEditingId(row.id)}>
+          <button className={`ft-readrow ft-readrow--tap ${avatar ? 'ft-readrow--card' : ''}`} key={row.id} onClick={() => setEditingId(row.id)}>
+            {avatar && (
+              <span
+                className="ft-readrow__avatar"
+                style={{ background: `linear-gradient(135deg, ${avatarColor(row.name)}, color-mix(in srgb, ${avatarColor(row.name)} 55%, #000))` }}
+              >
+                {stockInitials(row.name)}
+              </span>
+            )}
             {iconFor && (
               <span className="ft-readrow__ic"><AppIcon name={iconFor(row)} size={17} /></span>
             )}

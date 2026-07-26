@@ -11,6 +11,7 @@ import { VaultRepository } from './repository/vaultRepository';
 import { GoalRepository } from './repository/goalRepository';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
+import { isDemoMode, enterDemo, exitDemo } from './core/demoMode';
 
 type AppId = 'expensify' | 'goals' | 'notes' | 'fortuna';
 
@@ -42,6 +43,19 @@ export default function App() {
   const [openReelsNonce, setOpenReelsNonce] = useState(0);
 
   const current = APPS.find((a) => a.id === activeApp)!;
+  const demo = isDemoMode();
+
+  function handleDemoToggle() {
+    if (isDemoMode()) {
+      exitDemo();
+      return;
+    }
+    const ok = window.confirm(
+      'Fill the app with DEMO sample data to show someone?\n\n' +
+        'Your real data and backups are NOT touched — turn this off any time and everything comes back exactly as it was.',
+    );
+    if (ok) enterDemo();
+  }
 
   function refreshCounts() {
     setDueCount(RemindersRepository.getDue().length);
@@ -114,6 +128,14 @@ export default function App() {
           </button>
         )}
         <button
+          className={`demotoggle${demo ? ' demotoggle--on' : ''}`}
+          onClick={handleDemoToggle}
+          aria-label={demo ? 'Exit demo mode' : 'Show demo data'}
+          title={demo ? 'Exit demo mode (restore your real data)' : 'Show demo data (your real data stays safe)'}
+        >
+          <AppIcon name="sparkle" size={18} />
+        </button>
+        <button
           className="bell"
           onClick={() => setInboxOpen(true)}
           aria-label={dueCount > 0 ? `${dueCount} reminders due` : 'Reminders'}
@@ -122,6 +144,13 @@ export default function App() {
           {dueCount > 0 && <span className="bell__badge">{dueCount > 9 ? '9+' : dueCount}</span>}
         </button>
       </header>
+
+      {demo && (
+        <button className="demobanner" onClick={exitDemo} title="Exit demo mode">
+          <AppIcon name="sparkle" size={14} />
+          <span><strong>Demo data</strong> — your real data is safe. Tap to exit.</span>
+        </button>
+      )}
 
       {drawerOpen && <div className="drawer-overlay" onClick={() => setDrawerOpen(false)} />}
       <aside className={`drawer ${drawerOpen ? 'drawer--open' : ''}`}>
@@ -188,7 +217,7 @@ export default function App() {
         />
       )}
 
-      <BackupReminder />
+      {!demo && <BackupReminder />}
     </div>
   );
 }

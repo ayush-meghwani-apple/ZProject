@@ -21,7 +21,7 @@ const CLASS_SECTION: { key: AssetClassKey; label: string; field: keyof ReturnTyp
   { key: 'crypto', label: 'Crypto', field: 'crypto' },
 ];
 
-export default function PortfolioTab({ plan, update }: FortunaTabProps) {
+export default function PortfolioTab({ plan, update, goTo }: FortunaTabProps) {
   const totals = useMemo(() => sectionTotals(plan.assets), [plan.assets]);
   const caps = useMemo(() => capBreakdown(plan.assets), [plan.assets]);
   const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
@@ -150,6 +150,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
               categories={EQUITY_CATS}
               namePlaceholder="Stock name"
               showUnits
+              avatar
               onChange={(m) => update((d) => m(d.assets.domesticEquity.stocks))}
             />
 
@@ -197,8 +198,10 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
         {on('equity_mf') && (
           <Section title="Equity Mutual Funds" subtitle="Funds & ETFs (also auto-tracked on Pulse)" right={<HeadRight k="equity_mf" value={secVal.equity_mf} />} collapsible defaultOpen={false}>
             <ClassDist k="equity_mf" />
-            {trackedFor('equity_mf') > 0 && (
-              <TotalRow label="Auto-tracked funds · edit in the Ledger" value={trackedFor('equity_mf')} />
+            {goTo && (
+              <button className="ft-viewlink" onClick={() => goTo('funds')}>
+                Manage funds on Pulse <AppIcon name="chevronRight" size={15} />
+              </button>
             )}
             {a.domesticEquity.mutualFunds.length > 0 && <div className="ft-sublabel">Manually-entered funds</div>}
             <HoldingList

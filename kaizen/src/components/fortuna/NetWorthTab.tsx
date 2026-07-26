@@ -54,7 +54,6 @@ const CUSTOM_COLORS = ['#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#84cc16', '#
 export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
   const disabled = plan.disabledClasses ?? [];
   const custom = plan.customClasses ?? [];
-  const [hideAmounts, setHideAmounts] = useState(false);
   const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
   const nw = useMemo(
     () => computeNetWorth(plan.assets, plan.liabilities, disabled, custom, tracked),
@@ -98,23 +97,12 @@ export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
 
   return (
     <main className="app__body">
-      <div className={`page ft-page ${hideAmounts ? 'ft-private' : ''}`}>
+      <div className="page ft-page">
         <div className="ft-hero">
-          <div className="ft-hero__top">
-            <span className="ft-hero__label">
-              Total Net Worth
-              <span className="ft-hero__info" title="Assets minus liabilities across every enabled class"><AppIcon name="info" size={13} /></span>
-            </span>
-            <button
-              type="button"
-              className="ft-hero__eye"
-              aria-label={hideAmounts ? 'Show amounts' : 'Hide amounts'}
-              title={hideAmounts ? 'Show amounts' : 'Hide amounts'}
-              onClick={() => setHideAmounts((h) => !h)}
-            >
-              <AppIcon name={hideAmounts ? 'eyeoff' : 'eye'} size={17} />
-            </button>
-          </div>
+          <span className="ft-hero__label">
+            Total Net Worth
+            <span className="ft-hero__info" title="Assets minus liabilities across every enabled class"><AppIcon name="info" size={13} /></span>
+          </span>
           <span className={`ft-hero__net ${nw.netWorth < 0 ? 'ft-neg' : 'ft-pos'}`}>{formatINR(nw.netWorth)}</span>
           <div className="ft-hero__split">
             <div className="ft-hero__cell">

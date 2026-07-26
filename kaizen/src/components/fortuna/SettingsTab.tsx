@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import { BackupRepository } from '../../repository/backupRepository';
-import { PlannerRepository, defaultPlan } from '../../repository/plannerRepository';
-import { saveBackupFile, saveJsonFile } from '../../core/backupFile';
-import { unlock } from '../../core/vaultLock';
+import { PlannerRepository } from '../../repository/plannerRepository';
+import { saveBackupFile } from '../../core/backupFile';
 import AppIcon from '../AppIcon';
 import { Section } from './shared';
 import { AssumptionsContent } from './AssumptionsTab';
@@ -24,56 +23,13 @@ function fmtWhen(iso: string | null): string {
   });
 }
 
-export default function SettingsTab({ plan, update, onLock, reload }: Props) {
+export default function SettingsTab({ plan, update, reload }: Props) {
   const importRef = useRef<HTMLInputElement>(null);
   const restoreRef = useRef<HTMLInputElement>(null);
-  const planImportRef = useRef<HTMLInputElement>(null);
   const [lastBackup, setLastBackup] = useState<string | null>(BackupRepository.getLastBackupAt());
   const [busy, setBusy] = useState(false);
   // Returns/assumptions used to be its own tab; it now lives here as a drill-in.
   const [showReturns, setShowReturns] = useState(false);
-  // Reset is dangerous, so it's gated: confirm → enter PIN → reset.
-  const [resetStage, setResetStage] = useState<'idle' | 'confirm' | 'pin'>('idle');
-  const [pin, setPin] = useState('');
-  const [pinErr, setPinErr] = useState('');
-  const [resetting, setResetting] = useState(false);
-
-  function applyReset() {
-    update((d) => {
-      const fresh = defaultPlan();
-      d.assumptions = fresh.assumptions;
-      d.cashFlow = fresh.cashFlow;
-      d.assets = fresh.assets;
-      d.liabilities = fresh.liabilities;
-      d.goals = fresh.goals;
-      d.recurringInvestments = fresh.recurringInvestments;
-      d.mutualFunds = fresh.mutualFunds;
-    });
-  }
-
-  async function confirmResetPin(e: React.FormEvent) {
-    e.preventDefault();
-    if (resetting) return;
-    setPinErr('');
-    setResetting(true);
-    const key = await unlock(pin);
-    setResetting(false);
-    if (!key) {
-      setPinErr('Wrong PIN.');
-      setPin('');
-      return;
-    }
-    applyReset();
-    setResetStage('idle');
-    setPin('');
-    alert('Financial plan reset ✅');
-  }
-
-  function closeReset() {
-    setResetStage('idle');
-    setPin('');
-    setPinErr('');
-  }
 
   async function exportBackup() {
     if (busy) return;
@@ -124,41 +80,6 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
       alert(`Restore failed: ${(err as Error).message}`);
     } finally {
       if (restoreRef.current) restoreRef.current.value = '';
-    }
-  }
-
-  function resetPlan() {
-    setPin('');
-    setPinErr('');
-    setResetStage('confirm');
-  }
-
-  // --- Fortuna-only plan import/export (kept separate from the whole-app
-  //     backup). Import writes ONLY the plan document, so other apps' data is
-  //     untouched. Used rarely — e.g. a one-time pre-fill from the spreadsheet.
-  async function exportPlan() {
-    await saveJsonFile(plan, 'fortuna-plan.json');
-  }
-
-  async function importPlan(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const parsed = JSON.parse(await file.text());
-      if (
-        !confirm(
-          'Import this Fortuna plan?\n\nIt REPLACES your current financial plan (cash flow, assets, goals, assumptions) with the file. Your other apps (expenses, notes) are NOT affected.',
-        )
-      ) {
-        return;
-      }
-      await PlannerRepository.importPlan(parsed);
-      await reload();
-      alert('Fortuna plan imported ✅');
-    } catch (err) {
-      alert(`Plan import failed: ${(err as Error).message}`);
-    } finally {
-      if (planImportRef.current) planImportRef.current.value = '';
     }
   }
 
@@ -225,125 +146,16 @@ export default function SettingsTab({ plan, update, onLock, reload }: Props) {
           </div>
         </Section>
 
-        <Section
-          title="Fortuna plan — import / export"
-          subtitle="Advanced · rarely used"
-          icon="folder"
-          collapsible
-          defaultOpen={false}
-        >
-          <p className="ft-note" style={{ marginTop: 0 }}>
-            A <strong>Fortuna-only</strong> transfer, separate from the whole-app backup above. <strong>Import</strong>{' '}
-            loads a <code>fortuna-plan.json</code> (e.g. one built from your spreadsheet) and replaces{' '}
-            <em>only</em> your financial plan — your expenses and notes are untouched. <strong>Export</strong>{' '}
-            saves just the plan as its own file. Everyday edits still just save automatically; use this only for a
-            one-time pre-fill or to move the plan between devices.
-          </p>
-          <div className="ft-btnrow">
-            <button className="btn ft-btn" onClick={() => planImportRef.current?.click()}>
-              <AppIcon name="backup" size={18} /> Import Fortuna data
-            </button>
-            <button className="btn btn--ghost ft-btn" onClick={exportPlan}>
-              Export Fortuna data
-            </button>
-          </div>
-          <input
-            ref={planImportRef}
-            type="file"
-            accept="application/json,.json"
-            style={{ display: 'none' }}
-            onChange={importPlan}
-          />
-        </Section>
-
-        <Section title="Privacy" subtitle="Lock Fortuna behind your PIN" icon="vault">
-          <button className="btn btn--ghost ft-btn ft-btn--full" onClick={onLock}>
-            <AppIcon name="vault" size={18} /> Lock financial plan
-          </button>
-          <p className="ft-note">
-            Fortuna re-locks automatically when you switch to another app, and opens with your PIN.
-          </p>
-        </Section>
-
         <Section title="About" subtitle="Version & build info" icon="info">
           <div className="ft-total" style={{ borderTop: 'none', paddingTop: 0 }}>
             <span>Version</span>
-            <span className="ft-pill ft-pill--ok">v{__APP_VERSION__}</span>
+            <span className="ft-total__val">
+              <span className="ft-pill ft-pill--ok">v{__APP_VERSION__}</span>
+              <span className="ft-about__built"> · {new Date(__BUILD_TIME__).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+            </span>
           </div>
-          <div className="ft-total">
-            <span>Last updated</span>
-            <span className="ft-total__val">{new Date(__BUILD_TIME__).toLocaleString('en-IN')}</span>
-          </div>
-          <p className="ft-note">
-            If this date doesn’t match your latest deploy, the app is still serving a cached copy — fully close and
-            reopen it twice to update.
-          </p>
-        </Section>
-
-        <Section title="Danger zone" subtitle="Irreversible — be careful" icon="trash" danger>
-          <button className="btn btn--ghost btn--danger ft-btn ft-btn--full" onClick={resetPlan}>
-            <AppIcon name="trash" size={18} /> Reset financial plan
-          </button>
-          <p className="ft-note">Clears only your Fortuna data. Export a backup first if you’re unsure.</p>
         </Section>
       </div>
-
-      {resetStage === 'confirm' && (
-        <div className="modal__backdrop" onClick={closeReset}>
-          <div className="modal__card ft-resetmodal" onClick={(e) => e.stopPropagation()}>
-            <div className="ft-resetmodal__icon ft-resetmodal__icon--warn">
-              <AppIcon name="trash" size={26} />
-            </div>
-            <h3>Reset financial plan?</h3>
-            <p className="muted">
-              This permanently clears <strong>all your Fortuna data</strong> — cash flow, portfolio, goals,
-              liabilities and SIPs — back to zero. It can’t be undone. The rest of the app is untouched.
-            </p>
-            <div className="ft-btnrow">
-              <button className="btn btn--ghost ft-btn" onClick={closeReset}>
-                Cancel
-              </button>
-              <button className="btn btn--danger ft-btn" onClick={() => { setPinErr(''); setResetStage('pin'); }}>
-                Yes, continue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {resetStage === 'pin' && (
-        <div className="modal__backdrop" onClick={closeReset}>
-          <div className="modal__card ft-resetmodal" onClick={(e) => e.stopPropagation()}>
-            <div className="ft-resetmodal__icon">
-              <AppIcon name="vault" size={26} />
-            </div>
-            <h3>Enter your PIN</h3>
-            <p className="muted">Confirm your PIN to reset the plan — this is a safety check for a dangerous action.</p>
-            <form onSubmit={confirmResetPin} className="vaultlock__form">
-              <input
-                className="input vaultlock__pin"
-                type="password"
-                inputMode="numeric"
-                autoComplete="off"
-                maxLength={6}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                placeholder="PIN"
-                autoFocus
-              />
-              {pinErr && <div className="vaultlock__err">{pinErr}</div>}
-              <div className="ft-btnrow">
-                <button type="button" className="btn btn--ghost ft-btn" onClick={closeReset}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn--danger ft-btn" disabled={resetting}>
-                  {resetting ? 'Working…' : 'Reset plan'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

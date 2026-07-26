@@ -169,9 +169,10 @@ export default function Categories({ version, onChange }: Props) {
   }
 
   return (
-    <div className="page">
+    <div className="page page--cats">
       <div className="card">
         <h3>New Category</h3>
+        <p className="card__subtitle">Create a category to organize your expenses.</p>
         <div className="inline" style={{ marginBottom: 10 }}>
           <input
             className="input"
@@ -386,7 +387,7 @@ export default function Categories({ version, onChange }: Props) {
             )}
 
             {openCats.has(cat.id) && (
-              <div className="inline" style={{ marginTop: 10 }}>
+              <div className="inline cats__addsub" style={{ marginTop: 10 }}>
                 <input
                   className="input"
                   style={{ width: 56, textAlign: 'center' }}
@@ -402,7 +403,7 @@ export default function Categories({ version, onChange }: Props) {
                   onChange={(e) => setSubDraft((d) => ({ ...d, [cat.id]: e.target.value }))}
                 />
                 <button className="btn btn--ghost" onClick={() => addSub(cat.id)}>
-                  +
+                  <AppIcon name="plus" size={16} />
                 </button>
               </div>
             )}

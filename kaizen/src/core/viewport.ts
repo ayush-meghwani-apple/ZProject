@@ -10,6 +10,13 @@
 export function initViewport(): void {
   const root = document.documentElement;
 
+  // Is the app running as an installed Home-Screen PWA (no browser chrome)? In
+  // that mode `100dvh` reliably fills the screen, so we can avoid the visual-
+  // viewport under-reporting that leaves a gap below the tab bar.
+  const isStandalone =
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true;
+
   // The largest visible height we've seen for the current orientation — i.e. the
   // viewport height with NO keyboard. We compare the live height against THIS
   // (not `window.innerHeight`, which on some iOS versions ALSO shrinks when the
@@ -52,10 +59,22 @@ export function initViewport(): void {
     // make this read ~0 so the keyboard would never be detected.
     const covered = maxVH - vvh;
     const kbOpen = editableFocused && covered > 120;
-    // Keyboard open → size to the visible area so the bottom sits right above the
-    // keyboard. Keyboard closed → size to the learned full height.
-    const height = kbOpen ? vvh : maxVH;
-    root.style.setProperty('--app-height', `${Math.round(height)}px`);
+    // Sizing the app box:
+    //  • keyboard open → the visible area (px), so the bottom sits just above the
+    //    keyboard;
+    //  • keyboard closed, INSTALLED PWA (standalone) → `100dvh`. In standalone
+    //    there is no browser chrome, so `dvh` reliably equals the full screen —
+    //    unlike `visualViewport.height`, which iOS can under-report (leaving a
+    //    dead gap below the tab bar). We can't use `dvh` in normal Safari because
+    //    it ignores the toolbars and would hide the tab bar behind them.
+    //  • keyboard closed, in-browser → the learned full visualViewport height.
+    if (kbOpen) {
+      root.style.setProperty('--app-height', `${Math.round(vvh)}px`);
+    } else if (isStandalone) {
+      root.style.setProperty('--app-height', '100dvh');
+    } else {
+      root.style.setProperty('--app-height', `${Math.round(maxVH)}px`);
+    }
     // Only honour a non-zero offset while the keyboard is actually open.
     root.style.setProperty('--app-top', `${kbOpen ? Math.round(top) : 0}px`);
     const wasKbOpen = root.classList.contains('kb-open');

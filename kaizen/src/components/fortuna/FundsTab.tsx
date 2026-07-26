@@ -109,6 +109,9 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const funds = plan.mutualFunds ?? [];
   const [status, setStatus] = useState<'idle' | 'syncing' | 'ok' | 'partial'>('idle');
   const [note, setNote] = useState('');
+  // Brief colour flash on the refresh button after a manual refresh: green ok,
+  // red on failure.
+  const [flash, setFlash] = useState<'ok' | 'err' | null>(null);
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = useState<'all' | 'active' | 'inactive'>('all');
@@ -180,8 +183,12 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
           ? 'Some NAVs couldn’t update (offline?). Showing last known values.'
           : added
             ? `Updated NAVs · added ${added} SIP installment${added > 1 ? 's' : ''}.`
-            : 'NAVs up to date.',
+            : '',
       );
+      if (force) {
+        setFlash(failed ? 'err' : 'ok');
+        window.setTimeout(() => setFlash(null), 2500);
+      }
     },
     [update],
   );
@@ -240,16 +247,15 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
         <div className="ft-mf__head">
           <div>
             <h2 className="ft-mf__h">Mutual funds</h2>
-            <p className="ft-mf__sub">Auto-valued from AMFI NAVs · returns are money-weighted (XIRR)</p>
           </div>
           <button
-            className="iconbtn ft-mf__refresh"
+            className={`iconbtn ft-mf__refresh ${flash === 'ok' ? 'ft-mf__refresh--ok' : flash === 'err' ? 'ft-mf__refresh--err' : ''}`}
             title="Refresh NAVs"
             aria-label="Refresh NAVs"
             disabled={status === 'syncing' || !funds.length}
             onClick={() => void syncAll(true)}
           >
-            <AppIcon name="recurring" size={18} className={status === 'syncing' ? 'ft-mf__spin' : ''} />
+            <AppIcon name={flash === 'ok' ? 'done' : flash === 'err' ? 'close' : 'recurring'} size={18} className={status === 'syncing' ? 'ft-mf__spin' : ''} />
           </button>
         </div>
 
@@ -580,7 +586,6 @@ function SipEditor({ fund, mutate }: { fund: MutualFundHolding; mutate: (fn: (f:
           </label>
         </div>
       )}
-      <p className="ft-mf__hint">Installments auto-fill from the start date using each month’s NAV. Refresh to catch up.</p>
     </div>
   );
 }

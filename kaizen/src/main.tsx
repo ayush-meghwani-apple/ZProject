@@ -5,6 +5,8 @@ import { seedIfEmpty } from './storage/seed';
 import { ensurePersistentStorage } from './storage/persistence';
 import { SalaryCycleRepository } from './repository/salaryCycleRepository';
 import { PaymentMethodRepository } from './repository/paymentMethodRepository';
+import { isDemoMode } from './core/demoMode';
+import { seedDemoDataIfNeeded } from './core/demoSeed';
 import { initViewport } from './core/viewport';
 import { initIosKeyboard } from './core/iosKeyboard';
 import './style.css';
@@ -39,6 +41,9 @@ async function bootstrap() {
     await seedIfEmpty();
     // Give existing installs the default payment methods too (no-op if any exist).
     await PaymentMethodRepository.ensureDefaults().catch(() => {});
+    // In demo mode, fill the (separate) demo database with fake sample data so
+    // every screen looks alive. Never runs against the real database.
+    if (isDemoMode()) await seedDemoDataIfNeeded();
     // Keep every expense filed under the cycle its date falls in (self-heals
     // expenses added before a cycle existed, or imported from a backup).
     await SalaryCycleRepository.reassignExpensesByDate().catch(() => {});

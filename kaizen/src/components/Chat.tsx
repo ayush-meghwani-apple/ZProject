@@ -185,7 +185,7 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
       suggestions = subcategories
         .filter((s) => s.categoryId === cat.id && s.name.toLowerCase().includes(subQ))
         .slice(0, 8)
-        .map((s) => ({ key: 's' + s.id, label: subLabel(s), kind: 'insert', value: `${cat.name} ${s.name}` }));
+        .map((s) => ({ key: 's' + s.id, label: subLabel(s), kind: 'insert', value: `#${cat.name}/${s.name}` }));
     }
   } else if (inTrigger) {
     // Stage 1: list categories.
@@ -234,7 +234,12 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
       return;
     }
     if (inTrigger && hashIdx !== -1) {
-      setText(text.slice(0, hashIdx) + s.value + ' ');
+      // Keep a "#Category/Subcategory" token in the box (no trailing space) so the
+      // subcategory menu stays reachable — delete just the subcategory to pick a
+      // different one, instead of clearing everything. Converted to plain text on
+      // submit. (Plain type-ahead inserts keep their trailing space as before.)
+      const trailing = s.value.startsWith('#') ? '' : ' ';
+      setText(text.slice(0, hashIdx) + s.value + trailing);
     } else {
       // Replace the whole trailing phrase with the canonical name(s).
       setText(text.slice(0, phraseStart) + s.value + ' ');
@@ -277,7 +282,13 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
     setCategories(freshCats);
     setSubcategories(freshSubs);
 
-    const cmd = parseInput(raw, freshAliases, freshCats, freshSubs);
+    // A "#Category/Subcategory" token (kept in the box for easy sub-swapping) is
+    // converted to plain words for parsing: drop the '#' and turn its '/' into a
+    // space. Everything else (amount, and any note after a comma) is untouched;
+    // calculator input like "=20/5" has no '#', so it's never affected.
+    const cleaned = raw.replace(/#([^,\n]*)/, (_m, tok: string) => tok.replace('/', ' '));
+
+    const cmd = parseInput(cleaned, freshAliases, freshCats, freshSubs);
 
     if (cmd.kind === 'help') {
       pushBot(HELP_TEXT);
