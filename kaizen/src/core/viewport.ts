@@ -175,10 +175,17 @@ export function initViewport(): void {
   });
 
   // Optional on-screen diagnostics: open the app with `?kbdebug=1` (or add
-  // `#kbdebug` to the URL) to show a live readout of the viewport metrics. Handy
-  // for pinning down keyboard behaviour on a real device — reproduce the bug and
-  // screenshot the readout. No effect at all unless the flag is present.
-  if (/kbdebug/i.test(location.search + location.hash)) initKbDebug();
+  // `#kbdebug` to the URL), OR set the `kaizen.kbdebug` localStorage flag (which
+  // the Settings → About version toggles on 5 taps — the only way to reach this
+  // inside an installed PWA, which has no address bar). Shows a live readout of
+  // the viewport/layout metrics. No effect unless enabled.
+  let debugOn = /kbdebug/i.test(location.search + location.hash);
+  try {
+    if (localStorage.getItem('kaizen.kbdebug') === '1') debugOn = true;
+  } catch {
+    /* ignore */
+  }
+  if (debugOn) initKbDebug();
 
   function initKbDebug() {
     const box = document.createElement('div');

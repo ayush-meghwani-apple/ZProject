@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cycleLabel, cycleBig } from '../core/salaryCycle';
 import { currentCycleStart, nextCycleStart } from '../core/cycleDate';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
@@ -116,6 +116,32 @@ export default function Settings({ version, onChange, global = false }: Props) {
     setEditing(null);
     await load();
     onChange();
+  }
+
+  // Tap the version 5× to toggle the on-screen viewport-diagnostics overlay —
+  // the only way to enable it inside an installed PWA (no address bar for
+  // `?kbdebug=1`). Handy for pinning down device-only layout gaps.
+  const tapCount = useRef(0);
+  const tapTimer = useRef<number | null>(null);
+  function bumpVersionTap() {
+    if (tapTimer.current) window.clearTimeout(tapTimer.current);
+    tapCount.current += 1;
+    if (tapCount.current >= 5) {
+      tapCount.current = 0;
+      let on = false;
+      try {
+        on = localStorage.getItem('kaizen.kbdebug') === '1';
+        localStorage.setItem('kaizen.kbdebug', on ? '0' : '1');
+      } catch {
+        /* ignore */
+      }
+      alert(`Viewport debug ${on ? 'OFF' : 'ON'} — reloading.`);
+      location.reload();
+      return;
+    }
+    tapTimer.current = window.setTimeout(() => {
+      tapCount.current = 0;
+    }, 1200);
   }
 
   return (
@@ -286,7 +312,13 @@ export default function Settings({ version, onChange, global = false }: Props) {
         <div className="row">
           <span>Version</span>
           <span>
-            <span className="pill pill--good">v{__APP_VERSION__}</span>
+            <span
+              className="pill pill--good"
+              onClick={bumpVersionTap}
+              style={{ cursor: 'default' }}
+            >
+              v{__APP_VERSION__}
+            </span>
             <span className="muted"> · {fmtDayTime(new Date(__BUILD_TIME__))}</span>
           </span>
         </div>

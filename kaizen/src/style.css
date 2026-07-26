@@ -570,10 +570,10 @@ body {
   display: flex;
   align-items: stretch;
   gap: 2px;
-  /* Sit close to the bottom edge: the home-indicator safe area is ~34px, but a
-     floating pill only needs a little clearance, so trim most of it (min 10px so
-     it never touches the edge on notchless screens). */
-  margin: 4px 10px max(10px, calc(env(safe-area-inset-bottom, 0px) - 16px));
+  /* Sit close to the bottom edge. The home-indicator safe area is ~34px, but a
+     floating pill only needs a hair of clearance, so keep just a little of it
+     (min 8px so it never touches the edge on notchless screens). */
+  margin: 4px 10px max(8px, calc(env(safe-area-inset-bottom, 0px) - 24px));
   padding: 8px 6px;
   background: var(--surface);
   border: 1px solid color-mix(in srgb, var(--accent-strong) 22%, var(--border));
