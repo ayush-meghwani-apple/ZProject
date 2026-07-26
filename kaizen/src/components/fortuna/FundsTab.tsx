@@ -4,7 +4,7 @@ import type { MFCategory, MFTransaction, MutualFundHolding } from '../../types/m
 import { MF_CATEGORIES } from '../../types/models';
 import { formatINR, newId, now } from '../../core/util';
 import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
-import { generateSipInstallments } from '../../core/mfSip';
+import { generateSipInstallments, settlePendingSips } from '../../core/mfSip';
 import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
 import { mfMonthlyTrend } from '../../core/mfTrend';
 import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
@@ -164,6 +164,11 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
           if (r.newTxns && r.newTxns.length) {
             f.transactions.push(...r.newTxns);
             f.updatedAt = now();
+          }
+          if (r.points) {
+            // Fill in any earlier PROCESSING installments now that a fresh NAV
+            // history is in hand (the allotment day may have published since).
+            if (settlePendingSips(f, r.points)) f.updatedAt = now();
           }
         }
       });
@@ -593,7 +598,12 @@ function SipEditor({ fund, mutate }: { fund: MutualFundHolding; mutate: (fn: (f:
 function TxnRow({ txn, onChange, onDelete }: { txn: MFTransaction; onChange: (patch: Partial<MFTransaction>) => void; onDelete: () => void }) {
   const redeem = txn.kind === 'redeem';
   return (
-    <div className={`ft-mf__txn ${txn.auto ? 'ft-mf__txn--auto' : ''} ${redeem ? 'ft-mf__txn--sell' : ''}`}>
+    <div className={`ft-mf__txn ${txn.auto ? 'ft-mf__txn--auto' : ''} ${redeem ? 'ft-mf__txn--sell' : ''} ${txn.processing ? 'ft-mf__txn--proc' : ''}`}>
+      {txn.processing && (
+        <span className="ft-mf__txnproc" title="Scheduled on a weekend/holiday — units are allotted at the next working day's NAV">
+          Processing · NAV on next working day
+        </span>
+      )}
       <input
         className="input ft-mf__txndate"
         type="date"

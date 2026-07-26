@@ -1,23 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
-import { cycleName, cycleLabel } from '../core/salaryCycle';
+import { useEffect, useState } from 'react';
+import { cycleLabel, cycleBig } from '../core/salaryCycle';
 import { currentCycleStart, nextCycleStart } from '../core/cycleDate';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
-import { BackupRepository } from '../repository/backupRepository';
 import { getPrefs, setPrefs } from '../core/preferences';
-import { saveBackupFile } from '../core/backupFile';
 import { playSound } from '../core/sound';
 import { isDemoMode, enterDemo, exitDemo } from '../core/demoMode';
 import RecurringManager from './RecurringManager';
 import PaymentMethodsManager from './PaymentMethodsManager';
+import DataBackupCard from './DataBackupCard';
 import AppIcon from './AppIcon';
-import { ensurePersistentStorage, formatBytes, getStorageEstimate } from '../storage/persistence';
 import type { SalaryCycle } from '../types/models';
 
 interface Props {
   version: number;
   onChange: () => void;
   /** When true (shared Settings inside a sub-app), show only the cross-app
-   * cards: Data Safety, Backup & Sync and About. */
+   * cards: Data & Backup and About. */
   global?: boolean;
 }
 
@@ -33,37 +31,43 @@ function fromDateInput(value: string): string {
   return new Date(`${value}T00:00:00`).toISOString();
 }
 
-/** A short human date, e.g. "28 Jul 2026". */
-function fmtDay(d: Date): string {
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+/** A concrete date span, e.g. "26 Jul – 25 Aug 2026" (year dropped on the
+ *  start when both ends share it). */
+function fmtSpan(a: Date, b: Date): string {
+  const sameYear = a.getFullYear() === b.getFullYear();
+  const aStr = a.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+  const bStr = b.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return `${aStr} – ${bStr}`;
+}
+
+/** Full date + time, e.g. "25 Jul 2026, 2:34 pm" — used for the build stamp. */
+function fmtDayTime(d: Date): string {
+  return d.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 export default function Settings({ version, onChange, global = false }: Props) {
   const [cycles, setCycles] = useState<SalaryCycle[]>([]);
-  const [dateValue, setDateValue] = useState('');
-  const [usage, setUsage] = useState('');
-  const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [cycleOpen, setCycleOpen] = useState(true);
+  const [editing, setEditing] = useState<null | 'current' | 'next'>(null);
+  const [editDate, setEditDate] = useState('');
   const [bigThreshold, setBigThreshold] = useState('');
   const [soundOn, setSoundOn] = useState(true);
-  const [reminderDays, setReminderDays] = useState(1);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const restoreRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const cy = await SalaryCycleRepository.getCyclesSorted();
     setCycles(cy);
-    const open = cy.find((c) => !c.endDate);
-    setDateValue(toDateInput(open?.startDate));
-
-    // Keep the browser from evicting our on-device data — best-effort, silent,
-    // idempotent (granted automatically for an installed PWA).
-    void ensurePersistentStorage().catch(() => {});
-    const est = await getStorageEstimate();
-    setUsage(est ? `${formatBytes(est.usage)} used` : 'unknown');
-    setLastBackup(BackupRepository.getLastBackupAt());
     setBigThreshold(String(getPrefs().bigExpenseThreshold || ''));
     setSoundOn(getPrefs().soundEnabled);
-    setReminderDays(getPrefs().backupReminderDays ?? 1);
   }
   useEffect(() => {
     load();
@@ -71,199 +75,132 @@ export default function Settings({ version, onChange, global = false }: Props) {
   }, [version]);
 
   const open = cycles.find((c) => !c.endDate);
-  const backupDays = BackupRepository.daysSinceBackup();
-  const backupStale = lastBackup === null || backupDays === null || backupDays >= 7;
 
-  async function saveStartDate() {
-    if (!dateValue) return;
-    await SalaryCycleRepository.setOpenCycleStartDate(fromDateInput(dateValue));
+  // The next cycle: the user's edited date if they set one, else the payday.
+  const overrideISO = getPrefs().nextCycleStartOverride;
+  const nextStartDate = overrideISO ? new Date(overrideISO) : nextCycleStart();
+  // The payday after the next start marks where the next cycle ends; show the
+  // range up to the day before it (e.g. "26 Jul – 25 Aug").
+  const nextEndBoundary = nextCycleStart(new Date(nextStartDate.getTime() + 86400000));
+  const nextEndDisplay = new Date(nextEndBoundary.getTime() - 86400000);
+  const nextCycleLabel = cycleBig({
+    startDate: nextStartDate.toISOString(),
+    endDate: nextEndBoundary.toISOString(),
+  } as SalaryCycle);
+
+  function startEdit(which: 'current' | 'next') {
+    setEditing(which);
+    setEditDate(
+      which === 'current' ? toDateInput(open?.startDate) : toDateInput(nextStartDate.toISOString()),
+    );
+  }
+
+  function resetEditToPayday() {
+    setEditDate(
+      toDateInput((editing === 'current' ? currentCycleStart() : nextCycleStart()).toISOString()),
+    );
+  }
+
+  async function saveEdit() {
+    if (!editDate) return;
+    if (editing === 'current') {
+      await SalaryCycleRepository.setOpenCycleStartDate(fromDateInput(editDate));
+    } else if (editing === 'next') {
+      // Storing the computed payday would be pointless — clear the override so
+      // the cycle keeps auto-tracking payday; otherwise remember the edit.
+      const payday = toDateInput(nextCycleStart().toISOString());
+      setPrefs({
+        nextCycleStartOverride: editDate === payday ? undefined : fromDateInput(editDate),
+      });
+    }
+    setEditing(null);
     await load();
     onChange();
-  }
-
-  async function startNow() {
-    if (!confirm('Start a new cycle dated to this period\u2019s payday (28th)? The current one will be closed.')) return;
-    await SalaryCycleRepository.startCycle();
-    await load();
-    onChange();
-  }
-
-  async function exportBackup() {
-    await saveBackupFile();
-    setLastBackup(BackupRepository.getLastBackupAt());
-    onChange();
-  }
-
-  async function importBackup(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const parsed = JSON.parse(await file.text());
-      await BackupRepository.importAll(parsed);
-      await load();
-      onChange();
-      alert('Backup imported ✅');
-    } catch (err) {
-      alert(`Import failed: ${(err as Error).message}`);
-    } finally {
-      if (fileRef.current) fileRef.current.value = '';
-    }
-  }
-
-  async function restoreBackup(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const parsed = JSON.parse(await file.text());
-      if (
-        !confirm(
-          'Restore this backup as your ONLY data?\n\nThis erases everything currently in the app and replaces it with the backup — use it to recover a clean state. Your other backup files are untouched.',
-        )
-      ) {
-        return;
-      }
-      await BackupRepository.replaceAll(parsed);
-      await load();
-      onChange();
-      alert('Backup restored ✅');
-    } catch (err) {
-      alert(`Restore failed: ${(err as Error).message}`);
-    } finally {
-      if (restoreRef.current) restoreRef.current.value = '';
-    }
   }
 
   return (
     <div className="page page--settings">
+      <DataBackupCard onReload={load} />
+
       {!global && (
         <div className="card">
-          <h3>Cycle</h3>
-          <p className="card__subtitle">
-            Your salary period — starts on payday (the 28th, or the Friday before on a weekend).
-          </p>
-          {open ? (
-            <div className="cyc__current">
-              <span className="cyc__curlabel">
-                <span className="cyc__dot" /> Current cycle
-              </span>
-              <span className="cyc__name">{cycleName(open)}</span>
-              <span className="cyc__range">{cycleLabel(open)}</span>
+          <button className="scard__head" onClick={() => setCycleOpen((o) => !o)}>
+            <span className="scard__icon">
+              <AppIcon name="calendar" size={22} />
+            </span>
+            <span className="scard__headtext">
+              <span className="scard__title">Cycle</span>
+              <span className="scard__sub">Your salary period and cycle dates</span>
+            </span>
+            <AppIcon name={cycleOpen ? 'chevronUp' : 'chevronDown'} size={18} />
+          </button>
+
+          {cycleOpen && (
+            <div className="cycrows">
+              {open ? (
+                <div className="cycrow">
+                  <span className="cycrow__tag">
+                    <span className="cycrow__dot cycrow__dot--now" /> Current
+                  </span>
+                  <span className="cycrow__mid">
+                    <span className="cycrow__big">{cycleBig(open)}</span>
+                    <span className="cycrow__range">{cycleLabel(open)}</span>
+                  </span>
+                  <button className="cycrow__edit" onClick={() => startEdit('current')}>
+                    <AppIcon name="edit" size={15} /> Edit
+                  </button>
+                </div>
+              ) : (
+                <div className="cycrow">
+                  <span className="muted">No open cycle yet.</span>
+                  <button className="cycrow__edit" onClick={() => startEdit('current')}>
+                    <AppIcon name="edit" size={15} /> Set
+                  </button>
+                </div>
+              )}
+
+              <div className="cycrow">
+                <span className="cycrow__tag">
+                  <span className="cycrow__dot cycrow__dot--next" /> Next
+                </span>
+                <span className="cycrow__mid">
+                  <span className="cycrow__big">{nextCycleLabel}</span>
+                  <span className="cycrow__range">{fmtSpan(nextStartDate, nextEndDisplay)}</span>
+                </span>
+                <button className="cycrow__edit" onClick={() => startEdit('next')}>
+                  <AppIcon name="edit" size={15} /> Edit
+                </button>
+              </div>
+
+              {editing && (
+                <div className="cycedit">
+                  <span className="cycedit__label">
+                    {editing === 'current' ? 'Current cycle starts' : 'Next cycle starts'}
+                  </span>
+                  <span className="inline">
+                    <input
+                      className="input"
+                      type="date"
+                      style={{ width: 'auto' }}
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                    />
+                    <button className="btn btn--sm" onClick={saveEdit}>
+                      Save
+                    </button>
+                    <button className="btn btn--ghost btn--sm" onClick={() => setEditing(null)}>
+                      Cancel
+                    </button>
+                  </span>
+                  <button className="cycedit__reset" onClick={resetEditToPayday}>
+                    <AppIcon name="recurring" size={13} /> Reset to payday (28th)
+                  </button>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="muted">No open cycle yet — set a start date to begin.</div>
           )}
-          <div className="row">
-            <span>Next cycle</span>
-            <span className="muted">{fmtDay(nextCycleStart())}</span>
-          </div>
-          <div className="row">
-            <span>Start date</span>
-            <span className="inline">
-              <input
-                className="input"
-                type="date"
-                style={{ width: 'auto' }}
-                value={dateValue}
-                onChange={(e) => setDateValue(e.target.value)}
-              />
-              <button className="btn btn--sm" onClick={saveStartDate}>
-                Save
-              </button>
-            </span>
-          </div>
-          <div className="cyc__info">
-            <AppIcon name="info" size={14} />
-            <span>
-              <strong>Start date</strong> only shifts the <strong>current</strong> cycle — use it for a
-              month where payday moved (e.g. a holiday). New cycles still auto-start on payday.
-            </span>
-          </div>
-          <div className="inline" style={{ marginTop: 12 }}>
-            <button
-              className="btn btn--ghost btn--sm"
-              onClick={() => setDateValue(toDateInput(currentCycleStart().toISOString()))}
-            >
-              <AppIcon name="recurring" size={14} /> Reset to payday
-            </button>
-            <button className="btn btn--ghost btn--sm" onClick={startNow}>
-              <AppIcon name="plus" size={14} /> Start new cycle
-            </button>
-          </div>
         </div>
       )}
-
-      <div className="card">
-        <h3>Data safety</h3>
-        <div className="row">
-          <span>Storage used</span>
-          <span className="muted">{usage}</span>
-        </div>
-        <div className="row">
-          <span>Last backup</span>
-          {backupStale ? (
-            <span className="pill pill--warn">
-              {backupDays === null ? 'never' : `${backupDays}d ago`}
-            </span>
-          ) : (
-            <span className="muted">{lastBackup ? fmtDay(new Date(lastBackup)) : 'never'}</span>
-          )}
-        </div>
-      </div>
-
-      <div className="card">
-        <h3>Backup &amp; sync</h3>
-        <p className="card__subtitle">
-          One <strong>kaizen-backup.json</strong> holds everything. <strong>Import</strong> merges;{' '}
-          <strong>Restore</strong> replaces all.
-        </p>
-        <div className="inline">
-          <button className="btn btn--sm" onClick={exportBackup}>
-            Export
-          </button>
-          <button className="btn btn--ghost btn--sm" onClick={() => fileRef.current?.click()}>
-            Import
-          </button>
-          <button
-            className="btn btn--ghost btn--danger btn--sm"
-            onClick={() => restoreRef.current?.click()}
-          >
-            Restore
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            style={{ display: 'none' }}
-            onChange={importBackup}
-          />
-          <input
-            ref={restoreRef}
-            type="file"
-            accept="application/json,.json"
-            style={{ display: 'none' }}
-            onChange={restoreBackup}
-          />
-        </div>
-        <div className="row" style={{ marginTop: 12 }}>
-          <span>Remind me to back up</span>
-          <select
-            className="input"
-            style={{ width: 'auto' }}
-            value={reminderDays}
-            onChange={(e) => {
-              const d = Number(e.target.value);
-              setReminderDays(d);
-              setPrefs({ backupReminderDays: d });
-            }}
-          >
-            <option value={1}>Every day</option>
-            <option value={3}>Every 3 days</option>
-            <option value={7}>Weekly</option>
-            <option value={14}>Every 2 weeks</option>
-            <option value={0}>Never</option>
-          </select>
-        </div>
-      </div>
 
       {!global && (
         <>
@@ -350,7 +287,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
           <span>Version</span>
           <span>
             <span className="pill pill--good">v{__APP_VERSION__}</span>
-            <span className="muted"> · {fmtDay(new Date(__BUILD_TIME__))}</span>
+            <span className="muted"> · {fmtDayTime(new Date(__BUILD_TIME__))}</span>
           </span>
         </div>
       </div>

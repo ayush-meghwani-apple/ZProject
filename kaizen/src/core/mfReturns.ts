@@ -106,6 +106,10 @@ export function summarize(
   asOf: Date = new Date(),
   currentValueOverride?: number,
 ): ReturnSummary {
+  // Pending SIP installments (scheduled on a weekend/holiday, allotted on the
+  // next working day) aren't executed yet — leave them out of all money math
+  // until their NAV lands and they settle.
+  txns = txns.filter((t) => !t.processing);
   const units = txns.reduce((s, t) => s + (Number(t.units) || 0), 0);
   const invested = txns.reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const currentValue =

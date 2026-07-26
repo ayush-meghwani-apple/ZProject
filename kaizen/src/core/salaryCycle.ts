@@ -51,3 +51,9 @@ export function cycleName(cycle: SalaryCycle): string {
   const month = new Date(y, m).toLocaleDateString('en-IN', { month: 'short' });
   return `${month}-${String(y).slice(2)}`;
 }
+
+/** Big cycle label: the dominant month + the payday day-of-month, e.g. "Jul 26". */
+export function cycleBig(cycle: SalaryCycle): string {
+  const month = cycleName(cycle).split('-')[0];
+  return `${month} ${new Date(cycle.startDate).getDate()}`;
+}

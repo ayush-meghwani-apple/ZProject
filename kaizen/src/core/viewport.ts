@@ -186,22 +186,42 @@ export function initViewport(): void {
       'position:fixed;top:0;left:0;z-index:2147483647;background:rgba(0,0,0,.82);' +
       'color:#0f0;font:11px/1.35 monospace;padding:5px 7px;white-space:pre;' +
       'pointer-events:none;border-bottom-right-radius:8px;max-width:100vw;';
+    // A hidden probe whose padding resolves the REAL safe-area inset pixels
+    // (reading the CSS var directly only returns the literal `env(...)` string).
+    const probe = document.createElement('div');
+    probe.style.cssText =
+      'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
+      'padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);';
     const attach = () => {
-      if (document.body) document.body.appendChild(box);
-      else window.setTimeout(attach, 50);
+      if (document.body) {
+        document.body.appendChild(box);
+        document.body.appendChild(probe);
+      } else window.setTimeout(attach, 50);
     };
     attach();
     const upd = () => {
       const vv = window.visualViewport;
       const sc = document.querySelector('.app__body') as HTMLElement | null;
+      const appEl = document.querySelector('.app') as HTMLElement | null;
+      const tabEl = document.querySelector('.tabbar') as HTMLElement | null;
       const ae = document.activeElement as HTMLElement | null;
       const r = ae && ae.getBoundingClientRect ? ae.getBoundingClientRect() : null;
+      const appR = appEl?.getBoundingClientRect();
+      const tabR = tabEl?.getBoundingClientRect();
+      const ps = getComputedStyle(probe);
+      const saTop = ps.paddingTop;
+      const saBot = ps.paddingBottom;
+      const winH = window.innerHeight;
+      const gapBelowTab = tabR ? Math.round(winH - tabR.bottom) : '-';
+      const gapAppBottom = appR ? Math.round(winH - appR.bottom) : '-';
       box.textContent =
-        `innerH=${window.innerHeight}  vvH=${vv ? Math.round(vv.height) : '-'}  vvTop=${vv ? Math.round(vv.offsetTop) : '-'}  maxVH=${Math.round(maxVH)}\n` +
-        `kbOpen=${root.classList.contains('kb-open')}  kbTyping=${root.classList.contains('kb-typing')}  cover=${vv ? Math.round(maxVH - vv.height) : '-'}\n` +
+        `standalone=${isStandalone}  screen=${window.screen?.height ?? '-'}  win=${winH}  vvH=${vv ? Math.round(vv.height) : '-'}  maxVH=${Math.round(maxVH)}\n` +
+        `safeArea top=${saTop} bot=${saBot}\n` +
         `appH=${getComputedStyle(root).getPropertyValue('--app-height').trim()}  appTop=${getComputedStyle(root).getPropertyValue('--app-top').trim()}\n` +
-        (sc ? `scroll=${Math.round(sc.scrollTop)}/${sc.scrollHeight}  clientH=${sc.clientHeight}\n` : '') +
-        `focus=${ae ? ae.tagName : '-'}${r ? `  top=${Math.round(r.top)} bot=${Math.round(r.bottom)}` : ''}`;
+        `app: ${appR ? `${Math.round(appR.top)}\u2192${Math.round(appR.bottom)}` : '-'}  gapBelowApp=${gapAppBottom}\n` +
+        `tabbar: ${tabR ? `${Math.round(tabR.top)}\u2192${Math.round(tabR.bottom)}` : '-'}  gapBelowTabbar=${gapBelowTab}\n` +
+        (sc ? `body: ${Math.round(sc.getBoundingClientRect().bottom)}bot  scroll=${Math.round(sc.scrollTop)}/${sc.scrollHeight}  clientH=${sc.clientHeight}\n` : '') +
+        `kbOpen=${root.classList.contains('kb-open')}  focus=${ae ? ae.tagName : '-'}${r ? `  top=${Math.round(r.top)} bot=${Math.round(r.bottom)}` : ''}`;
     };
     upd();
     const vv = window.visualViewport;

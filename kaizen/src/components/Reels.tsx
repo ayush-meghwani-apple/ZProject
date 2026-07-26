@@ -299,21 +299,6 @@ export default function Reels({ version, onChange }: Props) {
             </div>
           )}
         </div>
-        {notes.length + reels.length > 1 && (
-          <div className="reels__progress">
-            {(() => {
-              const len = notes.length + reels.length;
-              const segs = Math.min(len, 40);
-              const activeSeg = Math.round((active / (len - 1)) * (segs - 1));
-              return Array.from({ length: segs }).map((_, i) => (
-                <span
-                  key={i}
-                  className={`reels__seg${i < activeSeg ? ' reels__seg--done' : i === activeSeg ? ' reels__seg--on' : ''}`}
-                />
-              ));
-            })()}
-          </div>
-        )}
       </div>
 
       {reels.length === 0 && notes.length === 0 ? (

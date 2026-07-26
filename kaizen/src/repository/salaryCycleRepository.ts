@@ -1,6 +1,7 @@
 import { storage } from '../storage';
 import { newId } from '../core/util';
 import { currentCycleStart } from '../core/cycleDate';
+import { getPrefs, setPrefs } from '../core/preferences';
 import { ActivityRepository } from './activityRepository';
 import type { SalaryCycle } from '../types/models';
 
@@ -30,7 +31,18 @@ export const SalaryCycleRepository = {
     startDate?: string,
     opts?: { amount?: number; note?: string },
   ): Promise<SalaryCycle> {
-    const ts = startDate ?? currentCycleStart(new Date()).toISOString();
+    // No explicit date → use the user's edited "next cycle" date if they set
+    // one (then clear it), otherwise the computed payday for this period.
+    let ts = startDate;
+    if (!ts) {
+      const override = getPrefs().nextCycleStartOverride;
+      if (override) {
+        ts = override;
+        setPrefs({ nextCycleStartOverride: undefined });
+      } else {
+        ts = currentCycleStart(new Date()).toISOString();
+      }
+    }
 
     const previous = await this.getOpenCycle();
     if (previous) {

@@ -17,6 +17,9 @@ export interface Prefs {
   backupReminderDays: number;
   /** The payment method last picked in the Add tab, reused for the next expense. */
   lastPaymentMethodId?: string;
+  /** A user-set start date (ISO) for the NEXT salary cycle, overriding the
+   * computed payday. Cleared once that cycle is actually started. */
+  nextCycleStartOverride?: string;
 }
 
 const DEFAULTS: Prefs = {

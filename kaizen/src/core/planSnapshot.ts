@@ -42,6 +42,7 @@ export function mfTotals(plan: FinancialPlan): { invested: number; current: numb
   for (const f of plan.mutualFunds ?? []) {
     let units = 0;
     for (const t of f.transactions ?? []) {
+      if (t.processing) continue; // pending SIP — not executed yet
       invested += Number(t.amount) || 0;
       units += Number(t.units) || 0;
     }

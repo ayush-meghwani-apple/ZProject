@@ -74,6 +74,9 @@ interface UnifiedRow {
   isSell: boolean;
   auto: boolean;
   reviewed: boolean;
+  /** A SIP installment whose units/NAV are still pending (scheduled on a
+   *  weekend/holiday → allotted on the next working day). */
+  processing?: boolean;
   fundId?: string;
   entryId?: string;
   /** For read-only Portfolio positions: where the value lives, so it can be
@@ -124,6 +127,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
           isSell: redeem,
           auto: t.auto === true,
           reviewed: t.reviewed === true,
+          processing: t.processing === true,
           fundId: f.id,
         };
       }),
@@ -411,8 +415,14 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                         {r.name}
                         <span className="ft-led__meta">
                           {isPos ? 'Position' : fmtDate(r.date)} · {r.groupLabel}
-                          {r.units > 0 ? ` · ${fmtUnits(r.units)} units` : ''}
-                          {r.nav ? ` @ ₹${r.nav}` : ''}
+                          {r.processing ? (
+                            <span className="ft-led__proc"> · Processing · NAV on next working day</span>
+                          ) : (
+                            <>
+                              {r.units > 0 ? ` · ${fmtUnits(r.units)} units` : ''}
+                              {r.nav ? ` @ ₹${r.nav}` : ''}
+                            </>
+                          )}
                           {r.isSell ? ' · Sell' : ''}
                         </span>
                       </span>
