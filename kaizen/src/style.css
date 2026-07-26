@@ -43,27 +43,17 @@ body {
   /* The inner .app__body is the only scroll container; lock the body itself. */
   overflow: hidden;
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  /* Cover the full physical screen (past the home-indicator safe-area boundary)
-     so the app's background reaches the real bottom edge. */
-  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+  inset: 0;
 }
 
 .app {
   display: flex;
   flex-direction: column;
-  /* Keyboard CLOSED: fill top-to-bottom. On iOS standalone a fixed box's
-     `bottom:0` lands at the home-indicator SAFE-AREA boundary — ~34px above the
-     real screen edge — which left a dead strip below the floating tab bar.
-     Extending the bottom past the inset makes the app cover the full physical
-     screen, so the tab bar sits right near the real edge (as in the browser). */
+  /* Keyboard CLOSED: fill the visible viewport edge-to-edge. `inset:0` reaches
+     the real screen bottom (with viewport-fit=cover), so the tab bar's own
+     bottom margin is the only gap below it. */
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+  inset: 0;
   max-width: 560px;
   margin: 0 auto;
   overflow-x: hidden;
@@ -5457,7 +5447,12 @@ svg.lucide {
 .ft-mf {
   -webkit-user-select: none;
   user-select: none;
-  /* Room so the floating "Add" button never covers the last transaction row. */
+  /* A little scroll room at the bottom so the last item sits just above the tab
+     bar (like Expensify's `.page`). Tabs with a floating "Add" button add extra
+     clearance via `.ft-page--fab` so the button never covers the last row. */
+  padding-bottom: 24px;
+}
+.ft-page--fab {
   padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
 }
 .ft-page input,

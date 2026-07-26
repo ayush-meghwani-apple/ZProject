@@ -320,7 +320,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
 
   return (
     <main className="app__body">
-      <div className="page ft-mf">
+      <div className="page ft-mf ft-page--fab">
         <div className="ft-mf__head">
           <div>
             <h2 className="ft-mf__h">Ledger</h2>
