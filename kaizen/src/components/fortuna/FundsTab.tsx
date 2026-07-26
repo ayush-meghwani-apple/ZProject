@@ -10,9 +10,19 @@ import { mfMonthlyTrend } from '../../core/mfTrend';
 import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
 import LineChart from './LineChart';
 import AmountInput from '../AmountInput';
-import AppIcon from '../AppIcon';
+import AppIcon, { type IconName } from '../AppIcon';
 
 const catLabel = (c: MFCategory) => MF_CATEGORIES.find((x) => x.value === c)?.label ?? 'Other';
+
+/** Colour a fund's badge by its return level: high / medium / low profit, or a
+ *  loss (red, down glyph). Uses XIRR (money-weighted) when available. */
+function returnTier(pct: number | null | undefined): { cls: 'high' | 'mid' | 'low' | 'loss'; icon: IconName } {
+  const x = pct ?? 0;
+  if (x < 0) return { cls: 'loss', icon: 'trenddown' };
+  if (x >= 15) return { cls: 'high', icon: 'investments' };
+  if (x >= 8) return { cls: 'mid', icon: 'investments' };
+  return { cls: 'low', icon: 'investments' };
+}
 
 function fmtDate(iso?: string): string {
   if (!iso) return '—';
@@ -245,20 +255,25 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
 
         {funds.length > 0 && (
           <div className="ft-mf__total">
-            <div className="ft-mf__totalrow">
-              <span>Current value</span>
-              <b>{formatINR(total.currentValue)}</b>
+            <div className="ft-mf__totaltop">
+              <div className="ft-mf__totalmain">
+                <span className="ft-mf__totallabel">Current value</span>
+                <b className="ft-mf__totalval">{formatINR(total.currentValue)}</b>
+              </div>
+              <span className="ft-mf__totalbadge"><AppIcon name="portfolio" size={22} /></span>
             </div>
-            <div className="ft-mf__totalrow ft-mf__muted">
-              <span>Invested</span>
-              <span>{formatINR(total.invested)}</span>
-            </div>
-            <div className={`ft-mf__totalrow ${total.gain >= 0 ? 'ft-mf__pos' : 'ft-mf__neg'}`}>
-              <span>Gain</span>
-              <span>
-                {total.gain >= 0 ? '+' : ''}
-                {formatINR(total.gain)}
-              </span>
+            <div className="ft-mf__totalsplit">
+              <div className="ft-mf__totalcell">
+                <span className="ft-mf__totalk">Invested</span>
+                <span className="ft-mf__totalcv">{formatINR(total.invested)}</span>
+              </div>
+              <div className="ft-mf__totalcell">
+                <span className="ft-mf__totalk">Gain</span>
+                <span className={`ft-mf__totalcv ${total.gain >= 0 ? 'ft-mf__pos' : 'ft-mf__neg'}`}>
+                  {total.gain >= 0 ? '+' : ''}{formatINR(total.gain)}
+                  {total.absReturnPct != null ? ` (${fmtPct(total.absReturnPct)})` : ''}
+                </span>
+              </div>
             </div>
             <ReturnPills s={total} />
             <div className="ft-trend">
@@ -401,9 +416,15 @@ function FundCard({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
+  const tier = returnTier(summary.xirrPct ?? summary.absReturnPct);
+  const [showTxns, setShowTxns] = useState(false);
+
   return (
     <div className="ft-mf__fund">
       <button className="ft-mf__fundhead" onClick={onToggle}>
+        <span className={`ft-mf__fundicon ft-mf__fundicon--${tier.cls}`}>
+          <AppIcon name={tier.icon} size={17} />
+        </span>
         <span className="ft-mf__fundname">
           {fund.name}
           <span className="ft-mf__fundmeta">
@@ -423,19 +444,21 @@ function FundCard({
       {open && (
         <div className="ft-mf__fundbody">
           <div className="ft-mf__stats">
-            <div>
-              <span>Invested</span>
-              <b>{formatINR(summary.invested)}</b>
+            <div className="ft-mf__stat">
+              <span className="ft-mf__staticon ft-mf__staticon--inv"><AppIcon name="expensify" size={14} /></span>
+              <span className="ft-mf__statk">Invested</span>
+              <b className="ft-mf__statv">{formatINR(summary.invested)}</b>
             </div>
-            <div>
-              <span>Value</span>
-              <b>{formatINR(summary.currentValue)}</b>
+            <div className="ft-mf__stat">
+              <span className="ft-mf__staticon ft-mf__staticon--val"><AppIcon name="portfolio" size={14} /></span>
+              <span className="ft-mf__statk">Current Value</span>
+              <b className="ft-mf__statv">{formatINR(summary.currentValue)}</b>
             </div>
-            <div className={summary.gain >= 0 ? 'ft-mf__pos' : 'ft-mf__neg'}>
-              <span>Gain</span>
-              <b>
-                {summary.gain >= 0 ? '+' : ''}
-                {formatINR(summary.gain)}
+            <div className="ft-mf__stat">
+              <span className="ft-mf__staticon ft-mf__staticon--gain"><AppIcon name="investments" size={14} /></span>
+              <span className="ft-mf__statk">Gain</span>
+              <b className={`ft-mf__statv ${summary.gain >= 0 ? 'ft-mf__pos' : 'ft-mf__neg'}`}>
+                {summary.gain >= 0 ? '+' : ''}{formatINR(summary.gain)}
               </b>
             </div>
           </div>
@@ -443,27 +466,38 @@ function FundCard({
 
           <SipEditor fund={fund} mutate={mutate} />
 
-          <div className="ft-mf__txnhead">
-            <span>Transactions</span>
-            <span className="ft-mf__navdate">NAV as of {fmtDate(fund.latestNavDate)}</span>
+          <div className="ft-mf__txnsec">
+            <button className="ft-mf__txnhead" onClick={() => setShowTxns((s) => !s)} aria-expanded={showTxns}>
+              <span className="ft-mf__txntitle">
+                <AppIcon name="bulletList" size={15} className="ft-mf__txnicon" />
+                Transactions
+                {sortedTxns.length > 0 && <span className="ft-mf__txncount">{sortedTxns.length}</span>}
+              </span>
+              <span className="ft-mf__navdate">NAV as of {fmtDate(fund.latestNavDate)}</span>
+              <AppIcon name={showTxns ? 'chevronUp' : 'chevronDown'} size={16} className="ft-mf__chev" />
+            </button>
+            {showTxns && (
+              <div className="ft-mf__txnlist">
+                {sortedTxns.length === 0 && <p className="ft-mf__hint">No transactions yet. Set a SIP above, or add a lumpsum.</p>}
+                {sortedTxns.map((t) => (
+                  <TxnRow
+                    key={t.id}
+                    txn={t}
+                    onChange={(patch) =>
+                      mutate((f) => {
+                        const row = f.transactions.find((x) => x.id === t.id);
+                        if (row) {
+                          Object.assign(row, patch);
+                          row.auto = false; // a manual correction is no longer "auto"
+                        }
+                      })
+                    }
+                    onDelete={() => mutate((f) => { f.transactions = f.transactions.filter((x) => x.id !== t.id); })}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-          {sortedTxns.length === 0 && <p className="ft-mf__hint">No transactions yet. Set a SIP above, or add a lumpsum.</p>}
-          {sortedTxns.map((t) => (
-            <TxnRow
-              key={t.id}
-              txn={t}
-              onChange={(patch) =>
-                mutate((f) => {
-                  const row = f.transactions.find((x) => x.id === t.id);
-                  if (row) {
-                    Object.assign(row, patch);
-                    row.auto = false; // a manual correction is no longer "auto"
-                  }
-                })
-              }
-              onDelete={() => mutate((f) => { f.transactions = f.transactions.filter((x) => x.id !== t.id); })}
-            />
-          ))}
 
           <div className="ft-mf__fundactions">
             <button className="ft-addrow" onClick={addLumpsum}>

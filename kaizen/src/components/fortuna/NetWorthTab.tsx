@@ -8,14 +8,36 @@ import {
   trackedFundsByClass,
   classBreakdown,
 } from '../../core/plannerMath';
-import type { AssetClassKey, DaySnapshot } from '../../types/models';
+import type { AssetClassKey, DaySnapshot, HoldingRow } from '../../types/models';
 import HoldingList from './HoldingList';
-import AppIcon from '../AppIcon';
-import { Section, TotalRow, Stat, formatINR } from './shared';
+import AppIcon, { type IconName } from '../AppIcon';
+import { Section, TotalRow, formatINR } from './shared';
 import LineChart from './LineChart';
+import Donut from './Donut';
 import { sliceDays, dayLabel, type ChartRange } from '../../core/planSnapshot';
 
-const CHART_RANGES: ChartRange[] = ['1W', '1M', '3M', 'MAX'];
+const CHART_RANGES: ChartRange[] = ['1W', '1M', '3M', '6M', 'MAX'];
+const rangeLabel = (r: ChartRange) => (r === '1W' ? '7D' : r === 'MAX' ? 'Max' : r);
+
+/** Compact rupee for tight spots (donut centre): ₹89.34L, ₹1.24Cr. */
+function compactINR(v: number): string {
+  const abs = Math.abs(v);
+  if (abs >= 1e7) return `₹${(v / 1e7).toFixed(2)}Cr`;
+  if (abs >= 1e5) return `₹${(v / 1e5).toFixed(2)}L`;
+  if (abs >= 1e3) return `₹${Math.round(v / 1e3)}k`;
+  return formatINR(v);
+}
+
+/** Pick an icon for a liability from its name (best-effort keyword match). */
+function liabilityIcon(name: string): IconName {
+  const n = name.toLowerCase();
+  if (/home|house|mortgage|property/.test(n)) return 'home';
+  if (/educat|student|study/.test(n)) return 'education';
+  if (/credit|card/.test(n)) return 'creditcard';
+  if (/\bcar\b|vehicle|auto|bike|scooter/.test(n)) return 'car';
+  if (/gold|personal|jewel/.test(n)) return 'family';
+  return 'info';
+}
 
 const CLASS_COLOR: Record<AssetClassKey, string> = {
   domestic_equity: '#6366f1',
@@ -29,9 +51,10 @@ const CLASS_COLOR: Record<AssetClassKey, string> = {
 /** Palette for custom classes (cycled by order). */
 const CUSTOM_COLORS = ['#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#84cc16', '#06b6d4'];
 
-export default function NetWorthTab({ plan, update }: FortunaTabProps) {
+export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
   const disabled = plan.disabledClasses ?? [];
   const custom = plan.customClasses ?? [];
+  const [hideAmounts, setHideAmounts] = useState(false);
   const tracked = useMemo(() => trackedFundsByClass(plan.mutualFunds), [plan.mutualFunds]);
   const nw = useMemo(
     () => computeNetWorth(plan.assets, plan.liabilities, disabled, custom, tracked),
@@ -75,9 +98,24 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
 
   return (
     <main className="app__body">
-      <div className="page ft-page">
+      <div className={`page ft-page ${hideAmounts ? 'ft-private' : ''}`}>
         <div className="ft-hero">
-          <Stat label="Total Net Worth" value={nw.netWorth} tone={nw.netWorth < 0 ? 'neg' : 'pos'} />
+          <div className="ft-hero__top">
+            <span className="ft-hero__label">
+              Total Net Worth
+              <span className="ft-hero__info" title="Assets minus liabilities across every enabled class"><AppIcon name="info" size={13} /></span>
+            </span>
+            <button
+              type="button"
+              className="ft-hero__eye"
+              aria-label={hideAmounts ? 'Show amounts' : 'Hide amounts'}
+              title={hideAmounts ? 'Show amounts' : 'Hide amounts'}
+              onClick={() => setHideAmounts((h) => !h)}
+            >
+              <AppIcon name={hideAmounts ? 'eyeoff' : 'eye'} size={17} />
+            </button>
+          </div>
+          <span className={`ft-hero__net ${nw.netWorth < 0 ? 'ft-neg' : 'ft-pos'}`}>{formatINR(nw.netWorth)}</span>
           <div className="ft-hero__split">
             <div className="ft-hero__cell">
               <span className="ft-hero__k"><span className="ft-hero__ki"><AppIcon name="expensify" size={12} /></span> Assets</span>
@@ -94,7 +132,7 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
           </div>
         </div>
 
-        <Section title="Assets over time" subtitle="Builds from the day you start tracking">
+        <Section title="Assets over time" subtitle="Track the growth of your assets">
           <div className="ft-chartctl">
             <div className="ft-chartctl__ranges">
               {CHART_RANGES.map((r) => (
@@ -104,7 +142,7 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={() => setRange(r)}
                 >
-                  {r === 'MAX' ? 'Max' : r}
+                  {rangeLabel(r)}
                 </button>
               ))}
             </div>
@@ -116,50 +154,61 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
           />
         </Section>
 
-        <Section title="Current asset mix" subtitle="Where your money sits today, by asset class">
+        <Section title="Current asset mix" subtitle="Where your money is invested">
           {nw.totalAssets > 0 ? (
             <>
-              <div className="ft-bar">
-                {mix.map((c) => (
-                  <span
-                    key={c.key}
-                    className="ft-bar__seg"
-                    style={{ width: `${(c.value / nw.totalAssets) * 100}%`, background: colorFor(c.key) }}
-                    title={c.label}
-                  />
-                ))}
-              </div>
-              <ul className="ft-legend">
-                {mix.map((c) => {
-                  const bd = breakdownFor(c.key);
-                  const expandable = bd.length > 1;
-                  const open = openKeys.has(c.key);
-                  return (
-                    <Fragment key={c.key}>
-                      <li
-                        className={`ft-legend__item ${expandable ? 'ft-legend__item--exp' : ''}`}
-                        onClick={expandable ? () => toggleKey(c.key) : undefined}
-                      >
-                        <span className="ft-legend__dot" style={{ background: colorFor(c.key) }} />
-                        <span className="ft-legend__label">
-                          {c.label}
-                          {expandable && <AppIcon name={open ? 'chevronUp' : 'chevronDown'} size={13} className="ft-legend__chev" />}
-                        </span>
-                        <span className="ft-legend__pct">{Math.round((c.value / nw.totalAssets) * 100)}%</span>
-                        <span className="ft-legend__val">{formatINR(c.value)}</span>
-                      </li>
-                      {expandable && open &&
-                        bd.map((s) => (
-                          <li key={`${c.key}-${s.label}`} className="ft-legend__item ft-legend__sub">
-                            <span className="ft-legend__label">{s.label}</span>
-                            <span className="ft-legend__pct">{Math.round(c.value ? (s.value / c.value) * 100 : 0)}%</span>
-                            <span className="ft-legend__val">{formatINR(s.value)}</span>
+              <div className="ft-mix">
+                <Donut
+                  size={144}
+                  thickness={17}
+                  segments={mix.map((c) => ({ value: c.value, color: colorFor(c.key) }))}
+                >
+                  <span className="ft-donut__big">{compactINR(nw.totalAssets)}</span>
+                  <span className="ft-donut__lbl">Total Assets</span>
+                </Donut>
+                <div className="ft-mix__legend">
+                  <div className="ft-mix__lhead">
+                    <span>%</span>
+                    <span>Amount</span>
+                  </div>
+                  <ul className="ft-legend">
+                    {mix.map((c) => {
+                      const bd = breakdownFor(c.key);
+                      const expandable = bd.length > 1;
+                      const open = openKeys.has(c.key);
+                      return (
+                        <Fragment key={c.key}>
+                          <li
+                            className={`ft-legend__item ${expandable ? 'ft-legend__item--exp' : ''}`}
+                            onClick={expandable ? () => toggleKey(c.key) : undefined}
+                          >
+                            <span className="ft-legend__dot" style={{ background: colorFor(c.key) }} />
+                            <span className="ft-legend__label">
+                              {c.label}
+                              {expandable && <AppIcon name={open ? 'chevronUp' : 'chevronDown'} size={13} className="ft-legend__chev" />}
+                            </span>
+                            <span className="ft-legend__pct">{Math.round((c.value / nw.totalAssets) * 100)}%</span>
+                            <span className="ft-legend__val">{formatINR(c.value)}</span>
                           </li>
-                        ))}
-                    </Fragment>
-                  );
-                })}
-              </ul>
+                          {expandable && open &&
+                            bd.map((s) => (
+                              <li key={`${c.key}-${s.label}`} className="ft-legend__item ft-legend__sub">
+                                <span className="ft-legend__label">{s.label}</span>
+                                <span className="ft-legend__pct">{Math.round(c.value ? (s.value / c.value) * 100 : 0)}%</span>
+                                <span className="ft-legend__val">{formatINR(s.value)}</span>
+                              </li>
+                            ))}
+                        </Fragment>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+              {goTo && (
+                <button className="ft-viewlink" onClick={() => goTo('portfolio')}>
+                  View all assets <AppIcon name="chevronRight" size={15} />
+                </button>
+              )}
             </>
           ) : (
             <p className="muted">Add your holdings in the Portfolio tab to see your asset mix.</p>
@@ -169,26 +218,59 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
         {targetTotal > 0 && (
           <Section
             title="Target monthly investment"
-            subtitle="How your goals' SIPs should be split across asset classes"
+            subtitle="Where your goal SIPs stack up against target asset classes"
           >
-            <ul className="ft-legend">
-              {targetKeys.map((k) => (
-                <li key={k} className="ft-legend__item">
-                  <span className="ft-legend__dot" style={{ background: colorFor(k) }} />
-                  <span className="ft-legend__label">{labelMap[k] ?? k}</span>
-                  <span className="ft-legend__pct">{Math.round((target[k] / targetTotal) * 100)}%</span>
-                  <span className="ft-legend__val">{formatINR(target[k])}/mo</span>
-                </li>
-              ))}
-            </ul>
+            <div className="ft-mix ft-mix--rev">
+              <div className="ft-mix__legend">
+                <ul className="ft-legend">
+                  {targetKeys.map((k) => (
+                    <li key={k} className="ft-legend__item">
+                      <span className="ft-legend__dot" style={{ background: colorFor(k) }} />
+                      <span className="ft-legend__label">{labelMap[k] ?? k}</span>
+                      <span className="ft-legend__pct">{Math.round((target[k] / targetTotal) * 100)}%</span>
+                      <span className="ft-legend__val">{formatINR(target[k])}/mo</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <Donut
+                size={132}
+                thickness={15}
+                segments={targetKeys.map((k) => ({ value: target[k], color: colorFor(k) }))}
+              >
+                <span className="ft-donut__ring"><AppIcon name="goals" size={26} /></span>
+              </Donut>
+            </div>
             <TotalRow label="Total monthly SIP" value={targetTotal} strong />
+            {goTo && (
+              <button className="ft-viewlink" onClick={() => goTo('goals')}>
+                View SIP goals <AppIcon name="chevronRight" size={15} />
+              </button>
+            )}
           </Section>
         )}
 
         <Section title="Assets breakdown" subtitle="Liquid vs illiquid">
-          <TotalRow label="Illiquid" value={nw.illiquid} />
-          <TotalRow label="Liquid" value={nw.liquid} />
-          <TotalRow label="Total assets" value={nw.totalAssets} strong />
+          <div className="ft-breakdown">
+            <div className="ft-breakrow">
+              <span className="ft-breakrow__ic ft-breakrow__ic--liquid"><AppIcon name="liquid" size={16} /></span>
+              <span className="ft-breakrow__k">Liquid</span>
+              <span className="ft-breakrow__lead" />
+              <span className="ft-breakrow__v">{formatINR(nw.liquid)}</span>
+            </div>
+            <div className="ft-breakrow">
+              <span className="ft-breakrow__ic ft-breakrow__ic--illiquid"><AppIcon name="vault" size={16} /></span>
+              <span className="ft-breakrow__k">Illiquid</span>
+              <span className="ft-breakrow__lead" />
+              <span className="ft-breakrow__v">{formatINR(nw.illiquid)}</span>
+            </div>
+            <div className="ft-breakrow ft-breakrow--total">
+              <span className="ft-breakrow__ic ft-breakrow__ic--total"><AppIcon name="layers" size={16} /></span>
+              <span className="ft-breakrow__k">Total assets</span>
+              <span className="ft-breakrow__lead" />
+              <span className="ft-breakrow__v">{formatINR(nw.totalAssets)}</span>
+            </div>
+          </div>
         </Section>
 
         <Section title="Liabilities" subtitle="What you owe — rename, edit, remove or add lines">
@@ -196,6 +278,7 @@ export default function NetWorthTab({ plan, update }: FortunaTabProps) {
             rows={plan.liabilities.items}
             namePlaceholder="Liability name"
             addLabel="Add liability"
+            iconFor={(r: HoldingRow) => liabilityIcon(r.name)}
             total
             totalLabel="Total liabilities"
             onChange={(m) => update((d) => m(d.liabilities.items))}

@@ -299,7 +299,7 @@ export default function PortfolioTab({ plan, update }: FortunaTabProps) {
           </Section>
         ))}
 
-        <button className="btn ft-addclass" onClick={addCustomClass}>
+        <button className="ft-addclass" onClick={addCustomClass}>
           <AppIcon name="plus" size={18} /> Add asset category
         </button>
 

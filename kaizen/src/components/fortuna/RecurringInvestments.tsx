@@ -24,6 +24,15 @@ function freqLabel(f: SipFrequency): string {
   return FREQ.find((x) => x.value === f)?.label ?? f;
 }
 
+/** A stable, varied colour for a fund's SIP badge (brand-ish, from its scheme). */
+const SIP_COLORS = ['#818cf8', '#f472b6', '#34d399', '#60a5fa', '#fbbf24', '#a78bfa', '#fb7185', '#22d3ee', '#f59e0b', '#4ade80'];
+function fundColor(key: string | number): string {
+  const s = String(key);
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return SIP_COLORS[h % SIP_COLORS.length];
+}
+
 export default function RecurringInvestments({
   plan,
   update,
@@ -54,6 +63,7 @@ export default function RecurringInvestments({
     <Section
       title="Recurring investments (SIPs)"
       subtitle="Auto-add contributions to your portfolio"
+      icon="recurring"
       right={sips.length > 0 || fundSips.length > 0 ? <span className="ft-chip">{formatINR(monthlyTotal)}/mo</span> : undefined}
       collapsible
       defaultOpen={false}
@@ -238,12 +248,16 @@ export default function RecurringInvestments({
           {fundSips.map((f) => {
             const sip = f.sip;
             if (!sip) return null;
+            const fc = fundColor(f.schemeCode ?? f.id);
             return (
               <div className={`ft-sip ft-mfsip ${!sip.active ? 'ft-sip--paused' : ''}`} key={f.id}>
                 <div className="ft-mfsip__row">
+                  <span className="ft-mfsip__icon" style={{ color: fc, background: `${fc}26` }}>
+                    <AppIcon name="investments" size={16} />
+                  </span>
                   <span className="ft-sip__title">
                     <span className="ft-sip__name">{f.name}</span>
-                    <span className="ft-sip__meta">Monthly · day {sip.dayOfMonth}{!sip.active && ' · paused'}</span>
+                    <span className="ft-sip__meta">Monthly · Day {sip.dayOfMonth}{!sip.active && ' · paused'}</span>
                   </span>
                   <span className="ft-mfsip__amt">
                     <span className="ft-row__cur">₹</span>
@@ -255,26 +269,50 @@ export default function RecurringInvestments({
                     />
                   </span>
                   <button
-                    className="iconbtn"
+                    className="ft-mfsip__btn"
                     title={sip.active ? 'Pause' : 'Resume'}
                     aria-label={sip.active ? 'Pause SIP' : 'Resume SIP'}
                     onPointerDown={(e) => e.preventDefault()}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund?.sip) fund.sip.active = !fund.sip.active; })}
                   >
-                    <AppIcon name={sip.active ? 'pause' : 'play'} size={16} />
+                    <AppIcon name={sip.active ? 'pause' : 'play'} size={15} />
+                  </button>
+                  <button
+                    className="ft-mfsip__btn ft-mfsip__btn--del"
+                    title="Stop this SIP"
+                    aria-label="Stop this SIP"
+                    onPointerDown={(e) => e.preventDefault()}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      if (confirm('Stop this recurring SIP? The fund stays on Pulse.')) {
+                        update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund) fund.sip = undefined; });
+                      }
+                    }}
+                  >
+                    <AppIcon name="trash" size={15} />
                   </button>
                 </div>
               </div>
             );
           })}
-          <p className="ft-note">Adjust a fund’s SIP amount here or on the Pulse tab — installments post automatically each month at that day’s NAV.</p>
         </>
       )}
 
-      <button className="ft-addrow ft-addrow--full" onClick={addSip}>
-        <AppIcon name="plus" size={16} /> Add recurring investment
+      <button className="ft-addrec" onClick={addSip}>
+        <span className="ft-addrec__icon"><AppIcon name="plus" size={18} /></span>
+        <span className="ft-addrec__text">
+          <span className="ft-addrec__title">Add recurring investment</span>
+          <span className="ft-addrec__sub">Choose a fund and set your SIP</span>
+        </span>
       </button>
+
+      {fundSips.length > 0 && (
+        <div className="ft-sipnote">
+          <span className="ft-sipnote__icon"><AppIcon name="sparkle" size={16} /></span>
+          <p className="ft-sipnote__text">Adjust a fund’s SIP amount here or on the Pulse tab — installments post automatically each month at that day’s NAV.</p>
+        </div>
+      )}
     </Section>
   );
 }

@@ -24,6 +24,8 @@ export type PlanUpdate = (mutator: (draft: FinancialPlan) => void) => void;
 export interface FortunaTabProps {
   plan: FinancialPlan;
   update: PlanUpdate;
+  /** Jump to another Fortuna tab by id (e.g. a "View all assets" link). */
+  goTo?: (id: string) => void;
 }
 
 /** Plain-JSON deep clone — the plan is pure data (numbers/strings/arrays), so
@@ -133,6 +135,8 @@ function FortunaLock({ onUnlock }: { onUnlock: () => void }) {
 
 function Fortuna({ onLock }: { onLock: () => void }) {
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
+  const [navReq, setNavReq] = useState<{ id: string; nonce: number }>({ id: 'networth', nonce: 0 });
+  const goTo = useCallback((id: string) => setNavReq((n) => ({ id, nonce: n.nonce + 1 })), []);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSave = useRef<FinancialPlan | null>(null);
 
@@ -212,7 +216,7 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     );
   }
 
-  const props: FortunaTabProps = { plan, update };
+  const props: FortunaTabProps = { plan, update, goTo };
   const tabs: TabDef[] = [
     { id: 'networth', label: 'Net Worth', icon: <AppIcon name="networth" size={20} />, render: () => <NetWorthTab {...props} /> },
     { id: 'cashflow', label: 'Cash Flow', icon: <AppIcon name="cashflow" size={20} />, render: () => <CashFlowTab {...props} /> },
@@ -223,5 +227,5 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     { id: 'settings', label: 'Settings', icon: <AppIcon name="settings" size={20} />, render: () => <SettingsTab {...props} reload={reload} onLock={() => { flush(); onLock(); }} /> },
   ];
 
-  return <TabbedApp tabs={tabs} initialId="networth" swipeable={false} />;
+  return <TabbedApp tabs={tabs} initialId="networth" controlledOpen={navReq} swipeable={false} />;
 }

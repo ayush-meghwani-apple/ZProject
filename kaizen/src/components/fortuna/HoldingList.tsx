@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { HoldingRow } from '../../types/models';
 import { newId } from '../../core/util';
 import AmountInput from '../AmountInput';
-import AppIcon from '../AppIcon';
+import AppIcon, { type IconName } from '../AppIcon';
 import { formatINR } from './shared';
 
 /** A decimal units input backed by local text (so a trailing "." while typing a
@@ -46,6 +46,7 @@ export default function HoldingList({
   total = false,
   totalLabel = 'Total',
   showUnits = false,
+  iconFor,
   onChange,
 }: {
   rows: HoldingRow[];
@@ -55,6 +56,7 @@ export default function HoldingList({
   total?: boolean;
   totalLabel?: string;
   showUnits?: boolean;
+  iconFor?: (row: HoldingRow) => IconName;
   onChange: (mutate: (rows: HoldingRow[]) => void) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -143,6 +145,9 @@ export default function HoldingList({
           </div>
         ) : (
           <button className="ft-readrow ft-readrow--tap" key={row.id} onClick={() => setEditingId(row.id)}>
+            {iconFor && (
+              <span className="ft-readrow__ic"><AppIcon name={iconFor(row)} size={17} /></span>
+            )}
             <span className="ft-readrow__name">
               {row.name.trim() || '—'}
               {row.category && <span className="ft-readrow__cat">{row.category}</span>}

@@ -16,12 +16,12 @@ export function dayKey(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export type ChartRange = '1W' | '1M' | '3M' | '1Y' | 'MAX';
+export type ChartRange = '1W' | '1M' | '3M' | '6M' | '1Y' | 'MAX';
 
 /** Filter a day-keyed series to the trailing window for a chart range. */
 export function sliceDays<T extends { d: string }>(days: T[], range: ChartRange, asOf: Date = new Date()): T[] {
   if (range === 'MAX' || !days.length) return days;
-  const back = range === '1W' ? 7 : range === '1M' ? 31 : range === '3M' ? 93 : 365;
+  const back = range === '1W' ? 7 : range === '1M' ? 31 : range === '3M' ? 93 : range === '6M' ? 186 : 365;
   const cut = new Date(asOf);
   cut.setDate(cut.getDate() - back);
   const cutKey = dayKey(cut);
