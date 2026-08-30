@@ -21,6 +21,7 @@ export type TxnKind =
   | 'card' //       a single card spend
   | 'account' //    a single account debit/credit
   | 'statement' //  a bill / e-statement summary
+  | 'promo' //      a promotional / EMI-conversion email (not a real transaction)
   | 'unknown';
 
 export interface RawEmail {
@@ -67,6 +68,13 @@ const DEBIT_WORDS = /(spent|debited|debit|paid|purchase|withdrawn|used\s+for\s+a
 const STRONG_DEBIT_WORDS = /(spent|debited|withdrawn|purchase|charged|paid)/i;
 const CREDIT_WORDS = /(credited|received|refund(?:ed)?|reversed|deposited)/i;
 const STATEMENT_WORDS = /(statement|e-?statement|bill\s+generated|total\s+amount\s+due|minimum\s+amount\s+due)/i;
+
+// Promotional / EMI-conversion emails (e.g. SBI Card "Convert your recent trans.
+// into Flexipay EMI!") quote a past amount but are NOT new transactions.
+const PROMO_RE = /(convert\s+your\s+recent|flexipay|book\s+flexipay|processing\s+fee\s+on\s+converting|into\s+(?:easy\s+)?(?:flexipay\s+)?emis?)/i;
+// Phrases that only appear in a genuine transaction line — used to rescue a real
+// alert that also carries a promo footer.
+const REAL_TXN_RE = /(spent\s+on\s+your|debited|withdrawn|used\s+for\s+a\s+transaction|transaction\s+status\s*:?\s*success)/i;
 
 function toNumber(s: string): number {
   return parseFloat(s.replace(/,/g, ''));
@@ -159,6 +167,7 @@ export function extractMerchant(text: string): string | null {
   const flat = text.replace(/\s+/g, ' ');
   const patterns: RegExp[] = [
     /\bInfo:\s*([^.\n]+?)(?:\.|$)/i,
+    /\bbeneficiary\s+name\s+([A-Za-z][^\n]*?)(?:\s+beneficiary|\s+account\b|\.|$)/i,
     /\bat\s+([A-Z0-9][^.\n]*?)(?:\s+on\b|\s+dated\b|\.|$)/,
     /\btowards\s+([^.\n]+?)(?:\s+on\b|\.|$)/i,
     /\bto\s+VPA\s+([^\s.]+)/i,
@@ -205,6 +214,7 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
   const source = detectSource(from, subject, body);
 
   const isStatement = STATEMENT_WORDS.test(text) && !DEBIT_WORDS.test(subject);
+  const isPromo = PROMO_RE.test(text) && !REAL_TXN_RE.test(text);
   const amount = extractAmount(text);
 
   let direction: TxnDirection | null = null;
@@ -220,15 +230,17 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
     dateFromBody ??
     (email.receivedAt ? new Date(email.receivedAt).toISOString().slice(0, 10) : null);
 
-  const kind: TxnKind = isStatement
-    ? 'statement'
-    : source === 'sbi-savings'
-      ? 'account'
-      : source === 'unknown'
-        ? 'unknown'
-        : 'card';
+  const kind: TxnKind = isPromo
+    ? 'promo'
+    : isStatement
+      ? 'statement'
+      : source === 'sbi-savings'
+        ? 'account'
+        : source === 'unknown'
+          ? 'unknown'
+          : 'card';
 
-  const merchant = kind === 'statement' ? null : extractMerchant(text);
+  const merchant = kind === 'statement' || kind === 'promo' ? null : extractMerchant(text);
 
   // Confidence: known sender + amount + direction is the strong signal;
   // merchant and an explicit in-body date add polish.
@@ -238,7 +250,7 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
   if (direction !== null) confidence += 0.1;
   if (merchant !== null) confidence += 0.1;
   if (dateFromBody !== null) confidence += 0.1;
-  if (kind === 'statement') confidence = Math.min(confidence, 0.5);
+  if (kind === 'statement' || kind === 'promo') confidence = Math.min(confidence, 0.4);
 
   return {
     amount,
@@ -275,9 +287,13 @@ export function buildGmailQuery(days: number): string {
     'from:hsbc.co.in',
     'from:hsbc.com',
     'from:icicibank.com',
+    'from:icici.bank.in',
     'from:sbi.co.in',
-    'from:alerts.sbi.co.in',
+    'from:sbi.bank.in',
     'from:idfcfirstbank.com',
   ];
-  return `(${senders.join(' OR ')}) newer_than:${Math.max(1, Math.floor(days))}d`;
+  // Restrict to real transaction alerts (subject contains "transaction") — this
+  // drops promotional mail like SBI Card's "Convert your recent trans. into
+  // Flexipay EMI!" whose subject abbreviates it to "trans.".
+  return `(${senders.join(' OR ')}) subject:transaction newer_than:${Math.max(1, Math.floor(days))}d`;
 }

@@ -353,6 +353,13 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       continue;
     }
 
+    // Promotional / EMI-conversion emails are not real transactions.
+    if (p.kind === 'promo') {
+      markDismissed(c.id);
+      skipped++;
+      continue;
+    }
+
     // IDFC is a salary passthrough (funds are moved to SBI, which tracks the
     // real spends), so ignore every IDFC debit to avoid double-counting.
     if (p.source === 'idfc-savings' && p.direction === 'debit') {
@@ -372,13 +379,8 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
     }
     const pmId = await ensureMethod(sourceLabel(p.source));
     const guess = guessCategory(p.merchant, categories, subcategories, aliases);
-    const note = [
-      sourceLabel(p.source),
-      p.merchant ?? undefined,
-      p.accountLast4 ? `••${p.accountLast4}` : undefined,
-    ]
-      .filter(Boolean)
-      .join(' · ');
+    // Payment method already shows the card/account, so the note is just the payee.
+    const note = p.merchant ?? undefined;
     await ExpenseRepository.addExpense({
       amount: p.amount as number,
       date: isoFromDate(p.date),

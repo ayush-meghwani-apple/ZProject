@@ -160,13 +160,49 @@ describe('parseTransactionEmail', () => {
     });
     expect(p.date).toBe('2025-01-15');
   });
+
+  it('rejects an SBI Card Flexipay EMI-conversion promo', () => {
+    const p = parseTransactionEmail({
+      from: 'SBI Card <offers@sbicard.com>',
+      subject: 'Convert your recent trans. into Flexipay EMI!',
+      body: 'Enjoy ZERO Processing Fee on converting your transaction of Rs.7,296.30 into Flexipay EMIs for 24 months. Book Flexipay now.',
+    });
+    expect(p.kind).toBe('promo');
+  });
+
+  it('parses an ICICI credit-card alert from icici.bank.in', () => {
+    const p = parseTransactionEmail({
+      from: 'ICICI Bank <credit_cards@icici.bank.in>',
+      subject: 'Transaction alert for your ICICI Bank Credit Card',
+      body: 'Your ICICI Bank Credit Card XX6005 has been used for a transaction of INR 1,700.00 on Aug 29, 2026 at 02:18:05. Info: HAPPYBELLYBAKES. The Available Credit Limit on your card is INR 73,300.00.',
+    });
+    expect(p.source).toBe('icici-cc');
+    expect(p.amount).toBe(1700);
+    expect(p.direction).toBe('debit');
+    expect(p.merchant).toBe('HAPPYBELLYBAKES');
+  });
+
+  it('parses a YONO SBI fund transfer (Transaction success) as an account debit', () => {
+    const p = parseTransactionEmail({
+      from: 'YONO SBI <yonobysbi@alerts.sbi.bank.in>',
+      subject: 'Transaction success',
+      body: 'Thank you for using YONO SBI for Fund Transfer. Transaction Status Successful Amount Rs.40,000.00 Transaction Number 624012821117 Date of Transaction 28.08.26 Debit account x7538 Beneficiary Name Mom Beneficiary Account Number x4779',
+    });
+    expect(p.source).toBe('sbi-savings');
+    expect(p.amount).toBe(40000);
+    expect(p.direction).toBe('debit');
+    expect(p.merchant).toBe('Mom');
+  });
 });
 
 describe('buildGmailQuery', () => {
-  it('includes all tracked senders and a recency window', () => {
+  it('includes all tracked senders, the transaction-subject filter and a recency window', () => {
     const q = buildGmailQuery(60);
     expect(q).toContain('from:sbicard.com');
     expect(q).toContain('from:icicibank.com');
+    expect(q).toContain('from:icici.bank.in');
+    expect(q).toContain('from:sbi.bank.in');
+    expect(q).toContain('subject:transaction');
     expect(q).toContain('newer_than:60d');
   });
 });
