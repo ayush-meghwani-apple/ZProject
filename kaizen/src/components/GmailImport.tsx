@@ -102,6 +102,10 @@ export default function GmailImport({ onChange }: Props) {
             placeholder="Google OAuth client id (…apps.googleusercontent.com)"
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
           />
           <button className="btn btn--sm" onClick={saveClientId} disabled={!clientId.trim()}>
             Save
