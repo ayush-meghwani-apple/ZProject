@@ -5,6 +5,7 @@ import { isDemoMode, enterDemo, exitDemo } from '../core/demoMode';
 import RecurringManager from './RecurringManager';
 import PaymentMethodsManager from './PaymentMethodsManager';
 import GmailImport from './GmailImport';
+import CollapsibleCard from './CollapsibleCard';
 import DataBackupCard from './DataBackupCard';
 
 interface Props {
@@ -69,7 +70,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
     <div className="page page--settings">
       {!global && <GmailImport onChange={onChange} />}
 
-      <DataBackupCard onReload={load} />
+      <DataBackupCard onReload={load} defaultOpen={global} />
 
       {!global && (
         <>
@@ -77,8 +78,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
 
           <PaymentMethodsManager />
 
-          <div className="card">
-            <h3>Reels &amp; sounds</h3>
+          <CollapsibleCard title="Reels & sounds">
             <div className="row">
               <span>
                 Big-spend highlight<span className="muted"> · ₹, 0 = off</span>
@@ -122,15 +122,13 @@ export default function Settings({ version, onChange, global = false }: Props) {
                 {soundOn ? '🔊 On' : '🔇 Off'}
               </button>
             </div>
-          </div>
+          </CollapsibleCard>
         </>
       )}
 
-      <div className="card">
+      <CollapsibleCard title="Demo mode" subtitle="Sample data · real data safe">
         <div className="row" style={{ padding: 0 }}>
-          <span>
-            Demo mode<span className="muted"> · sample data, real data safe</span>
-          </span>
+          <span className="muted">Fill the app with sample data to show someone</span>
           <button
             className={`btn btn--sm${isDemoMode() ? '' : ' btn--ghost'}`}
             onClick={() => {
@@ -148,7 +146,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
             {isDemoMode() ? '✨ On' : 'Off'}
           </button>
         </div>
-      </div>
+      </CollapsibleCard>
 
       <div className="card">
         <h3>About</h3>

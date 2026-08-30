@@ -16,6 +16,13 @@ describe('extractAmount', () => {
     expect(extractAmount(body)).toBe(1234.56);
   });
 
+  it('prefers the amount followed by "spent" over an earlier promo/footer figure', () => {
+    // Real SBI Card layout: promo banners appear BEFORE the transaction line.
+    const body =
+      'Get Rs.200 cashback on SimplyCLICK! Rs.170.00 spent on your SBI Credit Card ending with 6735 at TOGETHERPARTNERS on 29-08-26 via UPI (Ref No. 214400160341). Available limit Rs.90,000.';
+    expect(extractAmount(body)).toBe(170);
+  });
+
   it('handles INR and ₹ symbols with commas', () => {
     expect(extractAmount('debited by INR 2,000 for a purchase')).toBe(2000);
     expect(extractAmount('₹ 49.00 paid to VPA test@ybl')).toBe(49);

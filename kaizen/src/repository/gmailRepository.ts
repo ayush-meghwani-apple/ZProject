@@ -353,6 +353,14 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       continue;
     }
 
+    // IDFC is a salary passthrough (funds are moved to SBI, which tracks the
+    // real spends), so ignore every IDFC debit to avoid double-counting.
+    if (p.source === 'idfc-savings' && p.direction === 'debit') {
+      markDismissed(c.id);
+      skipped++;
+      continue;
+    }
+
     const isSpend = p.direction === 'debit' && p.kind !== 'statement' && p.amount !== null;
     if (!isSpend) {
       // Credits, statements, and anything clearly not a spend: remember + skip.

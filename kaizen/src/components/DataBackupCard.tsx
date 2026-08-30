@@ -11,6 +11,8 @@ interface Props {
   /** Flush any in-memory state to storage before the backup file is written
    * (e.g. Fortuna's just-edited plan), so nothing recent is missed. */
   beforeExport?: () => Promise<void>;
+  /** Whether the card starts expanded (defaults to open). */
+  defaultOpen?: boolean;
 }
 
 /** "25 Jul, 2:34 pm" — short date + time for the last-backup stamp. */
@@ -29,8 +31,8 @@ function fmtWhen(iso: string): string {
  * across every sub-app. Shows storage used, the last backup, the
  * export/import/restore actions, and the backup-reminder frequency.
  */
-export default function DataBackupCard({ onReload, beforeExport }: Props) {
-  const [open, setOpen] = useState(true);
+export default function DataBackupCard({ onReload, beforeExport, defaultOpen = true }: Props) {
+  const [open, setOpen] = useState(defaultOpen);
   const [usage, setUsage] = useState('');
   const [lastBackup, setLastBackup] = useState<string | null>(BackupRepository.getLastBackupAt());
   const [reminderDays, setReminderDays] = useState(getPrefs().backupReminderDays ?? 1);

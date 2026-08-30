@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import CollapsibleCard from './CollapsibleCard';
 import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
 import AppIcon from './AppIcon';
 import type { PaymentMethod } from '../types/models';
@@ -63,8 +64,7 @@ export default function PaymentMethodsManager() {
   }
 
   return (
-    <div className="card">
-      <h3>Payment Methods</h3>
+    <CollapsibleCard title="Payment Methods">
       <div className="muted" style={{ marginBottom: 12 }}>
         Optional. Add your cash, cards, bank accounts, UPI Lite, Splitwise, etc.
         You pick one from the Add tab (it's remembered) and can change it per
@@ -140,6 +140,6 @@ export default function PaymentMethodsManager() {
           </button>
         </div>
       </div>
-    </div>
+    </CollapsibleCard>
   );
 }

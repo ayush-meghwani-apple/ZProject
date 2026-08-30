@@ -118,21 +118,28 @@ export function extractDate(text: string): string | null {
 export function extractAmount(text: string): number | null {
   const flat = text.replace(/\s+/g, ' ');
   let firstClean: number | null = null;
-  let nearKeyword: number | null = null;
+  let afterKeyword: number | null = null;
+  let beforeKeyword: number | null = null;
 
   for (const match of flat.matchAll(CURRENCY_RE)) {
     const value = toNumber(match[1]);
     if (!isFinite(value) || value <= 0) continue;
     const start = match.index ?? 0;
     const before = flat.slice(Math.max(0, start - 32), start);
-    const after = flat.slice(start + match[0].length, start + match[0].length + 20);
+    const after = flat.slice(start + match[0].length, start + match[0].length + 24);
     if (NON_TXN_CONTEXT.test(before) || NON_TXN_CONTEXT.test(after)) continue;
     if (firstClean === null) firstClean = value;
-    if (nearKeyword === null && (DEBIT_WORDS.test(before) || CREDIT_WORDS.test(before))) {
-      nearKeyword = value;
+    // "Rs.170 spent / debited / credited" — a keyword right AFTER the amount is
+    // the strongest signal (Indian card alerts read "Rs.X spent at …"). This
+    // beats promo/footer figures that appear earlier in the email body.
+    if (afterKeyword === null && (DEBIT_WORDS.test(after) || CREDIT_WORDS.test(after))) {
+      afterKeyword = value;
+    }
+    if (beforeKeyword === null && (DEBIT_WORDS.test(before) || CREDIT_WORDS.test(before))) {
+      beforeKeyword = value;
     }
   }
-  return nearKeyword ?? firstClean;
+  return afterKeyword ?? beforeKeyword ?? firstClean;
 }
 
 /** Reads the last 4 digits of a card/account: "ending 1234", "XX1234", "x1234". */

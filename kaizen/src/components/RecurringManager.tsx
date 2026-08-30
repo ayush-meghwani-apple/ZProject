@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import CollapsibleCard from './CollapsibleCard';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { RecurringRepository } from '../repository/recurringRepository';
 import { formatINR, formatDate } from '../core/util';
@@ -97,8 +98,7 @@ export default function RecurringManager({ version, onChange }: Props) {
   }
 
   return (
-    <div className="card">
-      <h3>Recurring Expenses</h3>
+    <CollapsibleCard title="Recurring Expenses">
       <div className="muted" style={{ marginBottom: 12 }}>
         Auto-adds fixed expenses (like rent) on a schedule. Due items are created
         when you open the app; edit the date later on the expense itself.
@@ -224,6 +224,6 @@ export default function RecurringManager({ version, onChange }: Props) {
           Add recurring
         </button>
       </div>
-    </div>
+    </CollapsibleCard>
   );
 }

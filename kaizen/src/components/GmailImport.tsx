@@ -3,7 +3,7 @@ import { GmailRepository, type SyncState } from '../repository/gmailRepository';
 import { getGmailSettings, setGmailSettings, clearImportMemory } from '../core/gmailSettings';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
-import AppIcon from './AppIcon';
+import CollapsibleCard from './CollapsibleCard';
 
 interface Props {
   /** Bump the parent so Reels and Summary reload after an import. */
@@ -84,10 +84,11 @@ export default function GmailImport({ onChange }: Props) {
   }
 
   return (
-    <div className="card">
-      <h3>
-        <AppIcon name="add" size={18} /> Auto-import from Gmail
-      </h3>
+    <CollapsibleCard
+      title="Auto-import from Gmail"
+      subtitle="Bank & card emails → expenses"
+      icon="add"
+    >
       <p className="muted" style={{ marginTop: 0 }}>
         Reads bank &amp; card alert emails (HSBC, ICICI, SBI Card, SBI &amp; IDFC a/c) and adds the
         spends straight into your expenses — review them in the <strong>Reels</strong> tab.
@@ -210,6 +211,6 @@ export default function GmailImport({ onChange }: Props) {
           {last.lastSalary ? `, ${last.lastSalary} salary` : ''}.
         </p>
       )}
-    </div>
+    </CollapsibleCard>
   );
 }
