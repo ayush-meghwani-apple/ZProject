@@ -68,9 +68,42 @@ export interface Candidate {
   email: RawEmail;
 }
 
+const TOKEN_KEY = 'gmail:token';
+
 let tokenClient: TokenClient | null = null;
 let accessToken = '';
 let tokenExpiry = 0; // epoch millis
+
+// Restore a previously-granted token so a page reload (e.g. a new app version)
+// never forces re-authorising.
+try {
+  const raw = localStorage.getItem(TOKEN_KEY);
+  if (raw) {
+    const t = JSON.parse(raw) as { accessToken?: string; tokenExpiry?: number };
+    accessToken = t.accessToken ?? '';
+    tokenExpiry = t.tokenExpiry ?? 0;
+  }
+} catch {
+  /* ignore */
+}
+
+function persistToken() {
+  try {
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({ accessToken, tokenExpiry }));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearToken() {
+  accessToken = '';
+  tokenExpiry = 0;
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -104,13 +137,8 @@ export function isConnected(): boolean {
   return !!accessToken && Date.now() < tokenExpiry - 30_000;
 }
 
-/**
- * Request an access token. `interactive` shows the Google consent/account
- * chooser; when false it attempts a silent refresh (works if already granted).
- */
-export async function connect(interactive = true): Promise<void> {
-  const client = await ensureTokenClient();
-  await new Promise<void>((resolve, reject) => {
+function requestToken(client: TokenClient, prompt: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
     client.callback = (resp: TokenResponse) => {
       if (resp.error || !resp.access_token) {
         reject(new Error(resp.error_description || resp.error || 'Authorization failed.'));
@@ -118,23 +146,36 @@ export async function connect(interactive = true): Promise<void> {
       }
       accessToken = resp.access_token;
       tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000;
+      persistToken();
       resolve();
     };
     try {
-      client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+      client.requestAccessToken({ prompt });
     } catch (e) {
       reject(e instanceof Error ? e : new Error('Authorization failed.'));
     }
   });
 }
 
-/** Forget the in-memory token and revoke it with Google. */
+/**
+ * Ensure a usable access token. Reuses the persisted token when still valid, so
+ * reloads / new app versions never re-prompt. `interactive` uses prompt=''
+ * (Google shows consent only the FIRST time, then refreshes silently — no
+ * popup); `interactive=false` uses prompt='none' (background, never pops a
+ * window).
+ */
+export async function connect(interactive = true): Promise<void> {
+  if (isConnected()) return;
+  const client = await ensureTokenClient();
+  await requestToken(client, interactive ? '' : 'none');
+}
+
+/** Forget the token (in memory + persisted) and revoke it with Google. */
 export function signOut(): void {
   if (accessToken && window.google) {
     window.google.accounts.oauth2.revoke(accessToken);
   }
-  accessToken = '';
-  tokenExpiry = 0;
+  clearToken();
 }
 
 async function api<T>(path: string): Promise<T> {
@@ -148,8 +189,7 @@ async function api<T>(path: string): Promise<T> {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (res.status === 401) {
-    accessToken = '';
-    tokenExpiry = 0;
+    clearToken();
     throw new Error('Gmail session expired. Tap Connect again.');
   }
   if (!res.ok) throw new Error(`Gmail API error ${res.status}.`);
