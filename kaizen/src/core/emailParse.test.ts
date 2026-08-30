@@ -193,6 +193,15 @@ describe('parseTransactionEmail', () => {
     expect(p.direction).toBe('debit');
     expect(p.merchant).toBe('Mom');
   });
+
+  it('rejects a declined / failed transaction (no money moved)', () => {
+    const p = parseTransactionEmail({
+      from: 'YONO SBI <yonobysbi@alerts.sbi.bank.in>',
+      subject: 'Transaction declined',
+      body: 'Thank you for using YONO SBI for Fund Transfer. Transaction Status Declined due to incorrect OTP Amount Rs.40,000.00 Date of Transaction 28.08.26 Debit account x7538 Beneficiary Name Mom',
+    });
+    expect(p.kind).toBe('failed');
+  });
 });
 
 describe('buildGmailQuery', () => {

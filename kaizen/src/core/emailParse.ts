@@ -22,6 +22,7 @@ export type TxnKind =
   | 'account' //    a single account debit/credit
   | 'statement' //  a bill / e-statement summary
   | 'promo' //      a promotional / EMI-conversion email (not a real transaction)
+  | 'failed' //     a declined / failed transaction (no money moved)
   | 'unknown';
 
 export interface RawEmail {
@@ -75,6 +76,9 @@ const PROMO_RE = /(convert\s+your\s+recent|flexipay|book\s+flexipay|processing\s
 // Phrases that only appear in a genuine transaction line — used to rescue a real
 // alert that also carries a promo footer.
 const REAL_TXN_RE = /(spent\s+on\s+your|debited|withdrawn|used\s+for\s+a\s+transaction|transaction\s+status\s*:?\s*success)/i;
+// A declined / failed transaction never actually moved money, so it must not be
+// imported (e.g. a first YONO attempt that failed OTP before a successful retry).
+const FAILED_RE = /\b(declined|failed|unsuccessful|not\s+successful|rejected)\b/i;
 
 function toNumber(s: string): number {
   return parseFloat(s.replace(/,/g, ''));
@@ -214,6 +218,7 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
   const source = detectSource(from, subject, body);
 
   const isStatement = STATEMENT_WORDS.test(text) && !DEBIT_WORDS.test(subject);
+  const isFailed = FAILED_RE.test(text);
   const isPromo = PROMO_RE.test(text) && !REAL_TXN_RE.test(text);
   const amount = extractAmount(text);
 
@@ -230,17 +235,20 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
     dateFromBody ??
     (email.receivedAt ? new Date(email.receivedAt).toISOString().slice(0, 10) : null);
 
-  const kind: TxnKind = isPromo
-    ? 'promo'
-    : isStatement
-      ? 'statement'
-      : source === 'sbi-savings'
-        ? 'account'
-        : source === 'unknown'
-          ? 'unknown'
-          : 'card';
+  const kind: TxnKind = isFailed
+    ? 'failed'
+    : isPromo
+      ? 'promo'
+      : isStatement
+        ? 'statement'
+        : source === 'sbi-savings'
+          ? 'account'
+          : source === 'unknown'
+            ? 'unknown'
+            : 'card';
 
-  const merchant = kind === 'statement' || kind === 'promo' ? null : extractMerchant(text);
+  const merchant =
+    kind === 'statement' || kind === 'promo' || kind === 'failed' ? null : extractMerchant(text);
 
   // Confidence: known sender + amount + direction is the strong signal;
   // merchant and an explicit in-body date add polish.
@@ -250,7 +258,8 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
   if (direction !== null) confidence += 0.1;
   if (merchant !== null) confidence += 0.1;
   if (dateFromBody !== null) confidence += 0.1;
-  if (kind === 'statement' || kind === 'promo') confidence = Math.min(confidence, 0.4);
+  if (kind === 'statement' || kind === 'promo' || kind === 'failed')
+    confidence = Math.min(confidence, 0.4);
 
   return {
     amount,

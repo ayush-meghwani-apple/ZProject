@@ -353,8 +353,9 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       continue;
     }
 
-    // Promotional / EMI-conversion emails are not real transactions.
-    if (p.kind === 'promo') {
+    // Promotional / EMI-conversion emails and declined/failed transactions are
+    // not real spends.
+    if (p.kind === 'promo' || p.kind === 'failed') {
       markDismissed(c.id);
       skipped++;
       continue;
