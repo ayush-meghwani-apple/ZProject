@@ -60,4 +60,24 @@ async function bootstrap() {
   );
 }
 
+// iOS PWAs rarely check for a new service worker on their own, so the app can
+// stay stuck on an old version until reopened many times. Actively poke the SW
+// to check for updates whenever the app opens or regains focus; the autoUpdate
+// worker then activates the new version and reloads.
+function setupServiceWorkerUpdates() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.ready
+    .then((reg) => {
+      const check = () => reg.update().catch(() => {});
+      check();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') check();
+      });
+      window.addEventListener('focus', check);
+      window.setInterval(check, 30 * 60 * 1000);
+    })
+    .catch(() => {});
+}
+
+setupServiceWorkerUpdates();
 bootstrap();

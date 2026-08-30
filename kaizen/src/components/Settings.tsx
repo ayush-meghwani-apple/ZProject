@@ -27,6 +27,18 @@ function fmtDayTime(d: Date): string {
   });
 }
 
+/** Force the service worker to check for a new version, then reload. */
+async function checkForUpdates(): Promise<void> {
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    await reg?.update();
+    reg?.waiting?.postMessage({ type: 'SKIP_WAITING' });
+  } catch {
+    /* ignore */
+  }
+  window.setTimeout(() => window.location.reload(), 1200);
+}
+
 export default function Settings({ version, onChange, global = false }: Props) {
   const [bigThreshold, setBigThreshold] = useState('');
   const [soundOn, setSoundOn] = useState(true);
@@ -162,6 +174,14 @@ export default function Settings({ version, onChange, global = false }: Props) {
             </span>
             <span className="muted"> · {fmtDayTime(new Date(__BUILD_TIME__))}</span>
           </span>
+        </div>
+        <div className="row">
+          <span>
+            Update<span className="muted"> · pulls the latest version</span>
+          </span>
+          <button className="btn btn--sm" onClick={checkForUpdates}>
+            Check for updates
+          </button>
         </div>
       </div>
     </div>
