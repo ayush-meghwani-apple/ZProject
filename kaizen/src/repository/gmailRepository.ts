@@ -482,6 +482,30 @@ export async function syncAndImport(
 }
 
 /**
+ * Diagnostic: list every email the sync fetches (ignoring the imported/dismissed
+ * filter) with how the parser classifies each, so we can tell "not fetched"
+ * (sender) apart from "fetched but skipped" (parser). One line per email.
+ */
+export async function diagnose(days?: number): Promise<string[]> {
+  if (!isConnected()) await connect(true);
+  const window = days ?? getGmailSettings().syncDays;
+  const q = encodeURIComponent(buildGmailQuery(window));
+  const list = await api<ListResponse>(`/messages?maxResults=50&q=${q}`);
+  const ids = (list.messages ?? []).map((m) => m.id);
+  const lines = [`Fetched ${ids.length} email(s) · window ${window}d`];
+  for (const id of ids) {
+    const msg = await api<GmailMessage>(`/messages/${id}?format=full`);
+    const email = toRawEmail(msg);
+    const p = parseTransactionEmail(email);
+    const domain = email.from.match(/@([^>\s]+)/)?.[1] ?? email.from;
+    lines.push(
+      `${domain} | ${p.source}/${p.kind} | ${p.amount ?? 'no-amt'} ${p.direction ?? '-'} | ${email.subject.slice(0, 32)}`,
+    );
+  }
+  return lines;
+}
+
+/**
  * Best-effort silent sync used on app open. Never pops a consent dialog and
  * never throws — returns 0/0/0 when not (yet) authorised.
  */
@@ -515,4 +539,5 @@ export const GmailRepository = {
   autoSync,
   getSyncState,
   subscribeSync,
+  diagnose,
 };

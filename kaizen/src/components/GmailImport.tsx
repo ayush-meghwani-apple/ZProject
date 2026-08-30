@@ -16,6 +16,7 @@ export default function GmailImport({ onChange }: Props) {
   const [connected, setConnected] = useState(GmailRepository.isConnected());
   const [days, setDays] = useState(getGmailSettings().syncDays);
   const [sync, setSync] = useState<SyncState>(GmailRepository.getSyncState());
+  const [diag, setDiag] = useState<string[]>([]);
 
   const last = getGmailSettings();
 
@@ -81,6 +82,16 @@ export default function GmailImport({ onChange }: Props) {
   async function testAutoSync() {
     await GmailRepository.autoSync();
     onChange();
+  }
+
+  // Lists every email the sync fetches + how it's classified (fetch vs parse).
+  async function runDiagnose() {
+    setDiag(['Diagnosing…']);
+    try {
+      setDiag(await GmailRepository.diagnose(Math.max(1, Math.floor(days) || 7)));
+    } catch (e) {
+      setDiag([e instanceof Error ? e.message : 'Diagnose failed.']);
+    }
   }
 
   return (
@@ -184,6 +195,34 @@ export default function GmailImport({ onChange }: Props) {
           >
             Test auto-sync (as if app opened)
           </button>
+
+          <button
+            className="btn btn--sm btn--ghost"
+            style={{ marginTop: 6, marginLeft: 8 }}
+            onClick={runDiagnose}
+            title="List every email the sync fetches and how it's classified"
+          >
+            Diagnose (list fetched)
+          </button>
+
+          {diag.length > 0 && (
+            <pre
+              style={{
+                fontSize: 11,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                maxHeight: 220,
+                overflow: 'auto',
+                marginTop: 8,
+                marginBottom: 0,
+                padding: 8,
+                borderRadius: 8,
+                background: 'rgba(0,0,0,0.25)',
+              }}
+            >
+              {diag.join('\n')}
+            </pre>
+          )}
         </>
       )}
 
