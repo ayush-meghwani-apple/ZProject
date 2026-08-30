@@ -1,6 +1,7 @@
 import { storage } from '../storage';
 import { newId } from '../core/util';
 import { currentCycleStart } from '../core/cycleDate';
+import { planSalaryCycle } from '../core/salaryCyclePlan';
 import { getPrefs, setPrefs } from '../core/preferences';
 import { ActivityRepository } from './activityRepository';
 import type { SalaryCycle } from '../types/models';
@@ -67,6 +68,47 @@ export const SalaryCycleRepository = {
   /** Convenience: start a cycle (defaults to payday) and record an income amount. */
   receiveSalary(amount: number, note?: string): Promise<SalaryCycle> {
     return this.startCycle(undefined, { amount, note });
+  },
+
+  /**
+   * Start (or annotate) a salary cycle from an auto-detected salary credit. If a
+   * cycle already begins on that day it is flagged and its income updated;
+   * otherwise a new cycle opens at the credit date. Expenses are re-bucketed by
+   * date afterwards. Marks the cycle `autoSalary` so the UI can celebrate it.
+   */
+  async receiveSalaryFromEmail(
+    dateISO: string,
+    amount: number,
+    note?: string,
+  ): Promise<SalaryCycle> {
+    const all = await storage.salaryCycles.getAll();
+    const prevStart = currentCycleStart(
+      new Date(new Date(dateISO).getTime() - 86_400_000),
+    ).toISOString();
+    const { puts, resultId } = planSalaryCycle(all, dateISO, { amount, note, prevStart, mkId: newId });
+    for (const c of puts) await storage.salaryCycles.put(c);
+    await ActivityRepository.log('salaryCycle.opened', 'salaryCycle', resultId, { autoSalary: true });
+    await this.reassignExpensesByDate();
+    return (await storage.salaryCycles.get(resultId)) as SalaryCycle;
+  },
+
+  /** Remove cycles started from detected salary credits (testing/reset). Reopens
+   *  the latest remaining cycle and re-buckets expenses. Returns how many went. */
+  async clearAutoSalaryCycles(): Promise<number> {
+    const all = await storage.salaryCycles.getAll();
+    const auto = all.filter((c) => c.autoSalary);
+    for (const c of auto) await storage.salaryCycles.delete(c.id);
+    if (auto.length) {
+      const remaining = (await storage.salaryCycles.getAll()).sort((a, b) =>
+        b.startDate.localeCompare(a.startDate),
+      );
+      if (remaining[0]?.endDate) {
+        remaining[0].endDate = undefined;
+        await storage.salaryCycles.put(remaining[0]);
+      }
+      await this.reassignExpensesByDate();
+    }
+    return auto.length;
   },
 
   /**

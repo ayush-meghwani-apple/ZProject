@@ -8,6 +8,7 @@ import TabbedApp, { type TabDef } from './TabbedApp';
 import AppIcon from './AppIcon';
 import { RecurringRepository } from '../repository/recurringRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
+import { GmailRepository } from '../repository/gmailRepository';
 import { isDemoMode } from '../core/demoMode';
 
 // Chat history lives in localStorage; demo mode uses a separate key so your real
@@ -65,6 +66,10 @@ export default function ExpensifyApp({ refreshNonce = 0, openReelsNonce = 0 }: P
     });
     CategoryRepository.ensureDistinctColors().then((changed) => {
       if (changed > 0) setVersion((v) => v + 1);
+    });
+    // Silent Gmail sync on open (no popup) — new spends flow into Reels.
+    GmailRepository.autoSync().then(({ imported, salary }) => {
+      if (imported > 0 || salary > 0) setVersion((v) => v + 1);
     });
   }, []);
 

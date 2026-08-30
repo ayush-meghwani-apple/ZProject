@@ -1,13 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { parseInput } from '../core/parser';
-import { formatINR, formatDate } from '../core/util';
+import { formatINR } from '../core/util';
 import { playSound } from '../core/sound';
 import { getPrefs, setPrefs } from '../core/preferences';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
 import { NotesRepository } from '../repository/notesRepository';
-import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import type { Category, PaymentMethod, Subcategory } from '../types/models';
 
 export interface ChatMessage {
@@ -39,10 +38,6 @@ Maths works too — start with "=":
 Categories:
 • tap "#" to pick a category, then its subcategory
 • or just type a name, e.g. "home shopping"
-
-Cycles (this app tracks expenses, not income):
-• "start cycle"  → begins a new cycle from now
-• "salary 50000" → also starts a cycle (income optional)
 
 No amount? It's kept as a note/reminder in the chat.
 Unknown words on an expense still save as its note.`;
@@ -305,20 +300,6 @@ export default function Chat({ messages, setMessages, onChange }: Props) {
 
     if (cmd.kind === 'unknown') {
       pushBot(cmd.reason, true);
-      return;
-    }
-
-    if (cmd.kind === 'startCycle') {
-      const c = await SalaryCycleRepository.startCycle();
-      pushBot(`\uD83D\uDD04 New cycle started from ${formatDate(c.startDate)} \u2705`);
-      onChange();
-      return;
-    }
-
-    if (cmd.kind === 'salary') {
-      await SalaryCycleRepository.receiveSalary(cmd.amount);
-      pushBot(`💰 Income of ${formatINR(cmd.amount)} logged. New cycle started ✅`);
-      onChange();
       return;
     }
 

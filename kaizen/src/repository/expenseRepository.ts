@@ -15,6 +15,7 @@ export type NewExpenseInput = {
   rawText?: string;
   date?: string;
   recurringId?: ID;
+  autoImported?: boolean;
 };
 
 export const ExpenseRepository = {
@@ -49,6 +50,7 @@ export const ExpenseRepository = {
       note: input.note,
       rawText: input.rawText,
       recurringId: input.recurringId,
+      autoImported: input.autoImported,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -77,5 +79,13 @@ export const ExpenseRepository = {
     const existing = await storage.expenses.get(id);
     await storage.expenses.delete(id);
     await ActivityRepository.log('expense.deleted', 'expense', id, existing);
+  },
+
+  /** Delete every expense created by the Gmail auto-import (testing/reset). */
+  async deleteAutoImported(): Promise<number> {
+    const all = await storage.expenses.getAll();
+    const auto = all.filter((e) => e.autoImported);
+    for (const e of auto) await storage.expenses.delete(e.id);
+    return auto.length;
   },
 };

@@ -110,6 +110,10 @@ export default function Reels({ version, onChange }: Props) {
 
   const total = useMemo(() => reels.reduce((sum, e) => sum + e.amount, 0), [reels]);
 
+  // A permanent “salary credited” marker reel for a cycle started from a salary.
+  const viewedCycle = cycles.find((c) => c.id === cycleId);
+  const showSalary = !!viewedCycle?.autoSalary;
+
   // Return to the reel you were on for this cycle (or the top for a cycle you
   // haven't opened yet), once the track has a measurable height.
   useEffect(() => {
@@ -295,13 +299,14 @@ export default function Reels({ version, onChange }: Props) {
           </div>
           {notes.length + reels.length > 0 && (
             <div className="reels__counter">
-              {Math.min(active + 1, notes.length + reels.length)} / {notes.length + reels.length}
+              {Math.min(active + 1, notes.length + reels.length + (showSalary ? 1 : 0))} /{' '}
+              {notes.length + reels.length + (showSalary ? 1 : 0)}
             </div>
           )}
         </div>
       </div>
 
-      {reels.length === 0 && notes.length === 0 ? (
+      {reels.length === 0 && notes.length === 0 && !showSalary ? (
         <div className="reels__empty">
           <div className="reels__empty-emoji">🎞️</div>
           <p>No expenses in this cycle yet.</p>
@@ -359,6 +364,7 @@ export default function Reels({ version, onChange }: Props) {
               const big = isBig && !e.reviewed; // “hot” only until reviewed
               const reviewed = isBig && !!e.reviewed; // acknowledged → calm green
               const isRecurring = !!e.recurringId; // auto-created from a recurring rule
+              const synced = !!e.autoImported && !e.reviewed; // from Gmail, awaiting review
               const cls = `reel${big ? ' reel--big' : ''}${reviewed ? ' reel--reviewed' : ''}${incomplete && !big && !reviewed ? ' reel--incomplete' : ''}`;
               return (
                 <section
@@ -438,6 +444,15 @@ export default function Reels({ version, onChange }: Props) {
                       <AppIcon name="recurring" size={13} /> Recurring
                     </div>
                   )}
+                  {synced && (
+                    <div
+                      className="reel__recurring"
+                      style={{ color: 'var(--accent, #a5b4fc)' }}
+                      title="Auto-imported from a Gmail bank/card alert — review it"
+                    >
+                      <AppIcon name="recurring" size={13} /> Auto-synced · review
+                    </div>
+                  )}
 
                   {e.note ? (
                     <div className="reel__note">{e.note}</div>
@@ -447,9 +462,9 @@ export default function Reels({ version, onChange }: Props) {
 
                   <div className="reel__actions">
                     <button className="reel__act reel__act--del" onClick={() => handleDelete(e.id)}>
-                      <AppIcon name="trash" size={17} /> <span>Delete</span>
+                      <AppIcon name="trash" size={17} /> <span>{synced ? 'Dismiss' : 'Delete'}</span>
                     </button>
-                    {isBig && (
+                    {(isBig || !!e.autoImported) && (
                       <button className="reel__act reel__act--rev" onClick={() => toggleReviewed(e)}>
                         {e.reviewed ? <AppIcon name="undo" size={17} /> : <AppIcon name="reviewed" size={17} />} <span>{e.reviewed ? 'Unreview' : 'Reviewed'}</span>
                       </button>
@@ -464,6 +479,25 @@ export default function Reels({ version, onChange }: Props) {
                 </section>
               );
             })}
+            {showSalary && viewedCycle && (
+              <section
+                className="reel reel--reviewed"
+                key={`salary-${viewedCycle.id}`}
+                style={{
+                  background:
+                    'radial-gradient(130% 90% at 50% 0%, rgba(16, 185, 129, 0.4) 0%, rgba(16, 185, 129, 0.12) 45%, transparent 70%)',
+                }}
+              >
+                <div className="reel__flame reel__flame--ok">💰 Salary credited</div>
+                <div className="reel__icon" style={{ background: 'rgba(16,185,129,0.18)' }}>
+                  🎉
+                </div>
+                <div className="reel__cat">Salary received — new cycle started</div>
+                <div className="reel__date">
+                  <AppIcon name="calendar" size={14} /> {formatDate(viewedCycle.startDate)}
+                </div>
+              </section>
+            )}
           </div>
         </>
       )}

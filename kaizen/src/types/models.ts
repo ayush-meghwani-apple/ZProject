@@ -60,6 +60,7 @@ export interface SalaryCycle {
   endDate?: ISODate; // open cycle has no endDate
   salaryReceived: number;
   note?: string;
+  autoSalary?: boolean; // cycle started automatically from a detected salary credit
 }
 
 export type RecurringFrequency = 'daily' | 'weekly' | 'monthly';
@@ -96,6 +97,7 @@ export interface Expense {
   note?: string;
   rawText?: string; // original chat input, for transparency
   reviewed?: boolean; // user acknowledged a “big spend” so it stops drawing attention
+  autoImported?: boolean; // created automatically from a Gmail bank/card alert
   recurringId?: ID; // set when auto-created from a recurring template
   createdAt: ISODate;
   updatedAt: ISODate;

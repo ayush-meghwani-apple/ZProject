@@ -1,7 +1,6 @@
 import type { Alias, Category, Subcategory } from '../types/models';
 
 export type ParsedCommand =
-  | { kind: 'salary'; amount: number; note?: string }
   | {
       kind: 'expense';
       amount: number;
@@ -11,7 +10,6 @@ export type ParsedCommand =
       note?: string;
       rawText: string;
     }
-  | { kind: 'startCycle' }
   | { kind: 'help' }
   | { kind: 'note'; text: string }
   | { kind: 'unknown'; rawText: string; reason: string };
@@ -115,14 +113,6 @@ export function parseInput(
   if (!raw) return { kind: 'unknown', rawText: raw, reason: 'Empty input.' };
   if (lower === 'help' || lower === '?') return { kind: 'help' };
 
-  // Start a fresh tracking cycle from this instant (no income needed).
-  if (
-    /\b(start|new|reset)\s+cycle\b/i.test(lower) ||
-    /\bcycle\s+(start|reset|new)\b/i.test(lower)
-  ) {
-    return { kind: 'startCycle' };
-  }
-
   // Explicit note after a comma: "1000 mobile, paid for ayush".
   let explicitNote: string | undefined;
   let head = raw;
@@ -160,14 +150,6 @@ export function parseInput(
         amountText = single[0];
       }
     }
-  }
-
-  // Salary command: "salary 50000" / "got salary 50000"
-  if (/\bsalary\b/i.test(lower)) {
-    if (isNaN(amount)) {
-      return { kind: 'unknown', rawText: raw, reason: 'Salary needs an amount, e.g. "salary 50000".' };
-    }
-    return { kind: 'salary', amount };
   }
 
   if (isNaN(amount)) {
