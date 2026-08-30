@@ -294,10 +294,12 @@ export function buildGmailQuery(days: number): string {
   const senders = [
     'from:sbicard.com',
     'from:hsbc.co.in',
+    'from:mail.hsbc.co.in',
     'from:hsbc.com',
     'from:icicibank.com',
     'from:icici.bank.in',
     'from:sbi.co.in',
+    'from:alerts.sbi.co.in',
     'from:sbi.bank.in',
     'from:idfcfirstbank.com',
   ];
