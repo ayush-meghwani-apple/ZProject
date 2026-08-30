@@ -202,6 +202,27 @@ describe('parseTransactionEmail', () => {
     });
     expect(p.kind).toBe('failed');
   });
+
+  it('reads an HSBC card spend as debit despite a stray credit word in the footer', () => {
+    const p = parseTransactionEmail({
+      from: 'HSBC <hsbc@mail.hsbc.co.in>',
+      subject: 'Credit Card Transaction Alert',
+      body: "We're writing to confirm that your HSBC Credit Card xx6043 was used for a transaction of INR 1339.00 at CHINA PEARL ENTERPRISE on 29/08/26. Available limit: INR 320611.76. You received this email as an HSBC India customer.",
+    });
+    expect(p.source).toBe('hsbc-cc');
+    expect(p.amount).toBe(1339);
+    expect(p.direction).toBe('debit');
+    expect(p.kind).toBe('card');
+  });
+
+  it('skips an OTP notification even though it carries a transaction amount', () => {
+    const p = parseTransactionEmail({
+      from: 'HSBC <hsbc@mail.hsbc.co.in>',
+      subject: 'Your HSBC Credit Card OTP',
+      body: 'Your OTP for the transaction of INR 2064.00 is 123456. Do not share this OTP with anyone.',
+    });
+    expect(p.kind).toBe('promo');
+  });
 });
 
 describe('buildGmailQuery', () => {

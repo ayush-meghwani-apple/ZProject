@@ -64,9 +64,10 @@ const CURRENCY_RE = /(?:₹|rs\.?|inr)\s*([0-9](?:[0-9,]*)(?:\.\d{1,2})?)/gi;
 const NON_TXN_CONTEXT = /(available|avbl|avl|balance|limit|outstanding|remaining|total\s+due|min(?:imum)?\s+(?:amount\s+)?due)/i;
 
 const DEBIT_WORDS = /(spent|debited|debit|paid|purchase|withdrawn|used\s+for\s+a\s+transaction|transaction\s+of|txn\s+of|charged)/i;
-// Unambiguous spend words. Used to let a clear credit win over weak/ambiguous
-// debit wording like "transaction of" (common in salary-credit emails).
-const STRONG_DEBIT_WORDS = /(spent|debited|withdrawn|purchase|charged|paid)/i;
+// Unambiguous spend words. Lets a clear credit win over weak/ambiguous debit
+// wording like "transaction of"; "used for a transaction" is included so a stray
+// credit-ish word in a card alert's footer can't flip a real spend (e.g. HSBC).
+const STRONG_DEBIT_WORDS = /(spent|debited|withdrawn|purchase|charged|paid|used\s+for\s+a\s+transaction)/i;
 const CREDIT_WORDS = /(credited|received|refund(?:ed)?|reversed|deposited)/i;
 const STATEMENT_WORDS = /(statement|e-?statement|bill\s+generated|total\s+amount\s+due|minimum\s+amount\s+due)/i;
 
@@ -79,6 +80,10 @@ const REAL_TXN_RE = /(spent\s+on\s+your|debited|withdrawn|used\s+for\s+a\s+trans
 // A declined / failed transaction never actually moved money, so it must not be
 // imported (e.g. a first YONO attempt that failed OTP before a successful retry).
 const FAILED_RE = /\b(declined|failed|unsuccessful|not\s+successful|rejected)\b/i;
+// Non-transaction notifications (OTP, login, limit changes). Matched on the
+// SUBJECT only, so the "never share your OTP" footer on a real alert can't trip
+// it. These carry an amount (the OTP is for a pending txn) but must not import.
+const NOTICE_SUBJECT_RE = /\botp\b|one[-\s]?time[-\s]?password|log\s?on|logged|sign[-\s]?in|\blogin\b|transaction\s+limits/i;
 
 function toNumber(s: string): number {
   return parseFloat(s.replace(/,/g, ''));
@@ -219,7 +224,8 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
 
   const isStatement = STATEMENT_WORDS.test(text) && !DEBIT_WORDS.test(subject);
   const isFailed = FAILED_RE.test(text);
-  const isPromo = PROMO_RE.test(text) && !REAL_TXN_RE.test(text);
+  const isPromo =
+    (PROMO_RE.test(text) && !REAL_TXN_RE.test(text)) || NOTICE_SUBJECT_RE.test(subject);
   const amount = extractAmount(text);
 
   let direction: TxnDirection | null = null;
