@@ -205,13 +205,13 @@ describe('parseTransactionEmail', () => {
 });
 
 describe('buildGmailQuery', () => {
-  it('includes all tracked senders, the transaction-subject filter and a recency window', () => {
+  it('includes all tracked senders and a recency window (no subject filter)', () => {
     const q = buildGmailQuery(60);
     expect(q).toContain('from:sbicard.com');
     expect(q).toContain('from:icicibank.com');
     expect(q).toContain('from:icici.bank.in');
     expect(q).toContain('from:sbi.bank.in');
-    expect(q).toContain('subject:transaction');
+    expect(q).not.toContain('subject:');
     expect(q).toContain('newer_than:60d');
   });
 });

@@ -24,6 +24,8 @@ interface Props {
   subcategories: Subcategory[];
   onClose: () => void;
   onSaved: () => void;
+  /** For a NEW expense, preselect this payment method (created if missing). */
+  defaultPaymentMethodName?: string;
 }
 
 export default function EditExpenseModal({
@@ -32,6 +34,7 @@ export default function EditExpenseModal({
   subcategories,
   onClose,
   onSaved,
+  defaultPaymentMethodName,
 }: Props) {
   const isNew = !expense;
   const [amount, setAmount] = useState(expense ? String(expense.amount) : '');
@@ -43,7 +46,22 @@ export default function EditExpenseModal({
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
 
   useEffect(() => {
-    PaymentMethodRepository.list().then(setMethods);
+    (async () => {
+      let list = await PaymentMethodRepository.list();
+      // New expense: default to the requested method (create it once if needed).
+      if (isNew && !paymentMethodId && defaultPaymentMethodName) {
+        let def = list.find(
+          (m) => m.name.toLowerCase() === defaultPaymentMethodName.toLowerCase(),
+        );
+        if (!def) {
+          def = await PaymentMethodRepository.add(defaultPaymentMethodName, '🏦');
+          list = await PaymentMethodRepository.list();
+        }
+        setPaymentMethodId(def.id);
+      }
+      setMethods(list);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const subs = subcategories.filter((s) => s.categoryId === categoryId);

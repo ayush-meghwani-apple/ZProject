@@ -301,8 +301,9 @@ export function buildGmailQuery(days: number): string {
     'from:sbi.bank.in',
     'from:idfcfirstbank.com',
   ];
-  // Restrict to real transaction alerts (subject contains "transaction") — this
-  // drops promotional mail like SBI Card's "Convert your recent trans. into
-  // Flexipay EMI!" whose subject abbreviates it to "trans.".
-  return `(${senders.join(' OR ')}) subject:transaction newer_than:${Math.max(1, Math.floor(days))}d`;
+  // No subject filter: some genuine alerts (e.g. HSBC's "We're writing to
+  // confirm...") don't put "transaction" in the subject. Promotional /
+  // EMI-conversion mail is rejected by the parser (kind='promo') instead, so
+  // nothing real is dropped at fetch time.
+  return `(${senders.join(' OR ')}) newer_than:${Math.max(1, Math.floor(days))}d`;
 }
