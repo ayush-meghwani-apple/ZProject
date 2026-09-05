@@ -14,18 +14,6 @@ interface Props {
   onChange: () => void;
 }
 
-function categoryRing(rows: ReturnType<typeof getCategorySummary>, total: number): string {
-  if (total <= 0 || rows.length === 0) return 'conic-gradient(var(--border) 0 100%)';
-  let start = 0;
-  const segments = rows.map((row) => {
-    const end = start + (row.total / total) * 100;
-    const segment = `${row.color} ${start}% ${end}%`;
-    start = end;
-    return segment;
-  });
-  return `conic-gradient(${segments.join(', ')})`;
-}
-
 export default function Summary({ version }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -63,6 +51,8 @@ export default function Summary({ version }: Props) {
   const investmentCategory = categories.find((category) => category.id === INVESTMENTS_CATEGORY_ID);
   const categorySummary = getCategorySummary(spending, categories);
   const topCategory = categorySummary[0];
+  const ringCircumference = 2 * Math.PI * 45;
+  let ringOffset = 0;
 
   return (
     <div className="page page--summary">
@@ -86,16 +76,54 @@ export default function Summary({ version }: Props) {
             </button>
           )}
         </div>
-        <div
-          className="summaryring"
-          style={{ background: categoryRing(categorySummary, spendingTotal) }}
-          aria-label={`${categorySummary.length} spending categories`}
-        >
+        <div className="summaryring" aria-label={`${categorySummary.length} spending categories`}>
+          <svg className="summaryring__svg" viewBox="0 0 112 112" aria-hidden="true">
+            <circle className="summaryring__track" cx="56" cy="56" r="45" />
+            {categorySummary.map((row) => {
+              const length = spendingTotal > 0 ? (row.total / spendingTotal) * ringCircumference : 0;
+              const offset = ringOffset;
+              ringOffset += length;
+              const active = expandedId === row.categoryId;
+              return (
+                <circle
+                  key={row.categoryId}
+                  className={`summaryring__segment${active ? ' is-active' : ''}`}
+                  cx="56"
+                  cy="56"
+                  r="45"
+                  stroke={row.color}
+                  strokeDasharray={`${length} ${ringCircumference - length}`}
+                  strokeDashoffset={-offset}
+                  onClick={() => setExpandedId(active ? null : row.categoryId)}
+                />
+              );
+            })}
+          </svg>
           <div className="summaryring__inner">
             <strong>{categorySummary.length}</strong>
             <span>categories</span>
           </div>
         </div>
+        {categorySummary.length > 0 && (
+          <div className="summaryhero__chips" aria-label="Spending categories">
+            {categorySummary.map((row) => {
+              const category = categories.find((item) => item.id === row.categoryId);
+              const active = expandedId === row.categoryId;
+              const percentage = spendingTotal > 0 ? Math.round((row.total / spendingTotal) * 100) : 0;
+              return (
+                <button
+                  key={row.categoryId}
+                  className={active ? 'is-active' : ''}
+                  onClick={() => setExpandedId(active ? null : row.categoryId)}
+                >
+                  <span className="summaryhero__chipdot" style={{ background: row.color }} />
+                  <span>{category?.icon ? `${category.icon} ` : ''}{row.name}</span>
+                  <strong>{percentage}%</strong>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {investmentTotal > 0 && (

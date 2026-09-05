@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
@@ -49,6 +50,7 @@ export default function Reels({ version, onChange }: Props) {
   const [methodMenuFor, setMethodMenuFor] = useState<string | null>(null);
   const [categoryMenuFor, setCategoryMenuFor] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [noteEditingFor, setNoteEditingFor] = useState<string | null>(null);
   const [active, setActive] = useState(0);
   const [bigThreshold, setBigThreshold] = useState(0);
   const [remindExpense, setRemindExpense] = useState<Expense | null>(null);
@@ -159,6 +161,9 @@ export default function Reels({ version, onChange }: Props) {
   }
 
   const cycleTitle = cycleIdx >= 0 ? cycleName(cycles[cycleIdx]) : 'All expenses';
+  const categoryExpense = categoryMenuFor
+    ? reels.find((expense) => expense.id === categoryMenuFor)
+    : undefined;
 
   function catFor(e: Expense): Category | undefined {
     return categories.find((c) => c.id === e.categoryId);
@@ -191,6 +196,7 @@ export default function Reels({ version, onChange }: Props) {
 
   async function saveExpenseNote(exp: Expense) {
     const note = (noteDrafts[exp.id] ?? exp.note ?? '').trim();
+    setNoteEditingFor(null);
     if (note === (exp.note ?? '')) return;
     await ExpenseRepository.updateExpense({ ...exp, note: note || undefined });
     setNoteDrafts((current) => {
@@ -432,25 +438,6 @@ export default function Reels({ version, onChange }: Props) {
                       {cat?.name ?? 'Uncategorized'}
                       <AppIcon name="chevronDown" size={15} />
                     </button>
-                    {categoryMenuFor === e.id && (
-                      <div className="methodmenu methodmenu--reel reel__categorymenu">
-                        <button
-                          className={!e.categoryId ? 'is-on' : ''}
-                          onClick={() => setExpenseCategory(e, '')}
-                        >
-                          📦 Uncategorized
-                        </button>
-                        {categories.map((category) => (
-                          <button
-                            key={category.id}
-                            className={category.id === e.categoryId ? 'is-on' : ''}
-                            onClick={() => setExpenseCategory(e, category.id)}
-                          >
-                            {category.icon} {category.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                   {sub && (
                     <span className="reel__sub" style={{ borderColor: tint(color, 0.5) }}>
@@ -513,32 +500,42 @@ export default function Reels({ version, onChange }: Props) {
                     </div>
                   )}
 
-                  <form
-                    className="reel__noteedit"
-                    data-noswipe
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void saveExpenseNote(e);
-                    }}
-                  >
-                    <input
-                      className="input"
-                      aria-label="Expense note"
-                      placeholder="Add a note"
-                      value={noteDrafts[e.id] ?? e.note ?? ''}
-                      onChange={(event) =>
-                        setNoteDrafts((current) => ({ ...current, [e.id]: event.target.value }))
-                      }
-                    />
-                    <button
-                      className="btn btn--ghost"
-                      type="submit"
-                      aria-label="Save note"
-                      disabled={(noteDrafts[e.id] ?? e.note ?? '').trim() === (e.note ?? '')}
+                  {noteEditingFor === e.id ? (
+                    <form
+                      className="reel__noteedit"
+                      data-noswipe
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void saveExpenseNote(e);
+                      }}
                     >
-                      <AppIcon name="done" size={16} />
+                      <input
+                        className="input"
+                        aria-label="Expense note"
+                        autoFocus
+                        placeholder="Add a note"
+                        value={noteDrafts[e.id] ?? e.note ?? ''}
+                        onChange={(event) =>
+                          setNoteDrafts((current) => ({ ...current, [e.id]: event.target.value }))
+                        }
+                      />
+                      <button className="btn btn--ghost" type="submit" aria-label="Save note">
+                        <AppIcon name="done" size={16} />
+                      </button>
+                    </form>
+                  ) : (
+                    <button
+                      className={`reel__noteread${e.note ? '' : ' reel__noteread--empty'}`}
+                      data-noswipe
+                      onClick={() => {
+                        setNoteDrafts((current) => ({ ...current, [e.id]: e.note ?? '' }));
+                        setNoteEditingFor(e.id);
+                      }}
+                    >
+                      <AppIcon name="edit" size={14} />
+                      <span>{e.note || 'Add note'}</span>
                     </button>
-                  </form>
+                  )}
 
                   <div className="reel__actions">
                     <button className="reel__act reel__act--del" onClick={() => handleDelete(e.id)}>
@@ -583,6 +580,38 @@ export default function Reels({ version, onChange }: Props) {
       )}
 
       {toast && <div className="reels__toast">{toast}</div>}
+
+      {categoryExpense && createPortal(
+        <div className="modal__backdrop" onClick={() => setCategoryMenuFor(null)}>
+          <div className="modal__card reelcatpicker" onClick={(event) => event.stopPropagation()}>
+            <div className="reelcatpicker__head">
+              <div>
+                <h3>Choose category</h3>
+                <p className="card__subtitle">{formatINR(categoryExpense.amount)}</p>
+              </div>
+              <button className="iconbtn" onClick={() => setCategoryMenuFor(null)} aria-label="Close category picker">×</button>
+            </div>
+            <div className="reelcatpicker__list">
+              <button
+                className={!categoryExpense.categoryId ? 'is-on' : ''}
+                onClick={() => setExpenseCategory(categoryExpense, '')}
+              >
+                <span>📦</span> Uncategorized
+              </button>
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  className={category.id === categoryExpense.categoryId ? 'is-on' : ''}
+                  onClick={() => setExpenseCategory(categoryExpense, category.id)}
+                >
+                  <span>{category.icon}</span> {category.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {!addingNew && !remindExpense && !editing && (
         <button

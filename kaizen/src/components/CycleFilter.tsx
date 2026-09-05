@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cycleName, cycleLabel } from '../core/salaryCycle';
 import type { SalaryCycle } from '../types/models';
 
@@ -66,24 +67,39 @@ export default function CycleFilter({ cycles, value, onChange }: Props) {
         <span className="muted">{open ? '▲' : '▼'}</span>
       </button>
 
-      {open && (
-        <div className="filter__list">
-          <label className="filter__row">
-            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-            <strong>All cycles</strong>
-          </label>
-          {cycles.map((c) => (
-            <label className="filter__row" key={c.id}>
-              <input
-                type="checkbox"
-                checked={value.includes(c.id)}
-                onChange={() => toggle(c.id)}
-              />
-              <span className="filter__name">{cycleName(c)}</span>
-              <span className="muted filter__range">{cycleLabel(c)}</span>
-            </label>
-          ))}
-        </div>
+      {open && createPortal(
+        <div className="modal__backdrop" onClick={() => setOpen(false)}>
+          <div className="modal__card cyclepicker" onClick={(event) => event.stopPropagation()}>
+            <div className="cyclepicker__head">
+              <div>
+                <h3>Select cycles</h3>
+                <p className="card__subtitle">{selectionLabel(cycles, value)}</p>
+              </div>
+              <button className="iconbtn" onClick={() => setOpen(false)} aria-label="Close cycle picker">
+                ×
+              </button>
+            </div>
+            <div className="filter__list">
+              <label className="filter__row">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+                <strong>All cycles</strong>
+              </label>
+              {cycles.map((c) => (
+                <label className="filter__row" key={c.id}>
+                  <input
+                    type="checkbox"
+                    checked={value.includes(c.id)}
+                    onChange={() => toggle(c.id)}
+                  />
+                  <span className="filter__name">{cycleName(c)}</span>
+                  <span className="muted filter__range">{cycleLabel(c)}</span>
+                </label>
+              ))}
+            </div>
+            <button className="btn cyclepicker__done" onClick={() => setOpen(false)}>Done</button>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
