@@ -100,7 +100,9 @@ export default function Reels({ version, onChange }: Props) {
   useEffect(() => {
     if (!methodMenuFor && !categoryMenuFor && !actionMenuFor) return;
     function onDown(e: PointerEvent) {
-      if (!(e.target as Element)?.closest?.('.reel__methodwrap')) setMethodMenuFor(null);
+      if (!(e.target as Element)?.closest?.('.reel__methodwrap, .reelcatpicker')) {
+        setMethodMenuFor(null);
+      }
       if (!(e.target as Element)?.closest?.('.reel__categorywrap, .reelcatpicker')) {
         setCategoryMenuFor(null);
       }
@@ -169,6 +171,9 @@ export default function Reels({ version, onChange }: Props) {
   const cycleTitle = cycleIdx >= 0 ? cycleName(cycles[cycleIdx]) : 'All expenses';
   const categoryExpense = categoryMenuFor
     ? reels.find((expense) => expense.id === categoryMenuFor)
+    : undefined;
+  const methodExpense = methodMenuFor
+    ? reels.find((expense) => expense.id === methodMenuFor)
     : undefined;
 
   function catFor(e: Expense): Category | undefined {
@@ -352,9 +357,6 @@ export default function Reels({ version, onChange }: Props) {
               {notes.length + reels.length + (showSalary ? 1 : 0)}
             </div>
           )}
-          <button className="reels__add" onClick={() => setAddingNew(true)} aria-label="Add expense" title="Add expense">
-            <AppIcon name="plus" size={19} />
-          </button>
         </div>
       </div>
 
@@ -413,95 +415,97 @@ export default function Reels({ version, onChange }: Props) {
                     background: `radial-gradient(110% 78% at 50% 22%, ${tint(color, 0.38)} 0%, ${tint(color, 0.1)} 48%, transparent 74%)`,
                   }}
                 >
-                  <div className="reel__icon" style={{ background: tint(color, 0.18) }}>
-                    {cat?.icon ?? '📦'}
+                  <div className="reel__visual">
+                    <div className="reel__icon" style={{ background: tint(color, 0.18) }}>
+                      {cat?.icon ?? '📦'}
+                    </div>
                   </div>
 
-                  <div className="reel__amount">{formatINR(e.amount)}</div>
+                  <div className="reel__content">
+                    <div className="reel__amount">{formatINR(e.amount)}</div>
 
-                  {noteEditingFor === e.id ? (
-                    <form
-                      className="reel__noteedit"
-                      data-noswipe
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        void saveExpenseNote(e);
-                      }}
-                    >
-                      <input
-                        className="input"
-                        aria-label="Expense note"
-                        autoFocus
-                        placeholder="Add a note"
-                        value={noteDrafts[e.id] ?? e.note ?? ''}
-                        onChange={(event) =>
-                          setNoteDrafts((current) => ({ ...current, [e.id]: event.target.value }))
-                        }
-                      />
-                      <button className="btn btn--ghost" type="submit" aria-label="Save note">
-                        <AppIcon name="done" size={16} />
-                      </button>
-                    </form>
-                  ) : (
-                    <button
-                      className={`reel__noteread${e.note ? '' : ' reel__noteread--empty'}`}
-                      data-noswipe
-                      onClick={() => {
-                        setNoteDrafts((current) => ({ ...current, [e.id]: e.note ?? '' }));
-                        setNoteEditingFor(e.id);
-                      }}
-                    >
-                      <AppIcon name="edit" size={14} />
-                      <span>{e.note || 'Add note'}</span>
-                    </button>
-                  )}
-
-                  <div className="reel__meta">
-                    <div className="reel__categorywrap" data-noswipe>
-                      <button
-                        className={`reel__cat reel__catbtn${cat ? '' : ' reel__catbtn--missing'}`}
-                        onClick={() => {
-                          setMethodMenuFor(null);
-                          setCategoryMenuFor(categoryMenuFor === e.id ? null : e.id);
+                    {noteEditingFor === e.id ? (
+                      <form
+                        className="reel__noteedit"
+                        data-noswipe
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void saveExpenseNote(e);
                         }}
-                        aria-label="Change category"
                       >
-                        {cat ? `${cat.icon} ${cat.name}` : 'Choose category'}
-                        <AppIcon name="chevronDown" size={14} />
-                      </button>
-                    </div>
-                    {sub && <span className="reel__sub">{sub.icon ? `${sub.icon} ` : ''}{sub.name}</span>}
-                    <span className="reel__date"><AppIcon name="calendar" size={13} /> {formatDate(e.date)}</span>
-                    <div className="reel__methodwrap" data-noswipe>
+                        <input
+                          className="input"
+                          aria-label="Expense note"
+                          autoFocus
+                          placeholder="Add a note"
+                          value={noteDrafts[e.id] ?? e.note ?? ''}
+                          onChange={(event) =>
+                            setNoteDrafts((current) => ({ ...current, [e.id]: event.target.value }))
+                          }
+                        />
+                        <button className="btn btn--ghost" type="submit" aria-label="Save note">
+                          <AppIcon name="done" size={16} />
+                        </button>
+                      </form>
+                    ) : (
                       <button
-                        className={`reel__methodchip${method ? ' reel__methodchip--set' : ''}`}
-                        onClick={() => setMethodMenuFor(methodMenuFor === e.id ? null : e.id)}
+                        className={`reel__noteread${e.note ? '' : ' reel__noteread--empty'}`}
+                        data-noswipe
+                        onClick={() => {
+                          setNoteDrafts((current) => ({ ...current, [e.id]: e.note ?? '' }));
+                          setNoteEditingFor(e.id);
+                        }}
                       >
-                        {method ? `${method.icon ? `${method.icon} ` : ''}${method.name}` : 'Payment method'}
+                        <AppIcon name="edit" size={14} />
+                        <span>{e.note || 'Add note'}</span>
                       </button>
-                      {methodMenuFor === e.id && (
-                        <div className="methodmenu methodmenu--reel">
-                          <button className={!e.paymentMethodId ? 'is-on' : ''} onClick={() => setExpenseMethod(e, '')}>No method</button>
-                          {methods.map((m) => (
-                            <button key={m.id} className={m.id === e.paymentMethodId ? 'is-on' : ''} onClick={() => setExpenseMethod(e, m.id)}>
-                              {m.icon ? `${m.icon} ` : ''}{m.name}
-                            </button>
-                          ))}
-                        </div>
+                    )}
+
+                    <div className="reel__meta">
+                      <div className="reel__categorywrap" data-noswipe>
+                        <button
+                          className={`reel__cat reel__catbtn${cat ? '' : ' reel__catbtn--missing'}`}
+                          onClick={() => {
+                            setMethodMenuFor(null);
+                            setCategoryMenuFor(categoryMenuFor === e.id ? null : e.id);
+                          }}
+                          aria-label="Change category"
+                        >
+                          {cat ? `${cat.icon} ${cat.name}` : 'Choose category'}
+                          <AppIcon name="chevronDown" size={14} />
+                        </button>
+                      </div>
+                      {sub && <span className="reel__sub">{sub.icon ? `${sub.icon} ` : ''}{sub.name}</span>}
+                      <span className="reel__date"><AppIcon name="calendar" size={13} /> {formatDate(e.date)}</span>
+                      <div className="reel__methodwrap" data-noswipe>
+                        <button
+                          className={`reel__methodchip${method ? ' reel__methodchip--set' : ''}`}
+                          onClick={() => {
+                            setCategoryMenuFor(null);
+                            setMethodMenuFor(methodMenuFor === e.id ? null : e.id);
+                          }}
+                          aria-label="Change payment method"
+                        >
+                          {method ? `${method.icon ? `${method.icon} ` : ''}${method.name}` : 'Payment method'}
+                          <AppIcon name="chevronDown" size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="reel__source">
+                      {isRecurring && <span><AppIcon name="recurring" size={12} /> Recurring</span>}
+                      {needsVerification && (
+                        <button onClick={() => verifyImported(e)}>
+                          <AppIcon name="done" size={12} /> Imported · verify
+                        </button>
                       )}
                     </div>
                   </div>
 
-                  <div className="reel__source">
-                    {isRecurring && <span><AppIcon name="recurring" size={12} /> Recurring</span>}
-                    {needsVerification && (
-                      <button onClick={() => verifyImported(e)}>
-                        <AppIcon name="done" size={12} /> Imported · verify
-                      </button>
-                    )}
-                  </div>
-
                   <div className="reel__actions reel__actions--rail" data-noswipe>
+                    <button className="reel__act reel__act--add" onClick={() => setAddingNew(true)} aria-label="Add expense" title="Add expense">
+                      <AppIcon name="plus" size={20} />
+                    </button>
                     <button className="reel__act reel__act--edit" onClick={() => setEditing(e)} aria-label="Edit expense" title="Edit expense">
                       <AppIcon name="edit" size={20} />
                     </button>
@@ -532,12 +536,19 @@ export default function Reels({ version, onChange }: Props) {
                 }}
               >
                 <div className="reel__flame reel__flame--ok">💰 Salary credited</div>
-                <div className="reel__icon" style={{ background: 'rgba(16,185,129,0.18)' }}>
-                  🎉
+                <div className="reel__visual">
+                  <div className="reel__icon">🎉</div>
                 </div>
-                <div className="reel__cat">Salary received — new cycle started</div>
-                <div className="reel__date">
-                  <AppIcon name="calendar" size={14} /> {formatDate(viewedCycle.startDate)}
+                <div className="reel__content">
+                  <div className="reel__cat">Salary received — new cycle started</div>
+                  <div className="reel__date">
+                    <AppIcon name="calendar" size={14} /> {formatDate(viewedCycle.startDate)}
+                  </div>
+                </div>
+                <div className="reel__actions reel__actions--rail" data-noswipe>
+                  <button className="reel__act reel__act--add" onClick={() => setAddingNew(true)} aria-label="Add expense" title="Add expense">
+                    <AppIcon name="plus" size={20} />
+                  </button>
                 </div>
               </section>
             )}
@@ -571,6 +582,38 @@ export default function Reels({ version, onChange }: Props) {
                   onClick={() => setExpenseCategory(categoryExpense, category.id)}
                 >
                   <span>{category.icon}</span> {category.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {methodExpense && createPortal(
+        <div className="modal__backdrop" onClick={() => setMethodMenuFor(null)}>
+          <div className="modal__card reelcatpicker" onClick={(event) => event.stopPropagation()}>
+            <div className="reelcatpicker__head">
+              <div>
+                <h3>Choose payment method</h3>
+                <p className="card__subtitle">{formatINR(methodExpense.amount)}</p>
+              </div>
+              <button className="iconbtn" onClick={() => setMethodMenuFor(null)} aria-label="Close payment method picker">×</button>
+            </div>
+            <div className="reelcatpicker__list">
+              <button
+                className={!methodExpense.paymentMethodId ? 'is-on' : ''}
+                onClick={() => setExpenseMethod(methodExpense, '')}
+              >
+                <span>—</span> No method
+              </button>
+              {methods.map((method) => (
+                <button
+                  key={method.id}
+                  className={method.id === methodExpense.paymentMethodId ? 'is-on' : ''}
+                  onClick={() => setExpenseMethod(methodExpense, method.id)}
+                >
+                  <span>{method.icon || '💳'}</span> {method.name}
                 </button>
               ))}
             </div>
