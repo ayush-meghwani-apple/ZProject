@@ -19,6 +19,8 @@ interface Props {
    * so they turn it off. Defaults to on.
    */
   swipeable?: boolean;
+  /** Keep a focused editor active until an action button handles its click. */
+  preserveEditorFocusOnActions?: boolean;
 }
 
 /**
@@ -26,7 +28,13 @@ interface Props {
  * a swipeable body with a directional slide transition, plus the bottom tab
  * bar. Each sub-app just hands it a list of tabs with render functions.
  */
-export default function TabbedApp({ tabs, initialId, controlledOpen, swipeable = true }: Props) {
+export default function TabbedApp({
+  tabs,
+  initialId,
+  controlledOpen,
+  swipeable = true,
+  preserveEditorFocusOnActions = false,
+}: Props) {
   const [activeId, setActiveId] = useState<string>(initialId ?? tabs[0].id);
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -120,12 +128,22 @@ export default function TabbedApp({ tabs, initialId, controlledOpen, swipeable =
     else if (dx > 0 && tabIdx > 0) goToTab(tabs[tabIdx - 1].id);
   }
 
+  function keepEditorFocused(e: React.PointerEvent | React.MouseEvent) {
+    if (!preserveEditorFocusOnActions) return;
+    const active = document.activeElement as HTMLElement | null;
+    const editable = active?.matches('input:not([readonly]):not([disabled]), textarea:not([readonly]):not([disabled]), [contenteditable="true"]');
+    const action = (e.target as Element)?.closest?.('button');
+    if (editable && action) e.preventDefault();
+  }
+
   const active = tabs[tabIdx];
 
   return (
     <>
       <main
         className="app__body"
+        onPointerDownCapture={keepEditorFocused}
+        onMouseDownCapture={keepEditorFocused}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}

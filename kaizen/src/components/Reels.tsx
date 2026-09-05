@@ -102,7 +102,9 @@ export default function Reels({ version, onChange }: Props) {
     if (!methodMenuFor && !categoryMenuFor) return;
     function onDown(e: PointerEvent) {
       if (!(e.target as Element)?.closest?.('.reel__methodwrap')) setMethodMenuFor(null);
-      if (!(e.target as Element)?.closest?.('.reel__categorywrap')) setCategoryMenuFor(null);
+      if (!(e.target as Element)?.closest?.('.reel__categorywrap, .reelcatpicker')) {
+        setCategoryMenuFor(null);
+      }
     }
     document.addEventListener('pointerdown', onDown, true);
     return () => document.removeEventListener('pointerdown', onDown, true);

@@ -21,6 +21,20 @@ export default function Summary({ version }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const initialized = useRef(false);
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  function selectCategory(categoryId: string, toggle = false, revealChip = false) {
+    setExpandedId((current) => (toggle && current === categoryId ? null : categoryId));
+    if (revealChip) {
+      requestAnimationFrame(() => {
+        chipRefs.current[categoryId]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center',
+        });
+      });
+    }
+  }
 
   async function load() {
     const [nextExpenses, nextCategories, nextCycles] = await Promise.all([
@@ -68,7 +82,7 @@ export default function Summary({ version }: Props) {
           {topCategory && (
             <button
               className="summaryhero__insight"
-              onClick={() => setExpandedId(topCategory.categoryId)}
+              onClick={() => selectCategory(topCategory.categoryId, false, true)}
             >
               <span style={{ background: topCategory.color }} />
               Most spent on {topCategory.name}
@@ -94,7 +108,7 @@ export default function Summary({ version }: Props) {
                   stroke={row.color}
                   strokeDasharray={`${length} ${ringCircumference - length}`}
                   strokeDashoffset={-offset}
-                  onClick={() => setExpandedId(active ? null : row.categoryId)}
+                  onClick={() => selectCategory(row.categoryId, false, true)}
                 />
               );
             })}
@@ -105,7 +119,7 @@ export default function Summary({ version }: Props) {
           </div>
         </div>
         {categorySummary.length > 0 && (
-          <div className="summaryhero__chips" aria-label="Spending categories">
+          <div className="summaryhero__chips" aria-label="Spending categories" data-noswipe>
             {categorySummary.map((row) => {
               const category = categories.find((item) => item.id === row.categoryId);
               const active = expandedId === row.categoryId;
@@ -113,8 +127,9 @@ export default function Summary({ version }: Props) {
               return (
                 <button
                   key={row.categoryId}
+                  ref={(element) => { chipRefs.current[row.categoryId] = element; }}
                   className={active ? 'is-active' : ''}
-                  onClick={() => setExpandedId(active ? null : row.categoryId)}
+                  onClick={() => selectCategory(row.categoryId, true)}
                 >
                   <span className="summaryhero__chipdot" style={{ background: row.color }} />
                   <span>{category?.icon ? `${category.icon} ` : ''}{row.name}</span>
@@ -180,7 +195,7 @@ export default function Summary({ version }: Props) {
               <div className={`summarycat${open ? ' summarycat--open' : ''}`} key={row.categoryId}>
                 <button
                   className="barrow__head"
-                  onClick={() => setExpandedId(open ? null : row.categoryId)}
+                  onClick={() => selectCategory(row.categoryId, true, true)}
                 >
                   <span className="barrow__dot" style={{ background: row.color }} />
                   <span className="barrow__name summarycat__label">

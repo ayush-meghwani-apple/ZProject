@@ -7018,10 +7018,17 @@ svg.lucide {
 .page--cats .card {
   padding: 14px 16px;
 }
-/* Highlight the expanded category card (toggle reads "Collapse" when open). */
-.page--cats .card:has(.cat__toggle[aria-label='Collapse']) {
+.page--cats .card > .scard__head {
+  width: calc(100% + 32px);
+  margin: -14px -16px;
+  padding: 14px 16px;
+}
+.page--cats .card:has(.alias-editor) {
   border-color: color-mix(in srgb, var(--accent-strong) 45%, var(--border));
   box-shadow: 0 10px 26px rgba(99, 102, 241, 0.16);
+}
+.page--cats .card > .scard__head + .alias-editor {
+  margin-top: 14px;
 }
 .page--cats .dot {
   width: 11px;
@@ -7171,6 +7178,7 @@ svg.lucide {
   stroke: var(--border);
 }
 .summaryring__segment {
+  pointer-events: stroke;
   cursor: pointer;
   transition: stroke-width 0.16s ease, filter 0.16s ease;
 }
@@ -7207,6 +7215,8 @@ svg.lucide {
   min-width: 0;
   padding-bottom: 2px;
   overflow-x: auto;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 .summaryhero__chips::-webkit-scrollbar {
@@ -7252,7 +7262,8 @@ svg.lucide {
   margin-inline: -8px;
   padding-inline: 8px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(99, 102, 241, 0.1);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .summarycat__label {
   display: grid;
