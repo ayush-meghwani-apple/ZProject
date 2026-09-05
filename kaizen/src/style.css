@@ -1428,9 +1428,130 @@ input.pmrow__nameinput {
 .recur-form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   border-top: 1px solid var(--border);
-  padding-top: 12px;
+  padding-top: 16px;
+}
+
+.recur__intro {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.recur-list {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.recur-item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.recur-item--paused {
+  opacity: 0.65;
+}
+
+.recur-item__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  font-size: 20px;
+}
+
+.recur-item__copy,
+.recur-item__side,
+.recur-form__head {
+  display: flex;
+  flex-direction: column;
+}
+
+.recur-item__copy {
+  min-width: 0;
+  gap: 2px;
+}
+
+.recur-item__copy strong,
+.recur-item__copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recur-item__copy span,
+.recur-item__copy small,
+.recur-form__head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.recur-item__side {
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.recur-item__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.recur-item__actions .iconbtn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.recur-item__actions .iconbtn:last-child {
+  color: #f87171;
+}
+
+.recur-form__head {
+  gap: 2px;
+}
+
+.recur-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recur-form__grid .field {
+  min-width: 0;
+}
+
+.recur-form__wide {
+  grid-column: 1 / -1;
+}
+
+.recur-form__submit {
+  align-self: flex-end;
+}
+
+@media (max-width: 390px) {
+  .recur-item {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 10px 8px;
+  }
+  .recur-item__icon {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 .input,
@@ -7157,9 +7278,16 @@ svg.lucide {
 .page--cats .cats__rename {
   margin: 8px 0 12px;
 }
-.page--cats .cats__rename .inline {
+.page--cats .cats__details {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 8px;
+}
+@media (max-width: 390px) {
+  .page--cats .cats__details .btn {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 /* ---- Summary ---- */
@@ -7417,6 +7545,23 @@ svg.lucide {
 }
 .page--settings > .card:first-child .stat {
   color: var(--accent);
+}
+.settings-hub > h3 {
+  margin-bottom: 8px;
+}
+.settings-hub .row {
+  min-height: 50px;
+  padding-block: 10px;
+}
+.settings-hub__row > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-hub__row small {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 /* ---- Demo mode toggle + banner ---- */

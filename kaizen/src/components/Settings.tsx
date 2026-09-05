@@ -5,7 +5,6 @@ import { isDemoMode, enterDemo, exitDemo } from '../core/demoMode';
 import RecurringManager from './RecurringManager';
 import PaymentMethodsManager from './PaymentMethodsManager';
 import GmailImport from './GmailImport';
-import CollapsibleCard from './CollapsibleCard';
 import DataBackupCard from './DataBackupCard';
 
 interface Props {
@@ -87,30 +86,33 @@ export default function Settings({ version, onChange, global = false }: Props) {
           <RecurringManager version={version} onChange={onChange} />
 
           <PaymentMethodsManager />
-
-          <CollapsibleCard title="Sounds" compact>
-            <div className="row">
-              <span>Sound effects</span>
-              <button
-                className={`btn btn--sm${soundOn ? '' : ' btn--ghost'}`}
-                onClick={() => {
-                  const next = !soundOn;
-                  setSoundOn(next);
-                  setPrefs({ soundEnabled: next });
-                  if (next) playSound('success');
-                  onChange();
-                }}
-              >
-                {soundOn ? '🔊 On' : '🔇 Off'}
-              </button>
-            </div>
-          </CollapsibleCard>
         </>
       )}
 
-      <CollapsibleCard title="Demo mode" compact>
-        <div className="row" style={{ padding: 0 }}>
-          <span className="muted">Fill the app with sample data to show someone</span>
+      <div className="card settings-hub">
+        <h3>App</h3>
+        {!global && (
+          <div className="row">
+            <span>Sound effects</span>
+            <button
+              className={`btn btn--sm${soundOn ? '' : ' btn--ghost'}`}
+              onClick={() => {
+                const next = !soundOn;
+                setSoundOn(next);
+                setPrefs({ soundEnabled: next });
+                if (next) playSound('success');
+                onChange();
+              }}
+            >
+              {soundOn ? '🔊 On' : '🔇 Off'}
+            </button>
+          </div>
+        )}
+        <div className="row settings-hub__row">
+          <span>
+            <strong>Demo mode</strong>
+            <small>Fill the app with sample data</small>
+          </span>
           <button
             className={`btn btn--sm${isDemoMode() ? '' : ' btn--ghost'}`}
             onClick={() => {
@@ -128,10 +130,6 @@ export default function Settings({ version, onChange, global = false }: Props) {
             {isDemoMode() ? '✨ On' : 'Off'}
           </button>
         </div>
-      </CollapsibleCard>
-
-      <div className="card">
-        <h3>About</h3>
         <div className="row">
           <span>Version</span>
           <span>

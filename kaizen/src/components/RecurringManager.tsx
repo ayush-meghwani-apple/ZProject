@@ -42,10 +42,8 @@ export default function RecurringManager({ version, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
-  function labelFor(r: RecurringExpense): string {
-    const cat = categories.find((c) => c.id === r.categoryId);
-    if (cat) return `${cat.icon} ${cat.name}`;
-    return '📦 Uncategorized';
+  function categoryFor(r: RecurringExpense): Category | undefined {
+    return categories.find((category) => category.id === r.categoryId);
   }
 
   function scheduleText(r: RecurringExpense): string {
@@ -88,112 +86,109 @@ export default function RecurringManager({ version, onChange }: Props) {
 
   return (
     <CollapsibleCard title="Recurring Expenses" compact>
-      <div className="muted" style={{ marginBottom: 12 }}>
-        Auto-adds fixed expenses (like rent) on a schedule. Due items are created
-        when you open the app; edit the date later on the expense itself.
-      </div>
+      <p className="recur__intro">Automatically add fixed expenses when they become due.</p>
 
       {items.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          {items.map((r) => (
-            <div className="row" key={r.id}>
-              <div className="row__left">
-                <div style={{ minWidth: 0 }}>
-                  <div>
-                    {labelFor(r)}
-                    {r.note ? ` · ${r.note}` : ''}
-                  </div>
-                  <div className="muted">
-                    {scheduleText(r)} · next {formatDate(r.nextDate)}
-                    {!r.active ? ' · paused' : ''}
+        <div className="recur-list">
+          {items.map((r) => {
+            const category = categoryFor(r);
+            return (
+              <article className={`recur-item${r.active ? '' : ' recur-item--paused'}`} key={r.id}>
+                <span className="recur-item__icon" style={{ background: category?.color }}>
+                  {category?.icon ?? '📦'}
+                </span>
+                <div className="recur-item__copy">
+                  <strong>{r.note || category?.name || 'Recurring expense'}</strong>
+                  <span>{category?.name ?? 'Uncategorized'} · {scheduleText(r)}</span>
+                  <small>Next {formatDate(r.nextDate)}{!r.active ? ' · Paused' : ''}</small>
+                </div>
+                <div className="recur-item__side">
+                  <strong className="amount">{formatINR(r.amount)}</strong>
+                  <div className="recur-item__actions">
+                    <button
+                      className="iconbtn"
+                      onClick={() => toggle(r.id)}
+                      title={r.active ? 'Pause' : 'Resume'}
+                      aria-label={`${r.active ? 'Pause' : 'Resume'} ${r.note || category?.name || 'recurring expense'}`}
+                    >
+                      {r.active ? <AppIcon name="pause" size={16} /> : <AppIcon name="play" size={16} />}
+                    </button>
+                    <button
+                      className="iconbtn"
+                      onClick={() => remove(r.id)}
+                      title="Delete"
+                      aria-label={`Delete ${r.note || category?.name || 'recurring expense'}`}
+                    >
+                      <AppIcon name="trash" size={16} />
+                    </button>
                   </div>
                 </div>
-              </div>
-              <div className="inline">
-                <span className="amount">{formatINR(r.amount)}</span>
-                <button
-                  className="iconbtn"
-                  onClick={() => toggle(r.id)}
-                  title={r.active ? 'Pause' : 'Resume'}
-                >
-                  {r.active ? <AppIcon name="pause" size={16} /> : <AppIcon name="play" size={16} />}
-                </button>
-                <button className="iconbtn" onClick={() => remove(r.id)} title="Delete">
-                  <AppIcon name="trash" size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
 
       <div className="recur-form">
-        <div className="inline">
-          <input
-            className="input"
-            type="number"
-            inputMode="decimal"
-            placeholder="Amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <input
-            className="input"
-            placeholder="Note (e.g. Rent)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
+        <div className="recur-form__head">
+          <strong>New recurring expense</strong>
+          <span>Choose when it should be added automatically.</span>
         </div>
-        <div className="inline">
-          <select
-            className="select"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            <option value="">— Category —</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.icon} {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="inline">
-          <select
-            className="select"
-            value={frequency}
-            onChange={(e) => setFrequency(e.target.value as RecurringFrequency)}
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-          {frequency === 'monthly' && (
+        <div className="recur-form__grid">
+          <label className="field">
+            <span>Amount</span>
             <input
               className="input"
               type="number"
-              min={1}
-              max={31}
-              placeholder="Day (1-31)"
-              value={dayOfMonth}
-              onChange={(e) => setDayOfMonth(e.target.value)}
+              inputMode="decimal"
+              placeholder="₹ 0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
             />
-          )}
-          {frequency === 'weekly' && (
+          </label>
+          <label className="field">
+            <span>Note</span>
+            <input className="input" placeholder="e.g. Rent" value={note} onChange={(e) => setNote(e.target.value)} />
+          </label>
+          <label className="field recur-form__wide">
+            <span>Category</span>
             <select
               className="select"
-              value={dayOfWeek}
-              onChange={(e) => setDayOfWeek(e.target.value)}
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
             >
-              {WEEKDAYS.map((d, i) => (
-                <option key={d} value={i}>
-                  {d}
+              <option value="">Uncategorized</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.icon} {category.name}
                 </option>
               ))}
             </select>
+          </label>
+          <label className="field">
+            <span>Frequency</span>
+            <select className="select" value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringFrequency)}>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+          {frequency === 'monthly' && (
+            <label className="field">
+              <span>Day of month</span>
+              <input className="input" type="number" inputMode="numeric" min={1} max={31} value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} />
+            </label>
+          )}
+          {frequency === 'weekly' && (
+            <label className="field">
+              <span>Weekday</span>
+              <select className="select" value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)}>
+                {WEEKDAYS.map((day, index) => <option key={day} value={index}>{day}</option>)}
+              </select>
+            </label>
           )}
         </div>
-        <button className="btn" onClick={add}>
+        <button className="btn recur-form__submit" onClick={add}>
           Add recurring
         </button>
       </div>

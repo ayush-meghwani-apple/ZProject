@@ -14,6 +14,7 @@ export default function Categories({ version, onChange }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
+  const [iconDrafts, setIconDrafts] = useState<Record<string, string>>({});
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('📦');
@@ -67,17 +68,19 @@ export default function Categories({ version, onChange }: Props) {
     onChange();
   }
 
-  async function renameCategory(category: Category) {
+  async function updateCategoryDetails(category: Category) {
     const name = (nameDrafts[category.id] ?? category.name).trim();
-    if (!name || name === category.name) return;
+    const icon = (iconDrafts[category.id] ?? category.icon).trim() || '📦';
+    if (!name || (name === category.name && icon === category.icon)) return;
     if (categories.some((item) => item.id !== category.id && item.name.toLowerCase() === name.toLowerCase())) {
       return;
     }
-    await CategoryRepository.updateCategory({ ...category, name });
-    if (!aliases.some((alias) => alias.categoryId === category.id && alias.text === name.toLowerCase())) {
+    await CategoryRepository.updateCategory({ ...category, name, icon });
+    if (name !== category.name && !aliases.some((alias) => alias.categoryId === category.id && alias.text === name.toLowerCase())) {
       await CategoryRepository.addAlias(name, category.id);
     }
     setNameDrafts((current) => ({ ...current, [category.id]: name }));
+    setIconDrafts((current) => ({ ...current, [category.id]: icon }));
     await load();
     onChange();
   }
@@ -104,7 +107,7 @@ export default function Categories({ version, onChange }: Props) {
               aria-label="Category icon"
               value={newIcon}
               onChange={(event) => setNewIcon(event.target.value)}
-              maxLength={4}
+              maxLength={8}
             />
             <input
               className="input"
@@ -144,8 +147,23 @@ export default function Categories({ version, onChange }: Props) {
             {open && (
               <div className="alias-editor">
                 <label className="field cats__rename">
-                  <span>Category name</span>
-                  <span className="inline">
+                  <span>Category details</span>
+                  <span className="cats__details">
+                    <input
+                      className="input cats__iconinput"
+                      aria-label="Category icon"
+                      value={iconDrafts[category.id] ?? category.icon}
+                      onChange={(event) =>
+                        setIconDrafts((current) => ({
+                          ...current,
+                          [category.id]: event.target.value,
+                        }))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') void updateCategoryDetails(category);
+                      }}
+                      maxLength={8}
+                    />
                     <input
                       className="input"
                       value={nameDrafts[category.id] ?? category.name}
@@ -156,10 +174,10 @@ export default function Categories({ version, onChange }: Props) {
                         }))
                       }
                       onKeyDown={(event) => {
-                        if (event.key === 'Enter') void renameCategory(category);
+                        if (event.key === 'Enter') void updateCategoryDetails(category);
                       }}
                     />
-                    <button className="btn btn--sm" onClick={() => renameCategory(category)}>
+                    <button className="btn btn--sm" onClick={() => updateCategoryDetails(category)}>
                       Save
                     </button>
                   </span>
