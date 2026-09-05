@@ -5,6 +5,7 @@ import { seedIfEmpty } from './storage/seed';
 import { ensurePersistentStorage } from './storage/persistence';
 import { SalaryCycleRepository } from './repository/salaryCycleRepository';
 import { PaymentMethodRepository } from './repository/paymentMethodRepository';
+import { migrateToFlatCategories } from './repository/flatCategoryMigration';
 import { isDemoMode } from './core/demoMode';
 import { seedDemoDataIfNeeded } from './core/demoSeed';
 import { initViewport } from './core/viewport';
@@ -39,6 +40,7 @@ async function bootstrap() {
 
   try {
     await seedIfEmpty();
+    await migrateToFlatCategories();
     // Give existing installs the default payment methods too (no-op if any exist).
     await PaymentMethodRepository.ensureDefaults().catch(() => {});
     // In demo mode, fill the (separate) demo database with fake sample data so

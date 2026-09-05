@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
-import type { Category, Expense, PaymentMethod, Subcategory } from '../types/models';
+import type { Category, Expense, PaymentMethod } from '../types/models';
 
 function toDateInput(iso: string): string {
   const d = new Date(iso);
@@ -21,7 +21,6 @@ function fromDateInput(value: string, originalIso: string): string {
 interface Props {
   expense?: Expense;
   categories: Category[];
-  subcategories: Subcategory[];
   onClose: () => void;
   onSaved: () => void;
   /** For a NEW expense, preselect this payment method (created if missing). */
@@ -31,7 +30,6 @@ interface Props {
 export default function EditExpenseModal({
   expense,
   categories,
-  subcategories,
   onClose,
   onSaved,
   defaultPaymentMethodName,
@@ -39,7 +37,6 @@ export default function EditExpenseModal({
   const isNew = !expense;
   const [amount, setAmount] = useState(expense ? String(expense.amount) : '');
   const [categoryId, setCategoryId] = useState(expense?.categoryId ?? '');
-  const [subcategoryId, setSubcategoryId] = useState(expense?.subcategoryId ?? '');
   const [note, setNote] = useState(expense?.note ?? '');
   const [date, setDate] = useState(toDateInput(expense?.date ?? new Date().toISOString()));
   const [paymentMethodId, setPaymentMethodId] = useState(expense?.paymentMethodId ?? '');
@@ -64,8 +61,6 @@ export default function EditExpenseModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const subs = subcategories.filter((s) => s.categoryId === categoryId);
-
   async function save() {
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) {
@@ -76,7 +71,6 @@ export default function EditExpenseModal({
       await ExpenseRepository.addExpense({
         amount: amt,
         categoryId: categoryId || undefined,
-        subcategoryId: subcategoryId || undefined,
         paymentMethodId: paymentMethodId || undefined,
         note: note.trim() || undefined,
         date: fromDateInput(date, new Date().toISOString()),
@@ -86,7 +80,6 @@ export default function EditExpenseModal({
         ...expense!,
         amount: amt,
         categoryId: categoryId || undefined,
-        subcategoryId: subcategoryId || undefined,
         paymentMethodId: paymentMethodId || undefined,
         note: note.trim() || undefined,
         date: fromDateInput(date, expense!.date),
@@ -116,10 +109,7 @@ export default function EditExpenseModal({
           <select
             className="select"
             value={categoryId}
-            onChange={(e) => {
-              setCategoryId(e.target.value);
-              setSubcategoryId('');
-            }}
+            onChange={(e) => setCategoryId(e.target.value)}
           >
             <option value="">Uncategorized</option>
             {categories.map((c) => (
@@ -129,24 +119,6 @@ export default function EditExpenseModal({
             ))}
           </select>
         </label>
-
-        {subs.length > 0 && (
-          <label className="field">
-            <span>Subcategory</span>
-            <select
-              className="select"
-              value={subcategoryId}
-              onChange={(e) => setSubcategoryId(e.target.value)}
-            >
-              <option value="">—</option>
-              {subs.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.icon ? `${s.icon} ${s.name}` : s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
 
         <label className="field">
           <span>Date</span>

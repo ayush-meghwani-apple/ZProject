@@ -7,6 +7,7 @@ export function formatCategoryStructure(
   aliases: Alias[],
 ): string {
   const lines = [`Categories (${categories.length})`];
+  const hasSubcategories = subcategories.length > 0;
 
   categories.forEach((category, index) => {
     lines.push('', `${index + 1}. ${category.name}`);
@@ -18,7 +19,7 @@ export function formatCategoryStructure(
 
     const subs = subcategories.filter((subcategory) => subcategory.categoryId === category.id);
     if (!subs.length) {
-      lines.push('   - No subcategories');
+      if (hasSubcategories) lines.push('   - No subcategories');
       return;
     }
 

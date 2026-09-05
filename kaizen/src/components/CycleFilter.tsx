@@ -41,7 +41,7 @@ export default function CycleFilter({ cycles, value, onChange }: Props) {
   if (cycles.length === 0) {
     return (
       <div className="card filter">
-        <div className="muted">No cycles yet — showing all expenses. Start one in Settings.</div>
+        <div className="muted">No salary cycle detected yet — showing all expenses.</div>
       </div>
     );
   }

@@ -426,7 +426,6 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       amount: p.amount as number,
       date: isoFromDate(p.date),
       categoryId: guess.categoryId,
-      subcategoryId: guess.subcategoryId,
       paymentMethodId: pmId,
       note,
       rawText: p.raw.subject,

@@ -1225,6 +1225,13 @@ input.pmrow__nameinput {
 .barrow:last-child {
   border-bottom: none;
 }
+.summarycat {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.summarycat:last-child {
+  border-bottom: none;
+}
 .barrow__head {
   width: 100%;
   display: flex;

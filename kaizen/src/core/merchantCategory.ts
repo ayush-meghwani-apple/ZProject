@@ -6,30 +6,27 @@
 import { parseInput } from './parser';
 import type { Alias, Category, Subcategory } from '../types/models';
 
-export interface CategoryGuess {
-  categoryId?: string;
-  subcategoryId?: string;
-}
+export interface CategoryGuess { categoryId?: string }
 
 /** merchant keyword → target category/subcategory NAMES (resolved to the user's
  *  own categories at runtime, so it works even if ids differ). Keep names in
  *  sync with src/config/categories.json. Longer keywords win over shorter ones. */
 const MERCHANT_MAP: { kw: string; category: string; sub: string }[] = [
   // Food · Groceries (quick-commerce + grocery)
-  { kw: 'zepto', category: 'Food', sub: 'Groceries' },
-  { kw: 'blinkit', category: 'Food', sub: 'Groceries' },
-  { kw: 'instamart', category: 'Food', sub: 'Groceries' },
-  { kw: 'bigbasket', category: 'Food', sub: 'Groceries' },
-  { kw: 'bbnow', category: 'Food', sub: 'Groceries' },
-  { kw: 'dmart', category: 'Food', sub: 'Groceries' },
-  { kw: 'jiomart', category: 'Food', sub: 'Groceries' },
-  { kw: 'grofers', category: 'Food', sub: 'Groceries' },
-  { kw: 'licious', category: 'Food', sub: 'Groceries' },
-  { kw: 'country delight', category: 'Food', sub: 'Groceries' },
-  { kw: 'milkbasket', category: 'Food', sub: 'Groceries' },
-  { kw: 'reliance fresh', category: 'Food', sub: 'Groceries' },
+  { kw: 'zepto', category: 'Home', sub: 'Groceries' },
+  { kw: 'blinkit', category: 'Home', sub: 'Groceries' },
+  { kw: 'instamart', category: 'Home', sub: 'Groceries' },
+  { kw: 'bigbasket', category: 'Home', sub: 'Groceries' },
+  { kw: 'bbnow', category: 'Home', sub: 'Groceries' },
+  { kw: 'dmart', category: 'Home', sub: 'Groceries' },
+  { kw: 'jiomart', category: 'Home', sub: 'Groceries' },
+  { kw: 'grofers', category: 'Home', sub: 'Groceries' },
+  { kw: 'licious', category: 'Home', sub: 'Groceries' },
+  { kw: 'country delight', category: 'Home', sub: 'Groceries' },
+  { kw: 'milkbasket', category: 'Home', sub: 'Groceries' },
+  { kw: 'reliance fresh', category: 'Home', sub: 'Groceries' },
   // Food · Restaurant (food delivery + eateries)
-  { kw: 'swiggy instamart', category: 'Food', sub: 'Groceries' },
+  { kw: 'swiggy instamart', category: 'Home', sub: 'Groceries' },
   { kw: 'swiggy', category: 'Food', sub: 'Restaurant' },
   { kw: 'zomato', category: 'Food', sub: 'Restaurant' },
   { kw: 'dominos', category: 'Food', sub: 'Restaurant' },
@@ -68,43 +65,43 @@ const MERCHANT_MAP: { kw: string; category: string; sub: string }[] = [
   { kw: 'cultfit', category: 'Health', sub: 'Gym/Fitness' },
   { kw: 'cult.fit', category: 'Health', sub: 'Gym/Fitness' },
   // Bills · Subscription (streaming + SaaS)
-  { kw: 'netflix', category: 'Bills', sub: 'Subscription' },
-  { kw: 'spotify', category: 'Bills', sub: 'Subscription' },
-  { kw: 'hotstar', category: 'Bills', sub: 'Subscription' },
-  { kw: 'disney', category: 'Bills', sub: 'Subscription' },
-  { kw: 'prime video', category: 'Bills', sub: 'Subscription' },
-  { kw: 'youtube', category: 'Bills', sub: 'Subscription' },
-  { kw: 'jiocinema', category: 'Bills', sub: 'Subscription' },
-  { kw: 'sony liv', category: 'Bills', sub: 'Subscription' },
-  { kw: 'zee5', category: 'Bills', sub: 'Subscription' },
-  { kw: 'google one', category: 'Bills', sub: 'Subscription' },
-  { kw: 'icloud', category: 'Bills', sub: 'Subscription' },
-  { kw: 'openai', category: 'Bills', sub: 'Subscription' },
-  { kw: 'chatgpt', category: 'Bills', sub: 'Subscription' },
-  { kw: 'adobe', category: 'Bills', sub: 'Subscription' },
+  { kw: 'netflix', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'spotify', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'hotstar', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'disney', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'prime video', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'youtube', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'jiocinema', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'sony liv', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'zee5', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'google one', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'icloud', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'openai', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'chatgpt', category: 'Bills & Insurance', sub: 'Subscription' },
+  { kw: 'adobe', category: 'Bills & Insurance', sub: 'Subscription' },
   // Bills · Mobile/Internet
-  { kw: 'airtel', category: 'Bills', sub: 'Mobile/Internet' },
-  { kw: 'jio', category: 'Bills', sub: 'Mobile/Internet' },
-  { kw: 'vodafone', category: 'Bills', sub: 'Mobile/Internet' },
-  { kw: 'act fibernet', category: 'Bills', sub: 'Mobile/Internet' },
-  { kw: 'hathway', category: 'Bills', sub: 'Mobile/Internet' },
+  { kw: 'airtel', category: 'Bills & Insurance', sub: 'Mobile/Internet' },
+  { kw: 'jio', category: 'Bills & Insurance', sub: 'Mobile/Internet' },
+  { kw: 'vodafone', category: 'Bills & Insurance', sub: 'Mobile/Internet' },
+  { kw: 'act fibernet', category: 'Bills & Insurance', sub: 'Mobile/Internet' },
+  { kw: 'hathway', category: 'Bills & Insurance', sub: 'Mobile/Internet' },
   // Bills · Electricity
-  { kw: 'bescom', category: 'Bills', sub: 'Electricity' },
-  { kw: 'electricity', category: 'Bills', sub: 'Electricity' },
-  { kw: 'tata power', category: 'Bills', sub: 'Electricity' },
-  { kw: 'adani electricity', category: 'Bills', sub: 'Electricity' },
+  { kw: 'bescom', category: 'Home', sub: 'Electricity' },
+  { kw: 'electricity', category: 'Home', sub: 'Electricity' },
+  { kw: 'tata power', category: 'Home', sub: 'Electricity' },
+  { kw: 'adani electricity', category: 'Home', sub: 'Electricity' },
   // Shopping
-  { kw: 'myntra', category: 'Shopping', sub: 'Clothing' },
-  { kw: 'ajio', category: 'Shopping', sub: 'Clothing' },
-  { kw: 'tata cliq', category: 'Shopping', sub: 'Clothing' },
-  { kw: 'nykaa', category: 'Shopping', sub: 'Clothing' },
-  { kw: 'amazon', category: 'Shopping', sub: 'Electronics' },
-  { kw: 'flipkart', category: 'Shopping', sub: 'Electronics' },
-  { kw: 'croma', category: 'Shopping', sub: 'Electronics' },
-  { kw: 'reliance digital', category: 'Shopping', sub: 'Electronics' },
-  { kw: 'ikea', category: 'Shopping', sub: 'Household' },
-  { kw: 'urban company', category: 'Shopping', sub: 'Household' },
-  { kw: 'pepperfry', category: 'Shopping', sub: 'Household' },
+  { kw: 'myntra', category: 'Shopping & Self-care', sub: 'Clothing' },
+  { kw: 'ajio', category: 'Shopping & Self-care', sub: 'Clothing' },
+  { kw: 'tata cliq', category: 'Shopping & Self-care', sub: 'Clothing' },
+  { kw: 'nykaa', category: 'Shopping & Self-care', sub: 'Clothing' },
+  { kw: 'amazon', category: 'Shopping & Self-care', sub: 'Electronics' },
+  { kw: 'flipkart', category: 'Shopping & Self-care', sub: 'Electronics' },
+  { kw: 'croma', category: 'Shopping & Self-care', sub: 'Electronics' },
+  { kw: 'reliance digital', category: 'Shopping & Self-care', sub: 'Electronics' },
+  { kw: 'ikea', category: 'Home', sub: 'Household' },
+  { kw: 'urban company', category: 'Home', sub: 'Household' },
+  { kw: 'pepperfry', category: 'Home', sub: 'Household' },
   // Entertainment
   { kw: 'bookmyshow', category: 'Entertainment', sub: 'Movies' },
   { kw: 'pvr', category: 'Entertainment', sub: 'Movies' },
@@ -115,15 +112,6 @@ const MERCHANT_MAP: { kw: string; category: string; sub: string }[] = [
 function findCategoryByName(categories: Category[], name: string): Category | undefined {
   const n = name.toLowerCase();
   return categories.find((c) => c.name.toLowerCase() === n);
-}
-
-function findSubByName(
-  subcategories: Subcategory[],
-  categoryId: string,
-  name: string,
-): Subcategory | undefined {
-  const n = name.toLowerCase();
-  return subcategories.find((s) => s.categoryId === categoryId && s.name.toLowerCase() === n);
 }
 
 /**
@@ -145,8 +133,7 @@ export function guessCategory(
     if (hit) {
       const cat = findCategoryByName(categories, hit.category);
       if (cat) {
-        const sub = findSubByName(subcategories, cat.id, hit.sub);
-        return { categoryId: cat.id, subcategoryId: sub?.id };
+        return { categoryId: cat.id };
       }
     }
   }
@@ -154,7 +141,7 @@ export function guessCategory(
   // Fall back to the existing alias parser (covers swiggy/amazon/uber/etc.).
   const cmd = parseInput(`${merchant ?? ''} 1`, aliases, categories, subcategories);
   if (cmd.kind === 'expense' && cmd.categoryId) {
-    return { categoryId: cmd.categoryId, subcategoryId: cmd.subcategoryId };
+    return { categoryId: cmd.categoryId };
   }
   return {};
 }

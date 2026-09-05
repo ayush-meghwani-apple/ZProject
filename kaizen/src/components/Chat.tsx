@@ -23,7 +23,7 @@ export const initialChatMessages: ChatMessage[] = [
   {
     id: 0,
     role: 'bot',
-    text: 'Hi! Add an expense, e.g. "tea 20". Type "start cycle" to begin a new period, or "help" for tips.',
+    text: 'Hi! Add an expense, e.g. "tea 20", or type "help" for tips.',
   },
 ];
 
@@ -36,8 +36,8 @@ Maths works too — start with "=":
 • "=20+20+2*6 tea"  → adds up to ₹52
 
 Categories:
-• tap "#" to pick a category, then its subcategory
-• or just type a name, e.g. "home shopping"
+• tap "#" to pick a category
+• or just type a name, e.g. "food"
 
 No amount? It's kept as a note/reminder in the chat.
 Unknown words on an expense still save as its note.`;

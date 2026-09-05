@@ -8,7 +8,6 @@ import type {
   Category,
   RecurringExpense,
   RecurringFrequency,
-  Subcategory,
 } from '../types/models';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -21,25 +20,21 @@ interface Props {
 export default function RecurringManager({ version, onChange }: Props) {
   const [items, setItems] = useState<RecurringExpense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [subcategoryId, setSubcategoryId] = useState('');
   const [note, setNote] = useState('');
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly');
   const [dayOfMonth, setDayOfMonth] = useState('1');
   const [dayOfWeek, setDayOfWeek] = useState('1');
 
   async function load() {
-    const [recs, cats, subs] = await Promise.all([
+    const [recs, cats] = await Promise.all([
       RecurringRepository.getAll(),
       CategoryRepository.getCategories(),
-      CategoryRepository.getSubcategories(),
     ]);
     setItems(recs.sort((a, b) => a.nextDate.localeCompare(b.nextDate)));
     setCategories(cats);
-    setSubcategories(subs);
   }
 
   useEffect(() => {
@@ -47,12 +42,8 @@ export default function RecurringManager({ version, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
-  const subsForCat = subcategories.filter((s) => s.categoryId === categoryId);
-
   function labelFor(r: RecurringExpense): string {
     const cat = categories.find((c) => c.id === r.categoryId);
-    const sub = subcategories.find((s) => s.id === r.subcategoryId);
-    if (cat && sub) return `${cat.icon} ${cat.name} › ${sub.icon ? sub.icon + ' ' : ''}${sub.name}`;
     if (cat) return `${cat.icon} ${cat.name}`;
     return '📦 Uncategorized';
   }
@@ -72,7 +63,6 @@ export default function RecurringManager({ version, onChange }: Props) {
     await RecurringRepository.add({
       amount: amt,
       categoryId: categoryId || undefined,
-      subcategoryId: subcategoryId || undefined,
       note: note.trim() || undefined,
       frequency,
       dayOfWeek: frequency === 'weekly' ? Number(dayOfWeek) : undefined,
@@ -80,7 +70,6 @@ export default function RecurringManager({ version, onChange }: Props) {
     });
     setAmount('');
     setNote('');
-    setSubcategoryId('');
     await RecurringRepository.runDue();
     await load();
     onChange();
@@ -159,28 +148,12 @@ export default function RecurringManager({ version, onChange }: Props) {
           <select
             className="select"
             value={categoryId}
-            onChange={(e) => {
-              setCategoryId(e.target.value);
-              setSubcategoryId('');
-            }}
+            onChange={(e) => setCategoryId(e.target.value)}
           >
             <option value="">— Category —</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.icon} {c.name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="select"
-            value={subcategoryId}
-            onChange={(e) => setSubcategoryId(e.target.value)}
-            disabled={subsForCat.length === 0}
-          >
-            <option value="">— Sub —</option>
-            {subsForCat.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.icon ? `${s.icon} ${s.name}` : s.name}
               </option>
             ))}
           </select>

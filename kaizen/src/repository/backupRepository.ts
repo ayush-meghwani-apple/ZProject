@@ -4,6 +4,7 @@ import { newId, now } from '../core/util';
 import { getLockMeta, setLockMeta, hasPin, clearPin } from '../core/vaultLock';
 import { ActivityRepository } from './activityRepository';
 import { SalaryCycleRepository } from './salaryCycleRepository';
+import { migrateToFlatCategories } from './flatCategoryMigration';
 import type { BackupFile } from '../types/models';
 
 export const BackupRepository = {
@@ -110,6 +111,8 @@ export const BackupRepository = {
     // Only adopt the backup's vault PIN if this device doesn't already have one,
     // so a merge-import never clobbers an existing vault's key.
     if (file.vaultLock && !hasPin()) setLockMeta(file.vaultLock);
+
+    await migrateToFlatCategories((d.subcategories?.length ?? 0) > 0);
 
     // Backups don't carry the per-expense cycle tag, and expenses may pre-date
     // their cycle — so re-derive cycle membership from each expense's date.

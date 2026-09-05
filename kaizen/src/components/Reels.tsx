@@ -575,7 +575,6 @@ export default function Reels({ version, onChange }: Props) {
       {addingNew && (
         <EditExpenseModal
           categories={categories}
-          subcategories={subcategories}
           defaultPaymentMethodName="SBI Savings A/C"
           onClose={() => setAddingNew(false)}
           onSaved={async () => {
@@ -591,7 +590,6 @@ export default function Reels({ version, onChange }: Props) {
         <EditExpenseModal
           expense={editing}
           categories={categories}
-          subcategories={subcategories}
           onClose={() => setEditing(null)}
           onSaved={async () => {
             setEditing(null);
