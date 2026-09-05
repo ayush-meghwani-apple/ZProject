@@ -3,8 +3,6 @@
 const KEY = 'expense:prefs';
 
 export interface Prefs {
-  /** Amount at/above which a Reel is shown as a "big spend". 0 disables it. */
-  bigExpenseThreshold: number;
   /** Play short sound cues when adding expenses/notes. */
   soundEnabled: boolean;
   /** Fire best-effort local notifications for due reminders. */
@@ -23,7 +21,6 @@ export interface Prefs {
 }
 
 const DEFAULTS: Prefs = {
-  bigExpenseThreshold: 0,
   soundEnabled: true,
   reminderNotifications: false,
   weeklyReview: true,

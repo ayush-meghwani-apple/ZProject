@@ -40,11 +40,9 @@ async function checkForUpdates(): Promise<void> {
 }
 
 export default function Settings({ version, onChange, global = false }: Props) {
-  const [bigThreshold, setBigThreshold] = useState('');
   const [soundOn, setSoundOn] = useState(true);
 
   async function load() {
-    setBigThreshold(String(getPrefs().bigExpenseThreshold || ''));
     setSoundOn(getPrefs().soundEnabled);
   }
   useEffect(() => {
@@ -90,35 +88,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
 
           <PaymentMethodsManager />
 
-          <CollapsibleCard title="Reels & sounds" compact>
-            <div className="row">
-              <span>
-                Big-spend highlight<span className="muted"> · ₹, 0 = off</span>
-              </span>
-              <span className="inline">
-                <input
-                  className="input"
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  placeholder="2000"
-                  style={{ width: 96 }}
-                  value={bigThreshold}
-                  onChange={(e) => setBigThreshold(e.target.value)}
-                />
-                <button
-                  className="btn btn--sm"
-                  onClick={() => {
-                    const n = Math.max(0, parseFloat(bigThreshold) || 0);
-                    setPrefs({ bigExpenseThreshold: n });
-                    setBigThreshold(String(n || ''));
-                    onChange();
-                  }}
-                >
-                  Save
-                </button>
-              </span>
-            </div>
+          <CollapsibleCard title="Sounds" compact>
             <div className="row">
               <span>Sound effects</span>
               <button

@@ -49,10 +49,10 @@ export default function Reels({ version, onChange }: Props) {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [methodMenuFor, setMethodMenuFor] = useState<string | null>(null);
   const [categoryMenuFor, setCategoryMenuFor] = useState<string | null>(null);
+  const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [noteEditingFor, setNoteEditingFor] = useState<string | null>(null);
   const [active, setActive] = useState(0);
-  const [bigThreshold, setBigThreshold] = useState(0);
   const [remindExpense, setRemindExpense] = useState<Expense | null>(null);
   const [customVal, setCustomVal] = useState('');
   const [customUnit, setCustomUnit] = useState<'months' | 'years'>('months');
@@ -82,7 +82,6 @@ export default function Reels({ version, onChange }: Props) {
     setCycles(cy);
     setMethods(pm);
     setNotes(NotesRepository.getActive());
-    setBigThreshold(getPrefs().bigExpenseThreshold);
 
     // Default to the current (open) cycle on first load.
     if (!initialized.current && cy.length > 0) {
@@ -99,16 +98,17 @@ export default function Reels({ version, onChange }: Props) {
 
   // Close an open reel quick-edit menu when tapping elsewhere.
   useEffect(() => {
-    if (!methodMenuFor && !categoryMenuFor) return;
+    if (!methodMenuFor && !categoryMenuFor && !actionMenuFor) return;
     function onDown(e: PointerEvent) {
       if (!(e.target as Element)?.closest?.('.reel__methodwrap')) setMethodMenuFor(null);
       if (!(e.target as Element)?.closest?.('.reel__categorywrap, .reelcatpicker')) {
         setCategoryMenuFor(null);
       }
+      if (!(e.target as Element)?.closest?.('.reel__actions')) setActionMenuFor(null);
     }
     document.addEventListener('pointerdown', onDown, true);
     return () => document.removeEventListener('pointerdown', onDown, true);
-  }, [methodMenuFor, categoryMenuFor]);
+  }, [methodMenuFor, categoryMenuFor, actionMenuFor]);
 
   const reels = useMemo(() => {
     const list = cycleId ? expenses.filter((e) => e.salaryCycleId === cycleId) : expenses;
@@ -148,7 +148,11 @@ export default function Reels({ version, onChange }: Props) {
     if (!el || el.clientHeight === 0) return;
     const idx = Math.round(el.scrollTop / el.clientHeight);
     if (cycleId) reelScrollPos[cycleId] = idx;
-    if (idx !== active) setActive(idx);
+    if (idx !== active) {
+      setActive(idx);
+      setMethodMenuFor(null);
+      setActionMenuFor(null);
+    }
   }
 
   const cycleIdx = cycles.findIndex((c) => c.id === cycleId);
@@ -179,7 +183,11 @@ export default function Reels({ version, onChange }: Props) {
 
   // Set/change the payment method straight from a reel (no need to open Edit).
   async function setExpenseMethod(exp: Expense, methodId: string) {
-    await ExpenseRepository.updateExpense({ ...exp, paymentMethodId: methodId || undefined });
+    await ExpenseRepository.updateExpense({
+      ...exp,
+      paymentMethodId: methodId || undefined,
+      reviewed: exp.autoImported ? true : exp.reviewed,
+    });
     setMethodMenuFor(null);
     await load();
     onChange();
@@ -190,6 +198,7 @@ export default function Reels({ version, onChange }: Props) {
       ...exp,
       categoryId: categoryId || undefined,
       subcategoryId: undefined,
+      reviewed: exp.autoImported ? true : exp.reviewed,
     });
     setCategoryMenuFor(null);
     await load();
@@ -200,7 +209,11 @@ export default function Reels({ version, onChange }: Props) {
     const note = (noteDrafts[exp.id] ?? exp.note ?? '').trim();
     setNoteEditingFor(null);
     if (note === (exp.note ?? '')) return;
-    await ExpenseRepository.updateExpense({ ...exp, note: note || undefined });
+    await ExpenseRepository.updateExpense({
+      ...exp,
+      note: note || undefined,
+      reviewed: exp.autoImported ? true : exp.reviewed,
+    });
     setNoteDrafts((current) => {
       const next = { ...current };
       delete next[exp.id];
@@ -218,12 +231,12 @@ export default function Reels({ version, onChange }: Props) {
     onChange();
   }
 
-  async function toggleReviewed(e: Expense) {
-    const next = !e.reviewed;
-    await ExpenseRepository.setReviewed(e.id, next);
-    playSound(next ? 'success' : 'note');
+  async function verifyImported(e: Expense) {
+    await ExpenseRepository.setReviewed(e.id, true);
+    playSound('success');
     await load();
     onChange();
+    flashToast('Imported expense verified');
   }
 
   // Turn a note into an expense: parse "<amount> <note text>" so any category /
@@ -339,6 +352,9 @@ export default function Reels({ version, onChange }: Props) {
               {notes.length + reels.length + (showSalary ? 1 : 0)}
             </div>
           )}
+          <button className="reels__add" onClick={() => setAddingNew(true)} aria-label="Add expense" title="Add expense">
+            <AppIcon name="plus" size={19} />
+          </button>
         </div>
       </div>
 
@@ -387,120 +403,21 @@ export default function Reels({ version, onChange }: Props) {
               const color = cat?.color ?? '#6366f1';
               const sub = subOf(e);
               const method = methodOf(e);
-              // Flag reels that are missing something worth filling in (notes are
-              // optional, so they don't count) — makes gaps easy to spot while
-              // reviewing. A category with sub-categories that has none counts too.
-              const catHasSubs = !!cat && subcategories.some((s) => s.categoryId === cat.id);
-              const missing: string[] = [];
-              if (!e.categoryId) missing.push('category');
-              else if (catHasSubs && !e.subcategoryId) missing.push('sub-category');
-              if (!e.paymentMethodId) missing.push('payment method');
-              const incomplete = missing.length > 0;
-              const isBig = bigThreshold > 0 && e.amount >= bigThreshold;
-              const big = isBig && !e.reviewed; // “hot” only until reviewed
-              const reviewed = isBig && !!e.reviewed; // acknowledged → calm green
               const isRecurring = !!e.recurringId; // auto-created from a recurring rule
-              const synced = !!e.autoImported && !e.reviewed; // from Gmail, awaiting review
-              const cls = `reel${big ? ' reel--big' : ''}${reviewed ? ' reel--reviewed' : ''}${incomplete && !big && !reviewed ? ' reel--incomplete' : ''}`;
+              const needsVerification = !!e.autoImported && !e.reviewed;
               return (
                 <section
-                  className={cls}
+                  className="reel"
                   key={e.id}
                   style={{
-                    background: big
-                      ? 'radial-gradient(130% 90% at 50% 0%, rgba(244, 63, 94, 0.45) 0%, rgba(217, 70, 239, 0.18) 45%, transparent 70%)'
-                      : reviewed
-                        ? 'radial-gradient(130% 90% at 50% 0%, rgba(16, 185, 129, 0.34) 0%, rgba(16, 185, 129, 0.1) 45%, transparent 70%)'
-                        : incomplete
-                          ? 'radial-gradient(130% 90% at 50% 0%, rgba(245, 158, 11, 0.34) 0%, rgba(245, 158, 11, 0.08) 45%, transparent 70%)'
-                          : `radial-gradient(120% 80% at 50% 0%, ${tint(color, 0.32)} 0%, transparent 60%)`,
+                    background: `radial-gradient(110% 78% at 50% 22%, ${tint(color, 0.38)} 0%, ${tint(color, 0.1)} 48%, transparent 74%)`,
                   }}
                 >
-                  {big && <div className="reel__flame">💸 Big spend!</div>}
-                  {reviewed && <div className="reel__flame reel__flame--ok">✅ Reviewed</div>}
-                  {incomplete && !big && !reviewed && (
-                    <div className="reel__flame reel__flame--missing">⚠️ Missing: {missing.join(' · ')}</div>
-                  )}
-
                   <div className="reel__icon" style={{ background: tint(color, 0.18) }}>
                     {cat?.icon ?? '📦'}
                   </div>
 
                   <div className="reel__amount">{formatINR(e.amount)}</div>
-
-                  <div className="reel__categorywrap" data-noswipe>
-                    <button
-                      className="reel__cat reel__catbtn"
-                      onClick={() => {
-                        setMethodMenuFor(null);
-                        setCategoryMenuFor(categoryMenuFor === e.id ? null : e.id);
-                      }}
-                      aria-label="Change category"
-                    >
-                      {cat?.name ?? 'Uncategorized'}
-                      <AppIcon name="chevronDown" size={15} />
-                    </button>
-                  </div>
-                  {sub && (
-                    <span className="reel__sub" style={{ borderColor: tint(color, 0.5) }}>
-                      {sub.icon ? `${sub.icon} ` : ''}{sub.name}
-                    </span>
-                  )}
-
-                  <div className="reel__date"><AppIcon name="calendar" size={14} /> {formatDate(e.date)}</div>
-
-                  <div className="reel__methodwrap" data-noswipe>
-                    <button
-                      className={`reel__methodchip${method ? ' reel__methodchip--set' : ''}`}
-                      onClick={() => setMethodMenuFor(methodMenuFor === e.id ? null : e.id)}
-                    >
-                      {method ? (
-                        <>
-                          {method.icon ? `${method.icon} ` : ''}
-                          {method.name}
-                        </>
-                      ) : (
-                        <>
-                          <AppIcon name="plus" size={13} /> Payment method
-                        </>
-                      )}
-                    </button>
-                    {methodMenuFor === e.id && (
-                      <div className="methodmenu methodmenu--reel">
-                        <button
-                          className={!e.paymentMethodId ? 'is-on' : ''}
-                          onClick={() => setExpenseMethod(e, '')}
-                        >
-                          No method
-                        </button>
-                        {methods.map((m) => (
-                          <button
-                            key={m.id}
-                            className={m.id === e.paymentMethodId ? 'is-on' : ''}
-                            onClick={() => setExpenseMethod(e, m.id)}
-                          >
-                            {m.icon ? `${m.icon} ` : ''}
-                            {m.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {isRecurring && (
-                    <div className="reel__recurring" title="Created automatically from a recurring rule">
-                      <AppIcon name="recurring" size={13} /> Recurring
-                    </div>
-                  )}
-                  {synced && (
-                    <div
-                      className="reel__recurring"
-                      style={{ color: 'var(--accent, #a5b4fc)' }}
-                      title="Auto-imported from a Gmail bank/card alert — review it"
-                    >
-                      <AppIcon name="recurring" size={13} /> Auto-synced · review
-                    </div>
-                  )}
 
                   {noteEditingFor === e.id ? (
                     <form
@@ -539,28 +456,68 @@ export default function Reels({ version, onChange }: Props) {
                     </button>
                   )}
 
-                  <div className="reel__actions">
-                    <button className="reel__act reel__act--del" onClick={() => handleDelete(e.id)}>
-                      <AppIcon name="trash" size={17} /> <span>{synced ? 'Dismiss' : 'Delete'}</span>
-                    </button>
-                    {(isBig || !!e.autoImported) && (
+                  <div className="reel__meta">
+                    <div className="reel__categorywrap" data-noswipe>
                       <button
-                        className="reel__act reel__act--rev"
-                        onClick={() => toggleReviewed(e)}
-                        aria-label={e.reviewed ? 'Mark as unreviewed' : 'Mark as reviewed'}
+                        className={`reel__cat reel__catbtn${cat ? '' : ' reel__catbtn--missing'}`}
+                        onClick={() => {
+                          setMethodMenuFor(null);
+                          setCategoryMenuFor(categoryMenuFor === e.id ? null : e.id);
+                        }}
+                        aria-label="Change category"
                       >
-                        {e.reviewed ? <AppIcon name="undo" size={17} /> : <AppIcon name="reviewed" size={17} />} <span>{e.reviewed ? 'Undo' : 'Review'}</span>
+                        {cat ? `${cat.icon} ${cat.name}` : 'Choose category'}
+                        <AppIcon name="chevronDown" size={14} />
+                      </button>
+                    </div>
+                    {sub && <span className="reel__sub">{sub.icon ? `${sub.icon} ` : ''}{sub.name}</span>}
+                    <span className="reel__date"><AppIcon name="calendar" size={13} /> {formatDate(e.date)}</span>
+                    <div className="reel__methodwrap" data-noswipe>
+                      <button
+                        className={`reel__methodchip${method ? ' reel__methodchip--set' : ''}`}
+                        onClick={() => setMethodMenuFor(methodMenuFor === e.id ? null : e.id)}
+                      >
+                        {method ? `${method.icon ? `${method.icon} ` : ''}${method.name}` : 'Payment method'}
+                      </button>
+                      {methodMenuFor === e.id && (
+                        <div className="methodmenu methodmenu--reel">
+                          <button className={!e.paymentMethodId ? 'is-on' : ''} onClick={() => setExpenseMethod(e, '')}>No method</button>
+                          {methods.map((m) => (
+                            <button key={m.id} className={m.id === e.paymentMethodId ? 'is-on' : ''} onClick={() => setExpenseMethod(e, m.id)}>
+                              {m.icon ? `${m.icon} ` : ''}{m.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="reel__source">
+                    {isRecurring && <span><AppIcon name="recurring" size={12} /> Recurring</span>}
+                    {needsVerification && (
+                      <button onClick={() => verifyImported(e)}>
+                        <AppIcon name="done" size={12} /> Imported · verify
                       </button>
                     )}
-                    <button className="reel__act reel__act--rem" onClick={() => setRemindExpense(e)}>
-                      <AppIcon name="remind" size={17} /> <span>Remind</span>
+                  </div>
+
+                  <div className="reel__actions reel__actions--rail" data-noswipe>
+                    <button className="reel__act reel__act--edit" onClick={() => setEditing(e)} aria-label="Edit expense" title="Edit expense">
+                      <AppIcon name="edit" size={20} />
                     </button>
-                    <button className="reel__act reel__act--edit" onClick={() => setEditing(e)}>
-                      <AppIcon name="edit" size={17} /> <span>Edit</span>
+                    <button className="reel__act reel__act--rem" onClick={() => setRemindExpense(e)} aria-label="Remind me" title="Remind me">
+                      <AppIcon name="remind" size={20} />
                     </button>
-                    <button className="reel__act reel__act--add" onClick={() => setAddingNew(true)}>
-                      <AppIcon name="plus" size={17} /> <span>Add</span>
+                    <button className="reel__act" onClick={() => setActionMenuFor(actionMenuFor === e.id ? null : e.id)} aria-label="More actions" title="More actions">
+                      <span className="reel__moreicon">•••</span>
                     </button>
+                    {actionMenuFor === e.id && (
+                      <div className="reel__moremenu">
+                        <button onClick={() => handleDelete(e.id)}>
+                          <AppIcon name="trash" size={16} /> {e.autoImported ? 'Dismiss' : 'Delete'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </section>
               );

@@ -83,6 +83,7 @@ export default function EditExpenseModal({
         paymentMethodId: paymentMethodId || undefined,
         note: note.trim() || undefined,
         date: fromDateInput(date, expense!.date),
+        reviewed: expense!.autoImported ? true : expense!.reviewed,
       });
     }
     onSaved();

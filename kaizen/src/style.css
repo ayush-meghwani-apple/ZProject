@@ -6853,78 +6853,117 @@ svg.lucide {
 
 /* ---- Reels ---- */
 .reel {
-  gap: 12px;
-  padding: 80px 24px 26px;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 84px 74px 30px 24px;
+  text-align: left;
 }
 .reel__amount {
-  font-size: 52px;
+  width: 100%;
+  font-size: 48px;
+  line-height: 1;
   text-shadow: 0 2px 26px rgba(0, 0, 0, 0.45);
 }
-.reel--big .reel__amount {
-  text-shadow: 0 0 22px rgba(244, 63, 94, 0.55);
-}
 
-/* Category emoji in a glowing circular ring (matches the mockup). */
 .reel__icon {
-  width: 118px;
-  height: 118px;
-  border-radius: 50%;
-  font-size: 58px;
-  border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow:
-    0 0 0 6px rgba(99, 102, 241, 0.05),
-    0 0 60px 10px rgba(99, 102, 241, 0.2),
-    inset 0 2px 12px rgba(255, 255, 255, 0.05);
-}
-.reel--big .reel__icon {
-  border-color: rgba(244, 114, 182, 0.55);
-  box-shadow: 0 0 60px 12px rgba(244, 63, 94, 0.28);
-}
-.reel--reviewed .reel__icon {
-  border-color: rgba(52, 211, 153, 0.55);
-  box-shadow: 0 0 60px 12px rgba(16, 185, 129, 0.24);
+  position: absolute;
+  top: 23%;
+  left: 50%;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  font-size: clamp(88px, 28vw, 118px);
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 20px 38px rgba(0, 0, 0, 0.32));
 }
 
-/* Merchant / category name — the bold line under the amount. */
-.reel__cat {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.2px;
+.reel__noteread {
+  justify-content: flex-start;
+  max-width: 100%;
+  padding: 0;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 750;
+  text-align: left;
 }
-
-/* Sub-category shown as a clean outlined pill. */
-.reel__sub {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
+.reel__noteread svg {
+  display: none;
+}
+.reel__noteread--empty {
+  font-size: 15px;
   font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: rgba(22, 29, 51, 0.45);
+}
+.reel__noteedit {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 40px;
 }
 
-.reel__date {
-  display: inline-flex;
+.reel__meta {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
+  flex-wrap: wrap;
+  gap: 7px;
+  width: 100%;
+  color: var(--muted);
+  font-size: 12px;
+}
+.reel__cat {
+  font-size: 13px;
+  font-weight: 700;
+}
+.reel__sub {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.reel__date {
+  font-size: 12px;
 }
 .reel__date svg {
   color: var(--muted);
 }
-
 .reel__methodchip {
-  padding: 7px 16px;
-  font-size: 13.5px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 12px;
 }
-
-/* Reviewed badge → soft outlined green pill (no pulse). */
-.reel__flame--ok {
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(52, 211, 153, 0.5);
-  color: #6ee7b7;
-  box-shadow: none;
+.reel__catbtn {
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.reel__catbtn--missing {
+  border: 1px solid rgba(245, 158, 11, 0.65);
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+.reel__source {
+  display: flex;
+  gap: 7px;
+  min-height: 24px;
+}
+.reel__source span,
+.reel__source button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+}
+.reel__source button {
+  color: #fbbf24;
+  cursor: pointer;
 }
 
 /* Note shown as a quote card with a decorative opening quote. */
@@ -6959,50 +6998,40 @@ svg.lucide {
   content: none;
 }
 
-/* Action buttons → one grouped bar with divider lines (icon on top). */
-.reel__actions:has(.reel__act) {
-  width: min(100%, 310px);
-  gap: 0;
-  margin-top: 18px;
-  flex-wrap: nowrap;
-  background: rgba(22, 29, 51, 0.55);
+.reels__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
   border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 4px;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+  border-radius: 50%;
+  background: rgba(22, 29, 51, 0.78);
+  color: var(--text);
+  backdrop-filter: blur(10px);
+}
+.reel__actions--rail {
+  position: absolute;
+  right: 16px;
+  bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
 }
 .reel__act {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 0;
-  flex-direction: column;
-  gap: 6px;
-  padding: 11px 8px;
-  border-radius: 13px;
-  background: transparent;
-  border: none;
-  font-size: 12px;
-  color: var(--muted);
-}
-.reel__act + .reel__act::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 22%;
-  bottom: 22%;
-  width: 1px;
-  background: var(--border);
-}
-.reel__act span {
+  width: 44px;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 50%;
+  background: rgba(12, 17, 31, 0.68);
   color: var(--text);
-  font-weight: 600;
-  white-space: nowrap;
-}
-.reel__act--del svg {
-  color: #f87171;
-}
-.reel__act--rev svg {
-  color: var(--accent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.2);
 }
 .reel__act--rem svg {
   color: #34d399;
@@ -7010,8 +7039,34 @@ svg.lucide {
 .reel__act--edit svg {
   color: #60a5fa;
 }
-.reel__act--add svg {
-  color: var(--accent);
+.reel__moreicon {
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+.reel__moremenu {
+  position: absolute;
+  right: 52px;
+  bottom: 0;
+  min-width: 128px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+.reel__moremenu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #f87171;
+  font: inherit;
+  font-size: 13px;
 }
 
 /* ---- Categories ---- */
