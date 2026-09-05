@@ -79,15 +79,15 @@ export default function BackupReminder({ onBackedUp }: Props) {
         </p>
         <p className="backupremind__meta">{lastLine}</p>
         <p className="backupremind__hint">
-          Tap <strong>Back up now</strong>, then choose <strong>Save to Files</strong> (iCloud
+          Tap <strong>Backup</strong>, then choose <strong>Save to Files</strong> (iCloud
           Drive) so it's kept safely off this device.
         </p>
         <div className="modal__footer">
           <button className="btn btn--ghost" onClick={() => setShow(false)} disabled={busy}>
             Not now
           </button>
-          <button className="btn" onClick={backupNow} disabled={busy}>
-            <AppIcon name="backup" size={16} /> {busy ? 'Saving…' : 'Back up now'}
+          <button className="btn" onClick={backupNow} disabled={busy} aria-label="Back up now">
+            <AppIcon name="backup" size={16} /> {busy ? 'Saving…' : 'Backup'}
           </button>
         </div>
       </div>

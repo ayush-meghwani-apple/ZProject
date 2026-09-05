@@ -264,7 +264,7 @@ describe('parseTransactionEmail', () => {
     const p = parseTransactionEmail({
       from: 'donotreply@bobcard.in',
       subject: 'Transaction Confirmation on your BOBCARD',
-      body: 'Dear Customer, Thank you for using your BOBCARD **3643 for a transaction of INR 3,638.00 at vananam foods and bever on 05-09-2026. Following this transaction, the available balance on your card is Rs 195,494.00, with a total outstanding of Rs 0.00.',
+      body: 'Dear Customer, Thank you for using your BOBCARD **3643 for a transaction of INR 3,638.00 at vananam foods and bever on 05-09-2026. Following this transaction, the available balance on your card is Rs 195,494.00, with a total outstanding of Rs 0.00. Please refer to your monthly statement for the total amount due.',
     });
     expect(p.source).toBe('bobcard-cc');
     expect(p.kind).toBe('card');

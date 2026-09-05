@@ -147,8 +147,12 @@ export default function RemindersInbox({
               Review
             </button>
           ) : (
-            <button className="btn btn--sm" onClick={() => addNow(r)}>
-              Add now
+            <button
+              className="btn btn--sm"
+              onClick={() => addNow(r)}
+              aria-label="Add expense now"
+            >
+              Add
             </button>
           )}
           <button className="btn btn--ghost btn--sm" onClick={() => snooze(r, 7)}>

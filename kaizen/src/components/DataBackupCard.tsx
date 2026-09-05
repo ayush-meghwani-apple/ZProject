@@ -124,7 +124,7 @@ export default function DataBackupCard({ onReload, beforeExport, defaultOpen = t
               </span>
               <span className="dbk__stattext">
                 <span className="dbk__statlabel">Storage</span>
-                <span className="dbk__statval">{usage ? `${usage} used` : '—'}</span>
+                <span className="dbk__statval">{usage || '—'}</span>
               </span>
             </div>
             <span className="dbk__divv" />
@@ -143,11 +143,20 @@ export default function DataBackupCard({ onReload, beforeExport, defaultOpen = t
 
           <div className="dbk__panel">
             <div className="dbk__actions">
-              <button className="dbk__act" onClick={exportBackup} disabled={busy}>
-                <AppIcon name="download" size={18} /> {busy ? '…' : 'Save to phone'}
+              <button
+                className="dbk__act"
+                onClick={exportBackup}
+                disabled={busy}
+                aria-label="Save backup to phone"
+              >
+                <AppIcon name="download" size={18} /> {busy ? '…' : 'Save'}
               </button>
-              <button className="dbk__act" onClick={() => importRef.current?.click()}>
-                <AppIcon name="export" size={18} /> Load from phone
+              <button
+                className="dbk__act"
+                onClick={() => importRef.current?.click()}
+                aria-label="Import backup from phone"
+              >
+                <AppIcon name="export" size={18} /> Import
               </button>
               <button
                 className="dbk__act dbk__act--danger"
@@ -158,8 +167,8 @@ export default function DataBackupCard({ onReload, beforeExport, defaultOpen = t
             </div>
             <span className="dbk__divh" />
             <div className="dbk__remind">
-              <span className="dbk__remindlabel">
-                <AppIcon name="remind" size={18} /> Backup reminder
+              <span className="dbk__remindlabel" aria-label="Backup reminder">
+                <AppIcon name="remind" size={18} /> Reminder
               </span>
               <select
                 className="input dbk__select"

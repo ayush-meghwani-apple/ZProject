@@ -226,7 +226,10 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
   const text = `${subject}\n${body}`;
   const source = detectSource(from, subject, body);
 
-  const isStatement = STATEMENT_WORDS.test(text) && !DEBIT_WORDS.test(subject);
+  const isBobTransactionConfirmation =
+    source === 'bobcard-cc' && /transaction\s+confirmation/i.test(subject);
+  const isStatement =
+    STATEMENT_WORDS.test(text) && !DEBIT_WORDS.test(subject) && !isBobTransactionConfirmation;
   const isFailed = FAILED_RE.test(text);
   const isPromo =
     (PROMO_RE.test(text) && !REAL_TXN_RE.test(text)) || NOTICE_SUBJECT_RE.test(subject);

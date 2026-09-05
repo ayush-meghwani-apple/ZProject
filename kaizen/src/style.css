@@ -1164,6 +1164,7 @@ input.pmrow__nameinput {
   padding: 12px 18px;
   font-weight: 700;
   font-size: 15px;
+  white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
 }
@@ -2615,28 +2616,6 @@ button.pie__pick--drill {
 .reel__remind-opts .chip {
   cursor: pointer;
   border: 1px solid var(--border);
-}
-
-/* Reels: floating quick-add */
-.reels__fab {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  z-index: 6;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: none;
-  font-size: 28px;
-  line-height: 1;
-  color: #fff;
-  background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
-  box-shadow: 0 10px 26px rgba(99, 102, 241, 0.45);
-  cursor: pointer;
-}
-
-.reels__fab:active {
-  transform: scale(0.94);
 }
 
 .reels__quick {
@@ -6982,6 +6961,7 @@ svg.lucide {
 
 /* Action buttons → one grouped bar with divider lines (icon on top). */
 .reel__actions:has(.reel__act) {
+  width: min(100%, 310px);
   gap: 0;
   margin-top: 18px;
   flex-wrap: nowrap;
@@ -6994,6 +6974,7 @@ svg.lucide {
 .reel__act {
   position: relative;
   flex: 1 1 0;
+  min-width: 0;
   flex-direction: column;
   gap: 6px;
   padding: 11px 8px;
@@ -7015,6 +6996,7 @@ svg.lucide {
 .reel__act span {
   color: var(--text);
   font-weight: 600;
+  white-space: nowrap;
 }
 .reel__act--del svg {
   color: #f87171;
@@ -7027,6 +7009,9 @@ svg.lucide {
 }
 .reel__act--edit svg {
   color: #60a5fa;
+}
+.reel__act--add svg {
+  color: var(--accent);
 }
 
 /* ---- Categories ---- */
@@ -7526,6 +7511,7 @@ svg.lucide {
   color: var(--text, #e6e9f5);
   font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 .dbk__act svg {

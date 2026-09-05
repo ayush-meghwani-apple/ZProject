@@ -34,7 +34,7 @@ const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const PARSER_REVISION_KEY = 'gmail:parserRevision';
-const PARSER_REVISION = '3';
+const PARSER_REVISION = '4';
 
 // Minimal shape of the GIS token client we rely on (the library is loaded at
 // runtime from Google, so we declare only what we use).

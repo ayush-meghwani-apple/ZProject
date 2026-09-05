@@ -542,8 +542,12 @@ export default function Reels({ version, onChange }: Props) {
                       <AppIcon name="trash" size={17} /> <span>{synced ? 'Dismiss' : 'Delete'}</span>
                     </button>
                     {(isBig || !!e.autoImported) && (
-                      <button className="reel__act reel__act--rev" onClick={() => toggleReviewed(e)}>
-                        {e.reviewed ? <AppIcon name="undo" size={17} /> : <AppIcon name="reviewed" size={17} />} <span>{e.reviewed ? 'Unreview' : 'Reviewed'}</span>
+                      <button
+                        className="reel__act reel__act--rev"
+                        onClick={() => toggleReviewed(e)}
+                        aria-label={e.reviewed ? 'Mark as unreviewed' : 'Mark as reviewed'}
+                      >
+                        {e.reviewed ? <AppIcon name="undo" size={17} /> : <AppIcon name="reviewed" size={17} />} <span>{e.reviewed ? 'Undo' : 'Review'}</span>
                       </button>
                     )}
                     <button className="reel__act reel__act--rem" onClick={() => setRemindExpense(e)}>
@@ -551,6 +555,9 @@ export default function Reels({ version, onChange }: Props) {
                     </button>
                     <button className="reel__act reel__act--edit" onClick={() => setEditing(e)}>
                       <AppIcon name="edit" size={17} /> <span>Edit</span>
+                    </button>
+                    <button className="reel__act reel__act--add" onClick={() => setAddingNew(true)}>
+                      <AppIcon name="plus" size={17} /> <span>Add</span>
                     </button>
                   </div>
                 </section>
@@ -611,16 +618,6 @@ export default function Reels({ version, onChange }: Props) {
           </div>
         </div>,
         document.body,
-      )}
-
-      {!addingNew && !remindExpense && !editing && (
-        <button
-          className="reels__fab"
-          onClick={() => setAddingNew(true)}
-          aria-label="Add an expense"
-        >
-          ＋
-        </button>
       )}
 
       {remindExpense && (
