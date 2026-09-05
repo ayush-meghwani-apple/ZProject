@@ -7434,6 +7434,24 @@ svg.lucide {
   color: var(--muted);
   font-size: 12.5px;
 }
+.scard--compact {
+  padding: 0 16px;
+  box-shadow: none;
+}
+.scard--compact .scard__head {
+  min-height: 52px;
+  padding: 0;
+}
+.scard--compact.scard--open {
+  padding-bottom: 12px;
+}
+.scard--compact.scard--open .scard__head {
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.scard--compact .scard__title {
+  font-size: 15px;
+}
 
 /* ---- Data & Backup card ---- */
 .dbk__body {

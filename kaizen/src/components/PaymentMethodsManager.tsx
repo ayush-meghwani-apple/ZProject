@@ -64,7 +64,7 @@ export default function PaymentMethodsManager() {
   }
 
   return (
-    <CollapsibleCard title="Payment Methods">
+    <CollapsibleCard title="Payment Methods" compact>
       <div className="muted" style={{ marginBottom: 12 }}>
         Optional. Add your cash, cards, bank accounts, UPI Lite, Splitwise, etc.
         You pick one from the Add tab (it's remembered) and can change it per

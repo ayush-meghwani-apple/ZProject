@@ -90,7 +90,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
 
           <PaymentMethodsManager />
 
-          <CollapsibleCard title="Reels & sounds">
+          <CollapsibleCard title="Reels & sounds" compact>
             <div className="row">
               <span>
                 Big-spend highlight<span className="muted"> · ₹, 0 = off</span>
@@ -138,7 +138,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
         </>
       )}
 
-      <CollapsibleCard title="Demo mode" subtitle="Sample data · real data safe">
+      <CollapsibleCard title="Demo mode" compact>
         <div className="row" style={{ padding: 0 }}>
           <span className="muted">Fill the app with sample data to show someone</span>
           <button

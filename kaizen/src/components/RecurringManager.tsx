@@ -87,7 +87,7 @@ export default function RecurringManager({ version, onChange }: Props) {
   }
 
   return (
-    <CollapsibleCard title="Recurring Expenses">
+    <CollapsibleCard title="Recurring Expenses" compact>
       <div className="muted" style={{ marginBottom: 12 }}>
         Auto-adds fixed expenses (like rent) on a schedule. Due items are created
         when you open the app; edit the date later on the expense itself.

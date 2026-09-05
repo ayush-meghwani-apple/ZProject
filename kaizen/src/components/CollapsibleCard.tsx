@@ -5,6 +5,7 @@ interface Props {
   title: string;
   subtitle?: string;
   icon?: ComponentProps<typeof AppIcon>['name'];
+  compact?: boolean;
   /** Whether the section starts expanded. Defaults to collapsed. */
   defaultOpen?: boolean;
   children: ReactNode;
@@ -15,13 +16,19 @@ export default function CollapsibleCard({
   title,
   subtitle,
   icon,
+  compact = false,
   defaultOpen = false,
   children,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="card">
-      <button className="scard__head" onClick={() => setOpen((o) => !o)}>
+    <div className={`card${compact ? ` scard--compact${open ? ' scard--open' : ''}` : ''}`}>
+      <button
+        type="button"
+        className="scard__head"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
         {icon && (
           <span className="scard__icon">
             <AppIcon name={icon} size={22} />
