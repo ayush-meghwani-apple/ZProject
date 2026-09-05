@@ -75,7 +75,7 @@ const STATEMENT_WORDS = /(statement|e-?statement|bill\s+generated|total\s+amount
 
 // Promotional / EMI-conversion emails (e.g. SBI Card "Convert your recent trans.
 // into Flexipay EMI!") quote a past amount but are NOT new transactions.
-const PROMO_RE = /(convert\s+your\s+recent|flexipay|book\s+flexipay|processing\s+fee\s+on\s+converting|into\s+(?:easy\s+)?(?:flexipay\s+)?emis?)/i;
+const PROMO_RE = /(convert\s+your\s+recent|flexipay|book\s+flexipay|processing\s+fee\s+on\s+converting|into\s+(?:easy\s+)?(?:flexipay\s+)?emis?|pre[-\s]?approved\s+personal\s+loan|personal\s+loan\s+on\s+(?:your\s+)?credit\s+card|apply\s+now|no\s+further\s+cibil\s+check)/i;
 // Phrases that only appear in a genuine transaction line — used to rescue a real
 // alert that also carries a promo footer.
 const REAL_TXN_RE = /(spent\s+on\s+your|debited|withdrawn|used\s+for\s+a\s+transaction|transaction\s+status\s*:?\s*success)/i;

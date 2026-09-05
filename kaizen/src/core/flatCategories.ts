@@ -60,7 +60,8 @@ const SUBCATEGORY_TARGET: Record<string, string> = {
   'europe trip clear': 'Travel',
   'goa trip': 'Travel',
   'taiwan trip': 'Travel',
-  'future savings': 'Investments & Savings',
+  'future savings': 'Travel',
+  'future trip savings': 'Travel',
   'gold coin': 'Investments & Savings',
   other: 'Other',
 };
@@ -114,9 +115,15 @@ export function planFlatCategoryMigration(input: FlatMigrationInput): FlatMigrat
     return FLAT_BY_NAME.get(targetName.toLowerCase()) ?? 'flat-other-v1';
   }
 
+  function targetExpenseCategoryId(expense: Expense, subcategoryId?: string): string {
+    const legacyText = `${expense.note ?? ''} ${expense.rawText ?? ''}`;
+    if (/\bfuture(?:\s+trip)?\s+savings\b/i.test(legacyText)) return 'flat-travel-v1';
+    return targetCategoryId(expense.categoryId, subcategoryId);
+  }
+
   const expenses = input.expenses.map(({ subcategoryId, ...expense }) => ({
     ...expense,
-    categoryId: targetCategoryId(expense.categoryId, subcategoryId),
+    categoryId: targetExpenseCategoryId(expense, subcategoryId),
   }));
   const recurring = input.recurring.map(({ subcategoryId, ...item }) => ({
     ...item,
@@ -129,8 +136,10 @@ export function planFlatCategoryMigration(input: FlatMigrationInput): FlatMigrat
 
   const aliasesByKey = new Map<string, Alias>();
   for (const alias of input.aliases) {
-    const categoryId = targetCategoryId(alias.categoryId, alias.subcategoryId);
     const normalized = alias.text.trim().toLowerCase();
+    const categoryId = /\bfuture(?:\s+trip)?\s+savings\b/i.test(normalized)
+      ? 'flat-travel-v1'
+      : targetCategoryId(alias.categoryId, alias.subcategoryId);
     const key = `${categoryId}|${normalized}`;
     if (!aliasesByKey.has(key)) {
       aliasesByKey.set(key, { id: alias.id, text: normalized, categoryId });

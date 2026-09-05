@@ -117,32 +117,34 @@ export default function App() {
           <AppIcon name={current.icon} size={20} />
         </span>
         <span className="app__title">{current.name}</span>
-        {activeApp === 'expensify' && (
+        <div className="headeractions">
+          {activeApp === 'expensify' && (
+            <button
+              className="topswitch"
+              onClick={() => setActiveApp('fortuna')}
+              aria-label="Open Fortuna"
+              title="Open Fortuna"
+            >
+              <AppIcon name="investments" size={20} />
+            </button>
+          )}
           <button
-            className="topswitch"
-            onClick={() => setActiveApp('fortuna')}
-            aria-label="Open Fortuna"
-            title="Open Fortuna"
+            className={`demotoggle${demo ? ' demotoggle--on' : ''}`}
+            onClick={handleDemoToggle}
+            aria-label={demo ? 'Exit demo mode' : 'Show demo data'}
+            title={demo ? 'Exit demo mode (restore your real data)' : 'Show demo data (your real data stays safe)'}
           >
-            <AppIcon name="investments" size={20} />
+            <AppIcon name="sparkle" size={18} />
           </button>
-        )}
-        <button
-          className={`demotoggle${demo ? ' demotoggle--on' : ''}`}
-          onClick={handleDemoToggle}
-          aria-label={demo ? 'Exit demo mode' : 'Show demo data'}
-          title={demo ? 'Exit demo mode (restore your real data)' : 'Show demo data (your real data stays safe)'}
-        >
-          <AppIcon name="sparkle" size={18} />
-        </button>
-        <button
-          className="bell"
-          onClick={() => setInboxOpen(true)}
-          aria-label={dueCount > 0 ? `${dueCount} reminders due` : 'Reminders'}
-        >
-          <AppIcon name="bell" size={20} />
-          {dueCount > 0 && <span className="bell__badge">{dueCount > 9 ? '9+' : dueCount}</span>}
-        </button>
+          <button
+            className="bell"
+            onClick={() => setInboxOpen(true)}
+            aria-label={dueCount > 0 ? `${dueCount} reminders due` : 'Reminders'}
+          >
+            <AppIcon name="bell" size={20} />
+            {dueCount > 0 && <span className="bell__badge">{dueCount > 9 ? '9+' : dueCount}</span>}
+          </button>
+        </div>
       </header>
 
       {demo && (

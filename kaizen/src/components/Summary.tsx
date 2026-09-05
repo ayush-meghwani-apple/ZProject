@@ -14,6 +14,18 @@ interface Props {
   onChange: () => void;
 }
 
+function categoryRing(rows: ReturnType<typeof getCategorySummary>, total: number): string {
+  if (total <= 0 || rows.length === 0) return 'conic-gradient(var(--border) 0 100%)';
+  let start = 0;
+  const segments = rows.map((row) => {
+    const end = start + (row.total / total) * 100;
+    const segment = `${row.color} ${start}% ${end}%`;
+    start = end;
+    return segment;
+  });
+  return `conic-gradient(${segments.join(', ')})`;
+}
+
 export default function Summary({ version }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -48,33 +60,83 @@ export default function Summary({ version }: Props) {
   const spending = scoped.filter((expense) => expense.categoryId !== INVESTMENTS_CATEGORY_ID);
   const spendingTotal = totalSpend(spending);
   const investmentTotal = totalSpend(investments);
+  const investmentCategory = categories.find((category) => category.id === INVESTMENTS_CATEGORY_ID);
   const categorySummary = getCategorySummary(spending, categories);
+  const topCategory = categorySummary[0];
 
   return (
     <div className="page page--summary">
       <CycleFilter cycles={cycles} value={selected} onChange={setSelected} />
 
-      <div className="card">
-        <h3>{selectionLabel(cycles, selected)}</h3>
-        <div className="stat">{formatINR(spendingTotal)}</div>
-        <div className="stat--sub">{spending.length} expenses</div>
+      <div className="card summaryhero">
+        <div className="summaryhero__copy">
+          <span className="summaryhero__eyebrow">Total spending</span>
+          <div className="summaryhero__amount">{formatINR(spendingTotal)}</div>
+          <div className="summaryhero__period">
+            {selectionLabel(cycles, selected)} · {spending.length} transaction{spending.length === 1 ? '' : 's'}
+          </div>
+          {topCategory && (
+            <button
+              className="summaryhero__insight"
+              onClick={() => setExpandedId(topCategory.categoryId)}
+            >
+              <span style={{ background: topCategory.color }} />
+              Most spent on {topCategory.name}
+              <AppIcon name="chevronRight" size={14} />
+            </button>
+          )}
+        </div>
+        <div
+          className="summaryring"
+          style={{ background: categoryRing(categorySummary, spendingTotal) }}
+          aria-label={`${categorySummary.length} spending categories`}
+        >
+          <div className="summaryring__inner">
+            <strong>{categorySummary.length}</strong>
+            <span>categories</span>
+          </div>
+        </div>
       </div>
 
       {investmentTotal > 0 && (
         <div className="card">
-          <div className="row" style={{ padding: 0 }}>
-            <span>
-              <strong>📈 Investments &amp; Savings</strong>
-              <span className="muted"> · excluded from spending</span>
+          <button
+            className="barrow__head"
+            onClick={() =>
+              setExpandedId(expandedId === INVESTMENTS_CATEGORY_ID ? null : INVESTMENTS_CATEGORY_ID)
+            }
+          >
+            <span className="barrow__name summarycat__label">
+              <span>{investmentCategory?.icon ?? '📈'} Investments &amp; Savings</span>
+              <small>
+                Excluded from spending · {investments.length} transaction{investments.length === 1 ? '' : 's'}
+              </small>
             </span>
-            <strong>{formatINR(investmentTotal)}</strong>
-          </div>
+            <span className="barrow__amt">{formatINR(investmentTotal)}</span>
+            <AppIcon
+              name={expandedId === INVESTMENTS_CATEGORY_ID ? 'chevronUp' : 'chevronDown'}
+              size={16}
+            />
+          </button>
+          {expandedId === INVESTMENTS_CATEGORY_ID && (
+            <div style={{ marginTop: 6 }}>
+              {investments.map((expense) => (
+                <div className="row" key={expense.id}>
+                  <span>
+                    <span>{expense.note || expense.rawText || 'Investment or saving'}</span>
+                    <span className="muted"> · {formatDate(expense.date)}</span>
+                  </span>
+                  <strong>{formatINR(expense.amount)}</strong>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       <div className="card">
-        <h3>Category breakdown</h3>
-        <p className="card__subtitle">Tap a category to see its expenses.</p>
+        <h3>Where it went</h3>
+        <p className="card__subtitle">Tap any category for its transactions.</p>
 
         {categorySummary.length === 0 ? (
           <p className="muted">No expenses in this selection.</p>
@@ -87,15 +149,15 @@ export default function Summary({ version }: Props) {
               .sort((a, b) => b.date.localeCompare(a.date));
             const percentage = spendingTotal > 0 ? Math.round((row.total / spendingTotal) * 100) : 0;
             return (
-              <div className="summarycat" key={row.categoryId}>
+              <div className={`summarycat${open ? ' summarycat--open' : ''}`} key={row.categoryId}>
                 <button
                   className="barrow__head"
                   onClick={() => setExpandedId(open ? null : row.categoryId)}
                 >
                   <span className="barrow__dot" style={{ background: row.color }} />
-                  <span className="barrow__name">
-                    {category?.icon ? `${category.icon} ` : ''}
-                    {row.name}
+                  <span className="barrow__name summarycat__label">
+                    <span>{category?.icon ? `${category.icon} ` : ''}{row.name}</span>
+                    <small>{row.count} transaction{row.count === 1 ? '' : 's'}</small>
                   </span>
                   <span className="barrow__pct">{percentage}%</span>
                   <span className="barrow__amt">{formatINR(row.total)}</span>
@@ -108,9 +170,9 @@ export default function Summary({ version }: Props) {
                   />
                 </div>
                 {open && (
-                  <div style={{ marginTop: 6 }}>
+                  <div className="summarycat__entries">
                     {entries.map((expense) => (
-                      <div className="row" key={expense.id}>
+                      <div className="summaryentry" key={expense.id}>
                         <span>
                           <span>{expense.note || expense.rawText || 'Expense'}</span>
                           <span className="muted"> · {formatDate(expense.date)}</span>

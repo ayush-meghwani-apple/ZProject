@@ -61,6 +61,50 @@ describe('planFlatCategoryMigration', () => {
     ]);
   });
 
+  it('repairs an already-migrated future trip saving using its preserved raw text', () => {
+    const plan = planFlatCategoryMigration({
+      categories: [],
+      subcategories: [],
+      aliases: [
+        {
+          id: 'future-savings',
+          text: 'future savings',
+          categoryId: 'flat-investments-v1',
+        },
+      ],
+      expenses: [
+        {
+          id: 'trip-saving',
+          amount: 13500,
+          date: '2026-09-01T00:00:00.000Z',
+          categoryId: 'flat-investments-v1',
+          rawText: '13500 Trips Future savings',
+          createdAt: '2026-09-01T00:00:00.000Z',
+          updatedAt: '2026-09-01T00:00:00.000Z',
+        },
+        {
+          id: 'real-investment',
+          amount: 5000,
+          date: '2026-09-01T00:00:00.000Z',
+          categoryId: 'flat-investments-v1',
+          rawText: 'Mutual fund SIP',
+          createdAt: '2026-09-01T00:00:00.000Z',
+          updatedAt: '2026-09-01T00:00:00.000Z',
+        },
+      ],
+      recurring: [],
+      merchants: [],
+    });
+
+    expect(plan.expenses.map((expense) => expense.categoryId)).toEqual([
+      'flat-travel-v1',
+      'flat-investments-v1',
+    ]);
+    expect(plan.aliases.find((alias) => alias.text === 'future savings')?.categoryId).toBe(
+      'flat-travel-v1',
+    );
+  });
+
   it('maps every shared legacy subcategory to its intended flat category', () => {
     const mappings = [
       ['House hold expenses', 'flat-home-v1'],
@@ -87,7 +131,8 @@ describe('planFlatCategoryMigration', () => {
       ['Europe trip clear', 'flat-travel-v1'],
       ['Goa trip', 'flat-travel-v1'],
       ['Taiwan trip', 'flat-travel-v1'],
-      ['Future savings', 'flat-investments-v1'],
+      ['Future savings', 'flat-travel-v1'],
+      ['Future trip savings', 'flat-travel-v1'],
       ['Other', 'flat-other-v1'],
       ['Doctor', 'flat-health-v1'],
       ['Medicine', 'flat-health-v1'],

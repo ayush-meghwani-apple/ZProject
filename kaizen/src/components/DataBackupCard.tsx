@@ -144,10 +144,10 @@ export default function DataBackupCard({ onReload, beforeExport, defaultOpen = t
           <div className="dbk__panel">
             <div className="dbk__actions">
               <button className="dbk__act" onClick={exportBackup} disabled={busy}>
-                <AppIcon name="export" size={18} /> {busy ? '…' : 'Export'}
+                <AppIcon name="download" size={18} /> {busy ? '…' : 'Save to phone'}
               </button>
               <button className="dbk__act" onClick={() => importRef.current?.click()}>
-                <AppIcon name="download" size={18} /> Import
+                <AppIcon name="export" size={18} /> Load from phone
               </button>
               <button
                 className="dbk__act dbk__act--danger"

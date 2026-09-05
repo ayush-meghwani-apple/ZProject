@@ -21,6 +21,7 @@ import {
   setGmailSettings,
   markImported,
   markDismissed,
+  clearDismissedMemory,
 } from '../core/gmailSettings';
 import { guessCategory } from '../core/merchantCategory';
 import { detectSalary, SALARY_MIN_AMOUNT } from '../core/salaryDetect';
@@ -32,6 +33,8 @@ import { SalaryCycleRepository } from './salaryCycleRepository';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
+const PARSER_REVISION_KEY = 'gmail:parserRevision';
+const PARSER_REVISION = '2';
 
 // Minimal shape of the GIS token client we rely on (the library is loaded at
 // runtime from Google, so we declare only what we use).
@@ -274,16 +277,41 @@ function toRawEmail(msg: GmailMessage): RawEmail {
 
 interface ListResponse { messages?: { id: string }[]; }
 
+async function prepareParserRevision(): Promise<void> {
+  try {
+    if (localStorage.getItem(PARSER_REVISION_KEY) === PARSER_REVISION) return;
+  } catch {
+    return;
+  }
+
+  const expenses = await ExpenseRepository.getExpenses();
+  const falsePositives = expenses.filter(
+    (expense) =>
+      expense.autoImported &&
+      /no\s+further\s+cibil\s+check\s+required|pre[-\s]?approved\s+personal\s+loan/i.test(
+        expense.rawText ?? '',
+      ),
+  );
+  for (const expense of falsePositives) await ExpenseRepository.deleteExpense(expense.id);
+  clearDismissedMemory();
+  try {
+    localStorage.setItem(PARSER_REVISION_KEY, PARSER_REVISION);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Fetch recent bank/card emails, parse each into a candidate transaction, and
  * drop any Gmail message already imported or dismissed. Sorted newest first.
  * Requires an active connection (call {@link connect} first).
  */
 export async function sync(days?: number): Promise<Candidate[]> {
+  await prepareParserRevision();
   const settings = getGmailSettings();
   const window = days ?? settings.syncDays;
   const q = encodeURIComponent(buildGmailQuery(window));
-  const list = await api<ListResponse>(`/messages?maxResults=100&q=${q}`);
+  const list = await api<ListResponse>(`/messages?maxResults=500&q=${q}`);
   const ids = (list.messages ?? []).map((m) => m.id).filter((id) => !isHandled(id));
 
   const candidates: Candidate[] = [];

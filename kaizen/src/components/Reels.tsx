@@ -47,6 +47,8 @@ export default function Reels({ version, onChange }: Props) {
   const [cycleId, setCycleId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [methodMenuFor, setMethodMenuFor] = useState<string | null>(null);
+  const [categoryMenuFor, setCategoryMenuFor] = useState<string | null>(null);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [active, setActive] = useState(0);
   const [bigThreshold, setBigThreshold] = useState(0);
   const [remindExpense, setRemindExpense] = useState<Expense | null>(null);
@@ -93,15 +95,16 @@ export default function Reels({ version, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
-  // Close an open reel payment-method menu when tapping elsewhere.
+  // Close an open reel quick-edit menu when tapping elsewhere.
   useEffect(() => {
-    if (!methodMenuFor) return;
+    if (!methodMenuFor && !categoryMenuFor) return;
     function onDown(e: PointerEvent) {
       if (!(e.target as Element)?.closest?.('.reel__methodwrap')) setMethodMenuFor(null);
+      if (!(e.target as Element)?.closest?.('.reel__categorywrap')) setCategoryMenuFor(null);
     }
     document.addEventListener('pointerdown', onDown, true);
     return () => document.removeEventListener('pointerdown', onDown, true);
-  }, [methodMenuFor]);
+  }, [methodMenuFor, categoryMenuFor]);
 
   const reels = useMemo(() => {
     const list = cycleId ? expenses.filter((e) => e.salaryCycleId === cycleId) : expenses;
@@ -173,6 +176,31 @@ export default function Reels({ version, onChange }: Props) {
     setMethodMenuFor(null);
     await load();
     onChange();
+  }
+
+  async function setExpenseCategory(exp: Expense, categoryId: string) {
+    await ExpenseRepository.updateExpense({
+      ...exp,
+      categoryId: categoryId || undefined,
+      subcategoryId: undefined,
+    });
+    setCategoryMenuFor(null);
+    await load();
+    onChange();
+  }
+
+  async function saveExpenseNote(exp: Expense) {
+    const note = (noteDrafts[exp.id] ?? exp.note ?? '').trim();
+    if (note === (exp.note ?? '')) return;
+    await ExpenseRepository.updateExpense({ ...exp, note: note || undefined });
+    setNoteDrafts((current) => {
+      const next = { ...current };
+      delete next[exp.id];
+      return next;
+    });
+    await load();
+    onChange();
+    flashToast(note ? 'Note saved' : 'Note removed');
   }
 
   async function handleDelete(id: string) {
@@ -392,7 +420,38 @@ export default function Reels({ version, onChange }: Props) {
 
                   <div className="reel__amount">{formatINR(e.amount)}</div>
 
-                  <div className="reel__cat">{cat?.name ?? 'Uncategorized'}</div>
+                  <div className="reel__categorywrap" data-noswipe>
+                    <button
+                      className="reel__cat reel__catbtn"
+                      onClick={() => {
+                        setMethodMenuFor(null);
+                        setCategoryMenuFor(categoryMenuFor === e.id ? null : e.id);
+                      }}
+                      aria-label="Change category"
+                    >
+                      {cat?.name ?? 'Uncategorized'}
+                      <AppIcon name="chevronDown" size={15} />
+                    </button>
+                    {categoryMenuFor === e.id && (
+                      <div className="methodmenu methodmenu--reel reel__categorymenu">
+                        <button
+                          className={!e.categoryId ? 'is-on' : ''}
+                          onClick={() => setExpenseCategory(e, '')}
+                        >
+                          📦 Uncategorized
+                        </button>
+                        {categories.map((category) => (
+                          <button
+                            key={category.id}
+                            className={category.id === e.categoryId ? 'is-on' : ''}
+                            onClick={() => setExpenseCategory(e, category.id)}
+                          >
+                            {category.icon} {category.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {sub && (
                     <span className="reel__sub" style={{ borderColor: tint(color, 0.5) }}>
                       {sub.icon ? `${sub.icon} ` : ''}{sub.name}
@@ -454,11 +513,32 @@ export default function Reels({ version, onChange }: Props) {
                     </div>
                   )}
 
-                  {e.note ? (
-                    <div className="reel__note">{e.note}</div>
-                  ) : !isRecurring && e.rawText ? (
-                    <div className="reel__note reel__note--raw">{e.rawText}</div>
-                  ) : null}
+                  <form
+                    className="reel__noteedit"
+                    data-noswipe
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void saveExpenseNote(e);
+                    }}
+                  >
+                    <input
+                      className="input"
+                      aria-label="Expense note"
+                      placeholder="Add a note"
+                      value={noteDrafts[e.id] ?? e.note ?? ''}
+                      onChange={(event) =>
+                        setNoteDrafts((current) => ({ ...current, [e.id]: event.target.value }))
+                      }
+                    />
+                    <button
+                      className="btn btn--ghost"
+                      type="submit"
+                      aria-label="Save note"
+                      disabled={(noteDrafts[e.id] ?? e.note ?? '').trim() === (e.note ?? '')}
+                    >
+                      <AppIcon name="done" size={16} />
+                    </button>
+                  </form>
 
                   <div className="reel__actions">
                     <button className="reel__act reel__act--del" onClick={() => handleDelete(e.id)}>

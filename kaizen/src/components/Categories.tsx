@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { CategoryRepository } from '../repository/categoryRepository';
-import { formatCategoryStructure } from '../core/categoryStructure';
 import AppIcon from './AppIcon';
 import type { Alias, Category } from '../types/models';
 
@@ -14,7 +13,10 @@ export default function Categories({ version, onChange }: Props) {
   const [aliases, setAliases] = useState<Alias[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [copied, setCopied] = useState(false);
+  const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newIcon, setNewIcon] = useState('📦');
 
   async function load() {
     const [nextCategories, nextAliases] = await Promise.all([
@@ -51,22 +53,33 @@ export default function Categories({ version, onChange }: Props) {
     onChange();
   }
 
-  async function copyStructure() {
-    const text = formatCategoryStructure(categories, [], aliases);
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const area = document.createElement('textarea');
-      area.value = text;
-      area.style.position = 'fixed';
-      area.style.opacity = '0';
-      document.body.appendChild(area);
-      area.select();
-      document.execCommand('copy');
-      area.remove();
+  async function addCategory() {
+    const name = newName.trim();
+    if (!name || categories.some((category) => category.name.toLowerCase() === name.toLowerCase())) {
+      return;
     }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    const category = await CategoryRepository.addCategory(name, newIcon.trim() || '📦');
+    setNewName('');
+    setNewIcon('📦');
+    setAdding(false);
+    setOpenId(category.id);
+    await load();
+    onChange();
+  }
+
+  async function renameCategory(category: Category) {
+    const name = (nameDrafts[category.id] ?? category.name).trim();
+    if (!name || name === category.name) return;
+    if (categories.some((item) => item.id !== category.id && item.name.toLowerCase() === name.toLowerCase())) {
+      return;
+    }
+    await CategoryRepository.updateCategory({ ...category, name });
+    if (!aliases.some((alias) => alias.categoryId === category.id && alias.text === name.toLowerCase())) {
+      await CategoryRepository.addAlias(name, category.id);
+    }
+    setNameDrafts((current) => ({ ...current, [category.id]: name }));
+    await load();
+    onChange();
   }
 
   return (
@@ -79,10 +92,35 @@ export default function Categories({ version, onChange }: Props) {
               One category per expense. Aliases power chat and auto-import matching.
             </p>
           </div>
-          <button className="btn btn--sm btn--ghost" onClick={copyStructure}>
-            <AppIcon name="copy" size={15} /> {copied ? 'Copied' : 'Copy structure'}
+          <button className="btn btn--sm" onClick={() => setAdding((current) => !current)}>
+            <AppIcon name={adding ? 'close' : 'plus'} size={15} />
+            {adding ? 'Cancel' : 'New category'}
           </button>
         </div>
+        {adding && (
+          <div className="cats__new">
+            <input
+              className="input cats__iconinput"
+              aria-label="Category icon"
+              value={newIcon}
+              onChange={(event) => setNewIcon(event.target.value)}
+              maxLength={4}
+            />
+            <input
+              className="input"
+              placeholder="Category name"
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void addCategory();
+              }}
+              autoFocus
+            />
+            <button className="btn" onClick={addCategory} disabled={!newName.trim()}>
+              Add
+            </button>
+          </div>
+        )}
       </div>
 
       {categories.map((category) => {
@@ -105,6 +143,27 @@ export default function Categories({ version, onChange }: Props) {
 
             {open && (
               <div className="alias-editor">
+                <label className="field cats__rename">
+                  <span>Category name</span>
+                  <span className="inline">
+                    <input
+                      className="input"
+                      value={nameDrafts[category.id] ?? category.name}
+                      onChange={(event) =>
+                        setNameDrafts((current) => ({
+                          ...current,
+                          [category.id]: event.target.value,
+                        }))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') void renameCategory(category);
+                      }}
+                    />
+                    <button className="btn btn--sm" onClick={() => renameCategory(category)}>
+                      Save
+                    </button>
+                  </span>
+                </label>
                 <div className="alias-chips">
                   {categoryAliases.map((alias) => (
                     <span className="alias-chip" key={alias.id}>

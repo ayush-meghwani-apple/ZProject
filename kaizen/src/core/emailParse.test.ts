@@ -194,6 +194,16 @@ describe('parseTransactionEmail', () => {
     expect(p.merchant).toBe('HAPPYBELLYBAKES');
   });
 
+  it('rejects an ICICI pre-approved loan offer that mentions a credit card and INR amount', () => {
+    const p = parseTransactionEmail({
+      from: 'ICICI Bank <services@customer.icici.bank.in>',
+      subject: 'No further CIBIL check required',
+      body: 'Manage your unplanned expenses. With pre-approved Personal Loan on Credit Card. Congratulations! Based on your ICICI Bank Credit Card XX6005, you have a pre-approved Personal Loan offer of ₹2,40,000. Apply Now.',
+    });
+    expect(p.source).toBe('icici-cc');
+    expect(p.kind).toBe('promo');
+  });
+
   it('parses a YONO SBI fund transfer (Transaction success) as an account debit', () => {
     const p = parseTransactionEmail({
       from: 'YONO SBI <yonobysbi@alerts.sbi.bank.in>',
@@ -246,6 +256,21 @@ describe('parseTransactionEmail', () => {
     expect(p.amount).toBe(7977.92);
     expect(p.direction).toBe('debit');
     expect(p.merchant).toBe('raz*airbnb');
+    expect(p.accountLast4).toBe('3643');
+    expect(p.date).toBe('2026-09-05');
+  });
+
+  it('parses the BOB Card transaction-confirmation format', () => {
+    const p = parseTransactionEmail({
+      from: 'donotreply@bobcard.in',
+      subject: 'Transaction Confirmation on your BOBCARD',
+      body: 'Dear Customer, Thank you for using your BOBCARD **3643 for a transaction of INR 3,638.00 at vananam foods and bever on 05-09-2026. Following this transaction, the available balance on your card is Rs 195,494.00, with a total outstanding of Rs 0.00.',
+    });
+    expect(p.source).toBe('bobcard-cc');
+    expect(p.kind).toBe('card');
+    expect(p.amount).toBe(3638);
+    expect(p.direction).toBe('debit');
+    expect(p.merchant).toBe('vananam foods and bever');
     expect(p.accountLast4).toBe('3643');
     expect(p.date).toBe('2026-09-05');
   });

@@ -91,6 +91,15 @@ export function markDismissed(id: string): void {
   writeSet(DISMISSED_KEY, set);
 }
 
+/** Retry previously skipped mail after parser rules improve, without risking duplicate imports. */
+export function clearDismissedMemory(): void {
+  try {
+    localStorage.removeItem(DISMISSED_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Whether an id should be hidden from the review list (imported or dismissed). */
 export function isHandled(id: string): boolean {
   return isImported(id) || isDismissed(id);
