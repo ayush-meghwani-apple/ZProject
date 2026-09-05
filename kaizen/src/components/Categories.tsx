@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CategoryRepository } from '../repository/categoryRepository';
+import { formatCategoryStructure } from '../core/categoryStructure';
 import AppIcon from './AppIcon';
 import type { Alias, Category, Subcategory } from '../types/models';
 
@@ -24,6 +25,7 @@ export default function Categories({ version, onChange }: Props) {
   // The just-moved category id, shown with a brief highlight + badge so you can
   // tell which one moved even when the list scrolls.
   const [justMovedId, setJustMovedId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   // Which category cards are expanded to show their sub-categories.
   const [openCats, setOpenCats] = useState<Set<string>>(new Set());
 
@@ -168,10 +170,33 @@ export default function Categories({ version, onChange }: Props) {
     onChange();
   }
 
+  async function copyCategoryStructure() {
+    const text = formatCategoryStructure(categories, subcategories, aliases);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
   return (
     <div className="page page--cats">
       <div className="card">
-        <h3>New Category</h3>
+        <div className="row" style={{ padding: 0, flexWrap: 'wrap', gap: 8 }}>
+          <h3 style={{ margin: 0 }}>New Category</h3>
+          <button className="btn btn--sm btn--ghost" onClick={copyCategoryStructure}>
+            <AppIcon name="copy" size={15} /> {copied ? 'Copied' : 'Copy category structure'}
+          </button>
+        </div>
         <p className="card__subtitle">Create a category to organize your expenses.</p>
         <div className="inline" style={{ marginBottom: 10 }}>
           <input

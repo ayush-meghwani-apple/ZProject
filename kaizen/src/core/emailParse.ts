@@ -312,7 +312,7 @@ export function sourceLabel(source: TxnSource): string {
 export function buildGmailQuery(days: number): string {
   const senders = [
     'from:sbicard.com',
-    'from:bobcard.in',
+    'from:donotreply@bobcard.in',
     'from:aubank.in',
     'from:hsbc.co.in',
     'from:mail.hsbc.co.in',

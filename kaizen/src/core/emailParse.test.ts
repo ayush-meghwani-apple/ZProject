@@ -280,7 +280,7 @@ describe('buildGmailQuery', () => {
   it('includes all tracked senders and a recency window (no subject filter)', () => {
     const q = buildGmailQuery(60);
     expect(q).toContain('from:sbicard.com');
-    expect(q).toContain('from:bobcard.in');
+    expect(q).toContain('from:donotreply@bobcard.in');
     expect(q).toContain('from:aubank.in');
     expect(q).toContain('from:icicibank.com');
     expect(q).toContain('from:icici.bank.in');
