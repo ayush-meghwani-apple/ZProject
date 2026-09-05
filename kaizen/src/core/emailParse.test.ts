@@ -76,6 +76,18 @@ describe('detectSource', () => {
   it('detects HSBC credit card', () => {
     expect(detectSource('HSBC <alerts@hsbc.co.in>', 'HSBC Credit Card', 'x')).toBe('hsbc-cc');
   });
+  it('detects BOB and AU credit cards', () => {
+    expect(detectSource('BOBCARD <donotreply@bobcard.in>', 'Transaction alert', 'BOBCARD')).toBe(
+      'bobcard-cc',
+    );
+    expect(
+      detectSource(
+        'AU Bank <aucreditcards.alerts@aubank.in>',
+        'AU Bank Credit Card Transaction Alert',
+        '',
+      ),
+    ).toBe('au-cc');
+  });
   it('detects ICICI only when it is a credit card', () => {
     expect(detectSource('ICICI <cc@icicibank.com>', 'ICICI Credit Card alert', 'x')).toBe('icici-cc');
     expect(detectSource('ICICI <alerts@icicibank.com>', 'Account update', 'x')).toBe('unknown');
@@ -223,12 +235,53 @@ describe('parseTransactionEmail', () => {
     });
     expect(p.kind).toBe('promo');
   });
+
+  it('parses a BOB Card spend with a dotted merchant name', () => {
+    const p = parseTransactionEmail({
+      from: 'BOBCARD <donotreply@bobcard.in>',
+      subject: 'Dear Customer',
+      body: 'Thank you for using your BOBCARD **3643 for a transaction of INR 7,977.92 at raz*airbnb on 05-09-2026. Following this transaction, the available balance on your card is Rs 183,184.00.',
+    });
+    expect(p.source).toBe('bobcard-cc');
+    expect(p.amount).toBe(7977.92);
+    expect(p.direction).toBe('debit');
+    expect(p.merchant).toBe('raz*airbnb');
+    expect(p.accountLast4).toBe('3643');
+    expect(p.date).toBe('2026-09-05');
+  });
+
+  it('keeps a BOB Card reversal as a credit so it is not imported as a spend', () => {
+    const p = parseTransactionEmail({
+      from: 'BOBCARD <donotreply@bobcard.in>',
+      subject: 'Dear Customer',
+      body: 'BOBCARD UPDATE: Transaction on your BOBCARD ending 3643 for INR 4,162.08 is credited/reversed by Agoda Com Ximen Le R on 05-09-2026.',
+    });
+    expect(p.source).toBe('bobcard-cc');
+    expect(p.amount).toBe(4162.08);
+    expect(p.direction).toBe('credit');
+  });
+
+  it('parses an AU Bank Credit Card spend', () => {
+    const p = parseTransactionEmail({
+      from: 'AU Bank Credit Card Alerts <aucreditcards.alerts@aubank.in>',
+      subject: 'AU Bank Credit Card Transaction Alert',
+      body: 'INR 1,178.82 were spent on your AU Bank Credit Card xx7985 at UPI/KIWI SUBSCRIPTION on 03-09-2026 at 10:49:23 pm.',
+    });
+    expect(p.source).toBe('au-cc');
+    expect(p.amount).toBe(1178.82);
+    expect(p.direction).toBe('debit');
+    expect(p.merchant).toBe('UPI/KIWI SUBSCRIPTION');
+    expect(p.accountLast4).toBe('7985');
+    expect(p.date).toBe('2026-09-03');
+  });
 });
 
 describe('buildGmailQuery', () => {
   it('includes all tracked senders and a recency window (no subject filter)', () => {
     const q = buildGmailQuery(60);
     expect(q).toContain('from:sbicard.com');
+    expect(q).toContain('from:bobcard.in');
+    expect(q).toContain('from:aubank.in');
     expect(q).toContain('from:icicibank.com');
     expect(q).toContain('from:icici.bank.in');
     expect(q).toContain('from:sbi.bank.in');

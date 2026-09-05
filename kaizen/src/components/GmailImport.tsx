@@ -101,9 +101,9 @@ export default function GmailImport({ onChange }: Props) {
       icon="add"
     >
       <p className="muted" style={{ marginTop: 0 }}>
-        Reads bank &amp; card alert emails (HSBC, ICICI, SBI Card, SBI &amp; IDFC a/c) and adds the
-        spends straight into your expenses — review them in the <strong>Reels</strong> tab.
-        Salary credits start a new cycle. Read-only; nothing leaves your device.
+        Reads bank &amp; card alerts (SBI, HSBC, ICICI, BOB, AU &amp; IDFC) and adds spends straight
+        into your expenses — review them in the <strong>Reels</strong> tab. Salary credits start a
+        new cycle. Read-only; nothing leaves your device.
       </p>
 
       {!hasClientId && (

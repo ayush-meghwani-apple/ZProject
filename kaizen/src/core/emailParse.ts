@@ -12,6 +12,8 @@ export type TxnSource =
   | 'sbicard' //      SBI credit card (RuPay, used for UPI)
   | 'hsbc-cc' //      HSBC credit card
   | 'icici-cc' //     ICICI Bank credit card
+  | 'bobcard-cc' //   Bank of Baroda credit card
+  | 'au-cc' //        AU Small Finance Bank credit card
   | 'sbi-savings' //  SBI savings account (UPI / debit alerts)
   | 'idfc-savings' //  IDFC FIRST Bank account (salary credit)
   | 'unknown';
@@ -177,7 +179,7 @@ export function extractMerchant(text: string): string | null {
   const patterns: RegExp[] = [
     /\bInfo:\s*([^.\n]+?)(?:\.|$)/i,
     /\bbeneficiary\s+name\s+([A-Za-z][^\n]*?)(?:\s+beneficiary|\s+account\b|\.|$)/i,
-    /\bat\s+([A-Z0-9][^.\n]*?)(?:\s+on\b|\s+dated\b|\.|$)/,
+    /\bat\s+([A-Z0-9].{1,59}?)(?:\s+on\b|\s+dated\b|\.(?:\s|$)|$)/i,
     /\btowards\s+([^.\n]+?)(?:\s+on\b|\.|$)/i,
     /\bto\s+VPA\s+([^\s.]+)/i,
     /\btrf\s+to\s+([^.\n]+?)(?:\s+on\b|\s+Ref\b|\.|$)/i,
@@ -199,6 +201,8 @@ export function detectSource(from: string, subject: string, body: string): TxnSo
   const hay = `${subject} ${body}`.toLowerCase();
   if (f.includes('sbicard') || /sbi\s*card/.test(hay)) return 'sbicard';
   if (f.includes('hsbc') || hay.includes('hsbc')) return 'hsbc-cc';
+  if (f.includes('bobcard') || hay.includes('bobcard')) return 'bobcard-cc';
+  if (f.includes('aubank') || /au\s+(?:bank\s+)?credit\s+card/.test(hay)) return 'au-cc';
   if (f.includes('idfc') || hay.includes('idfc first')) return 'idfc-savings';
   if (f.includes('icici') || hay.includes('icici')) {
     // ICICI sends both bank and card alerts; we only track the credit card.
@@ -232,7 +236,14 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
   if (CREDIT_WORDS.test(text) && !STRONG_DEBIT_WORDS.test(text)) direction = 'credit';
   else if (DEBIT_WORDS.test(text)) direction = 'debit';
   // Credit-card spends read as a debit even when worded "used for a transaction".
-  if (direction === null && (source === 'sbicard' || source === 'hsbc-cc' || source === 'icici-cc')) {
+  if (
+    direction === null &&
+    (source === 'sbicard' ||
+      source === 'hsbc-cc' ||
+      source === 'icici-cc' ||
+      source === 'bobcard-cc' ||
+      source === 'au-cc')
+  ) {
     direction = 'debit';
   }
 
@@ -286,6 +297,8 @@ export function sourceLabel(source: TxnSource): string {
     case 'sbicard': return 'SBI Credit Card';
     case 'hsbc-cc': return 'HSBC Credit Card';
     case 'icici-cc': return 'ICICI Credit Card';
+    case 'bobcard-cc': return 'BOB Credit Card';
+    case 'au-cc': return 'AU Bank Credit Card';
     case 'sbi-savings': return 'SBI Savings A/C';
     case 'idfc-savings': return 'IDFC Bank A/C';
     default: return 'Unknown';
@@ -299,6 +312,8 @@ export function sourceLabel(source: TxnSource): string {
 export function buildGmailQuery(days: number): string {
   const senders = [
     'from:sbicard.com',
+    'from:bobcard.in',
+    'from:aubank.in',
     'from:hsbc.co.in',
     'from:mail.hsbc.co.in',
     'from:hsbc.com',
