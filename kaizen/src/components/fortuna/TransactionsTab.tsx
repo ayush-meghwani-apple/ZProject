@@ -116,6 +116,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   const [fTo, setFTo] = useState('');
   const [fQuery, setFQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(50);
+  const [openMonths, setOpenMonths] = useState<Set<string>>(() => new Set());
 
   const rows = useMemo<UnifiedRow[]>(() => {
     const mfRows: UnifiedRow[] = funds.flatMap((f) =>
@@ -282,6 +283,15 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
 
   useEffect(() => setVisibleCount(50), [fQuery, fCls, fType, fKind, fRange, fFrom, fTo]);
 
+  function toggleMonth(month: string) {
+    setOpenMonths((previous) => {
+      const next = new Set(previous);
+      if (next.has(month)) next.delete(month);
+      else next.add(month);
+      return next;
+    });
+  }
+
   // ---- mutations ----------------------------------------------------------
   function editTxn(fundId: string, txnId: string, patch: Partial<MFTransaction>) {
     update((d) => {
@@ -428,10 +438,22 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
               const isPos = r.source === 'holding';
               const month = monthLabel(r.date);
               const previousMonth = index > 0 ? monthLabel(visibleRows[index - 1].date) : '';
+              const monthOpen = openMonths.has(month);
+              if (!monthOpen && month === previousMonth) return null;
               return (
                 <div className="ft-led__entry" key={r.id}>
-                  {month !== previousMonth && <h3 className="ft-led__month">{month}</h3>}
-                  <div className={`ft-led__item ${review ? 'ft-led__item--review' : ''} ${isPos ? 'ft-led__item--pos' : ''}`}>
+                  {month !== previousMonth && (
+                    <button
+                      className="ft-led__month"
+                      onClick={() => toggleMonth(month)}
+                      aria-expanded={monthOpen}
+                      aria-label={`${month} transactions, ${monthOpen ? 'expanded' : 'collapsed'}`}
+                    >
+                      <span>{month}</span>
+                      <AppIcon name={monthOpen ? 'chevronUp' : 'chevronDown'} size={16} />
+                    </button>
+                  )}
+                  {monthOpen && <div className={`ft-led__item ${review ? 'ft-led__item--review' : ''} ${isPos ? 'ft-led__item--pos' : ''}`}>
                   <div className="ft-led__row">
                     <button className="ft-led__main" onClick={() => setOpenId((id) => (id === r.id ? null : r.id))}>
                       {r.isSip && (
@@ -572,7 +594,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                       </div>
                     </div>
                   )}
-                  </div>
+                  </div>}
                 </div>
               );
             })}

@@ -57,6 +57,23 @@ export function mergeMfEmailCandidates(
   resolutions: MfSchemeResolution[],
 ): MfEmailMergeResult {
   let removedGenerated = 0;
+  for (const fund of funds) {
+    const confirmedMonths = new Set(
+      fund.transactions
+        .filter((transaction) => transaction.importSource === 'etmoney' && !!transaction.sourceId)
+        .map((transaction) => localMonth(transaction.date))
+        .filter((month) => month >= MF_EMAIL_IMPORT_START.slice(0, 7)),
+    );
+    fund.transactions = fund.transactions.filter((transaction) => {
+      const replace =
+        transaction.kind === 'sip' &&
+        transaction.auto === true &&
+        !transaction.sourceId &&
+        confirmedMonths.has(localMonth(transaction.date));
+      if (replace) removedGenerated++;
+      return !replace;
+    });
+  }
   const resolutionMap = new Map(resolutions.map((item) => [normalizeMfSchemeName(item.emailSchemeName), item]));
   const knownSources = new Set(
     funds.flatMap((fund) => fund.transactions.map((transaction) => transaction.sourceId).filter(Boolean)),

@@ -186,6 +186,7 @@ function Fortuna({ onLock }: { onLock: () => void }) {
       if (!prev) return prev;
       const draft = clone(prev);
       mutator(draft);
+      captureDailySnapshot(draft);
       pendingSave.current = draft;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {

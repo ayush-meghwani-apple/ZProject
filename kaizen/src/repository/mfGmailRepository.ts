@@ -14,6 +14,7 @@ import {
   MF_EMAIL_IMPORT_START,
 } from '../core/mfGmailSettings';
 import { getGmailSettings } from '../core/gmailSettings';
+import { captureDailySnapshot } from '../core/planSnapshot';
 import { PlannerRepository } from './plannerRepository';
 import { GmailRepository } from './gmailRepository';
 
@@ -111,6 +112,7 @@ async function runMonthSync(year: number, month: number, interactive: boolean): 
     }
 
     const result = mergeMfEmailCandidates((plan.mutualFunds ??= []), candidates, resolutions);
+    if (result.imported > 0 || result.removedGenerated > 0) captureDailySnapshot(plan);
     await PlannerRepository.save(plan);
     markMfEmailsHandled(candidates.map((candidate) => candidate.messageId));
     const completedAt = new Date().toISOString();

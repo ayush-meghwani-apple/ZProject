@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mfMonthlyTrend } from './mfTrend';
+import { mfMonthlyTrend, mfValueSeries } from './mfTrend';
 import type { NavPoint } from './amfi';
 import type { MutualFundHolding } from '../types/models';
 
@@ -56,5 +56,33 @@ describe('mfMonthlyTrend', () => {
     });
     const trend = mfMonthlyTrend([f], {}, 12, new Date(2025, 0, 20));
     expect(trend[trend.length - 1].value).toBe(2000); // 100 × 20
+  });
+});
+
+describe('mfValueSeries', () => {
+  it('shows a newly confirmed SIP on its real date in the seven-day range', () => {
+    const f = fund({
+      transactions: [
+        { id: 'old', date: '2026-08-01T00:00:00.000Z', amount: 1000, units: 100, nav: 10, kind: 'sip' },
+        { id: 'email', date: '2026-09-03T00:00:00.000Z', amount: 500, units: 50, nav: 10, kind: 'sip', importSource: 'etmoney' },
+      ],
+    });
+    const points = mfValueSeries([f], {}, '7D', new Date('2026-09-06T00:00:00.000Z'), 8);
+
+    expect(points[0].invested).toBe(1000);
+    expect(points[points.length - 1]?.invested).toBe(1500);
+    expect(points.some((point) => point.t === new Date('2026-09-03T00:00:00.000Z').getTime() && point.invested === 1500)).toBe(true);
+  });
+
+  it('includes a zero baseline when the first investment falls inside the range', () => {
+    const f = fund({
+      transactions: [
+        { id: 'email', date: '2026-09-03T00:00:00.000Z', amount: 500, units: 50, nav: 10, kind: 'sip', importSource: 'etmoney' },
+      ],
+    });
+    const points = mfValueSeries([f], {}, '7D', new Date('2026-09-06T00:00:00.000Z'), 8);
+
+    expect(points[0]).toMatchObject({ invested: 0, value: 0 });
+    expect(points[points.length - 1]).toMatchObject({ invested: 500, value: 600 });
   });
 });

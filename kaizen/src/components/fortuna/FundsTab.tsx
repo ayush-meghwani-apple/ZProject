@@ -5,7 +5,7 @@ import { MF_CATEGORIES } from '../../types/models';
 import { formatINR, newId, now } from '../../core/util';
 import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
 import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
-import { mfMonthlyTrend } from '../../core/mfTrend';
+import { mfValueSeries, type TrendRange } from '../../core/mfTrend';
 import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
 import LineChart from './LineChart';
 import AmountInput from '../AmountInput';
@@ -120,7 +120,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   // from a module-level cache so switching back to Pulse redraws the same curve
   // instantly instead of flickering from a fallback shape while NAVs refetch.
   const [navs, setNavs] = useState<Record<number, NavPoint[]>>(() => ({ ...NAV_CACHE }));
-  const [perfMonths, setPerfMonths] = useState(12);
+  const [perfRange, setPerfRange] = useState<TrendRange>('1M');
 
   // A fund is "active" if it has a running SIP; otherwise it's held but not
   // being added to (inactive).
@@ -197,20 +197,20 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const asOf = new Date();
   const { groups, total } = byCategory(shownFunds, asOf);
 
-  // Pulse performance re-traced from the FIRST transaction: a month-by-month
-  // invested-vs-value curve, pricing each month's cumulative units at that
-  // month's NAV (from the fetched history; falls back to the latest NAV offline).
-  const perfTrend = mfMonthlyTrend(funds, navs, perfMonths, asOf);
+  // Reconstruct the selected period from dated transactions and historical NAVs.
+  const perfTrend = mfValueSeries(funds, navs, perfRange, asOf);
   const perfFirst = perfTrend[0];
   const perfLast = perfTrend[perfTrend.length - 1];
   const perfDelta = perfTrend.length >= 2 ? perfLast.value - perfFirst.value : 0;
   const perfPct = perfTrend.length >= 2 && perfFirst.value > 0 ? (perfDelta / perfFirst.value) * 100 : 0;
-  const monthLabel = (ym: string) => {
-    const [y, m] = ym.split('-');
-    return `${new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-IN', { month: 'short' })} '${y.slice(2)}`;
-  };
-  const PERF_RANGES: { m: number; l: string }[] = [
-    { m: 6, l: '6M' }, { m: 12, l: '1Y' }, { m: 36, l: '3Y' }, { m: 9999, l: 'Max' },
+  const trendLabel = (timestamp: number) => new Date(timestamp).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: perfRange === '3Y' || perfRange === 'MAX' ? '2-digit' : undefined,
+  });
+  const PERF_RANGES: { value: TrendRange; label: string }[] = [
+    { value: '7D', label: '7D' }, { value: '1M', label: '1M' }, { value: '6M', label: '6M' },
+    { value: '1Y', label: '1Y' }, { value: '3Y', label: '3Y' }, { value: 'MAX', label: 'Max' },
   ];
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
@@ -278,7 +278,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
             <ReturnPills s={total} />
             <div className="ft-trend">
               <div className="ft-trend__head">
-                <span className="ft-trend__title">Performance · since first investment</span>
+                <span className="ft-trend__title">Performance</span>
                 {perfTrend.length >= 2 && (
                   <span className={`ft-trend__delta ${perfDelta > 0 ? 'ft-mf__pos' : perfDelta < 0 ? 'ft-mf__neg' : ''}`}>
                     {perfDelta > 0 ? '\u25b2' : perfDelta < 0 ? '\u25bc' : '\u25a0'} {formatINR(Math.abs(perfDelta))}{' '}
@@ -287,7 +287,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
                 )}
               </div>
               <LineChart
-                labels={perfTrend.map((p) => monthLabel(p.ym))}
+                labels={perfTrend.map((p) => trendLabel(p.t))}
                 series={[
                   { label: 'Value', color: '#6366f1', values: perfTrend.map((p) => p.value) },
                   { label: 'Invested', color: '#94a3b8', values: perfTrend.map((p) => p.invested), dashed: true },
@@ -297,14 +297,14 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               />
               <div className="ft-trend__foot">
                 <div className="ft-trend__ranges">
-                  {PERF_RANGES.map((r) => (
+                  {PERF_RANGES.map((rangeOption) => (
                     <button
-                      key={r.l}
-                      className={perfMonths === r.m ? 'active' : ''}
+                      key={rangeOption.value}
+                      className={perfRange === rangeOption.value ? 'active' : ''}
                       onPointerDown={(e) => e.preventDefault()}
-                      onClick={() => setPerfMonths(r.m)}
+                      onClick={() => setPerfRange(rangeOption.value)}
                     >
-                      {r.l}
+                      {rangeOption.label}
                     </button>
                   ))}
                 </div>

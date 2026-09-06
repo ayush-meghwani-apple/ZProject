@@ -50,6 +50,26 @@ describe('mergeMfEmailCandidates', () => {
     expect(result.duplicates).toBe(1);
   });
 
+  it('removes a stale generated SIP when its Gmail confirmation was already imported', () => {
+    const funds = [fund()];
+    mergeMfEmailCandidates(funds, [candidate], []);
+    funds[0].transactions.push({
+      id: 'stale-generated',
+      date: new Date(2026, 8, 1).toISOString(),
+      amount: 5100,
+      units: 0,
+      nav: 0,
+      kind: 'sip',
+      auto: true,
+      processing: true,
+    });
+
+    const result = mergeMfEmailCandidates(funds, [], []);
+
+    expect(result).toMatchObject({ imported: 0, duplicates: 0, removedGenerated: 1 });
+    expect(funds[0].transactions.some((transaction) => transaction.id === 'stale-generated')).toBe(false);
+  });
+
   it('does not remove generated entries unless that fund-month has a confirmation', () => {
     const funds = [fund()];
     const result = mergeMfEmailCandidates(funds, [], []);

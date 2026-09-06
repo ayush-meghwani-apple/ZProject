@@ -76,7 +76,7 @@ export function mfMonthlyTrend(
   return out.slice(-months);
 }
 
-export type TrendRange = '1M' | '6M' | '1Y' | 'MAX';
+export type TrendRange = '7D' | '1M' | '6M' | '1Y' | '3Y' | 'MAX';
 
 export interface ValuePoint {
   t: number; // timestamp
@@ -110,12 +110,15 @@ export function mfValueSeries(
   if (!Number.isFinite(first)) return [];
 
   const end = asOf.getTime();
-  const monthsBack = range === '1M' ? 1 : range === '6M' ? 6 : range === '1Y' ? 12 : null;
+  const daysBack = range === '7D' ? 7 : null;
+  const monthsBack = range === '1M' ? 1 : range === '6M' ? 6 : range === '1Y' ? 12 : range === '3Y' ? 36 : null;
   let start = first;
-  if (monthsBack != null) {
+  if (daysBack != null) {
+    start = end - daysBack * 86400000;
+  } else if (monthsBack != null) {
     const d = new Date(asOf);
     d.setMonth(d.getMonth() - monthsBack);
-    start = Math.max(first, d.getTime());
+    start = d.getTime();
   }
   if (start >= end) start = first;
 

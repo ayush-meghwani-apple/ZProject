@@ -6262,15 +6262,24 @@ button.ft-settings__card {
   color: var(--muted);
 }
 .ft-led__month {
-  margin: 18px 2px 6px;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 11px 2px 7px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
 }
 .ft-led__entry:first-child .ft-led__month {
-  margin-top: 14px;
+  margin-top: 8px;
 }
 .ft-led__item {
   margin-top: 6px;
