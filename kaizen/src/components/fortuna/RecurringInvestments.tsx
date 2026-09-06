@@ -5,7 +5,7 @@ import { newSip, firstSipDate, SIP_DESTINATIONS, destinationIsEquity } from '../
 import { formatINR, formatDate } from '../../core/util';
 import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
-import { Section } from './shared';
+import { FortunaSheet, Section } from './shared';
 
 const EQUITY_CATS = ['Largecap', 'Midcap', 'Smallcap', 'Flexi/Multi cap'];
 const FREQ: { value: SipFrequency; label: string }[] = [
@@ -87,7 +87,12 @@ export default function RecurringInvestments({
             </button>
 
             {open && (
-              <div className="ft-sip__body">
+              <FortunaSheet
+                title={s.label.trim() || 'New recurring investment'}
+                subtitle="Contribution, destination and schedule"
+                onClose={() => setOpenId(null)}
+              >
+              <div className="ft-sip__body ft-sheet__form">
                 <label className="ft-row">
                   <span className="ft-row__label">Name</span>
                   <span className="ft-row__field">
@@ -237,6 +242,7 @@ export default function RecurringInvestments({
                   </button>
                 </div>
               </div>
+              </FortunaSheet>
             )}
           </div>
         );

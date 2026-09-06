@@ -10,6 +10,7 @@ import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
 import LineChart from './LineChart';
 import AmountInput from '../AmountInput';
 import AppIcon, { type IconName } from '../AppIcon';
+import { FortunaSheet } from './shared';
 
 const catLabel = (c: MFCategory) => MF_CATEGORIES.find((x) => x.value === c)?.label ?? 'Other';
 
@@ -360,13 +361,18 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
           </div>
         ))}
 
-        {adding ? (
-          <AddFund onCancel={() => setAdding(false)} onAdd={addFund} existing={funds.map((f) => f.schemeCode)} />
-        ) : (
-          <button className="btn ft-addclass" onClick={() => setAdding(true)}>
-            <AppIcon name="plus" size={18} /> Add mutual fund
-          </button>
+        {adding && (
+          <FortunaSheet
+            title="Add mutual fund"
+            subtitle="Find an AMFI scheme and optionally set up a SIP"
+            onClose={() => setAdding(false)}
+          >
+            <AddFund onCancel={() => setAdding(false)} onAdd={addFund} existing={funds.map((f) => f.schemeCode)} />
+          </FortunaSheet>
         )}
+        <button className="btn ft-addclass" onClick={() => setAdding(true)}>
+          <AppIcon name="plus" size={18} /> Add mutual fund
+        </button>
       </div>
     </main>
   );

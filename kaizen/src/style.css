@@ -1177,8 +1177,7 @@ input.pmrow__nameinput {
   border-color: var(--accent);
 }
 
-.chat__input button,
-.btn {
+.chat__input button {
   background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
   color: #fff;
   border: none;
@@ -1191,32 +1190,12 @@ input.pmrow__nameinput {
   box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
 }
 
-.btn--ghost {
-  background: var(--surface-2);
-  color: var(--text);
-  box-shadow: none;
-}
-
-.btn--danger {
-  color: var(--bad);
-  border: 1px solid rgba(248, 113, 113, 0.45);
-}
-
 /* ---- Generic content ---- */
 .page {
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-  min-width: 0;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 }
 
 /* Up/down reorder buttons on category cards (reliable on touch). */
@@ -1241,22 +1220,6 @@ input.pmrow__nameinput {
 .reorder__btn:disabled {
   opacity: 0.25;
   cursor: default;
-}
-
-.card h3 {
-  margin: 0 0 12px;
-  font-size: 14px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Short explainer under a card heading, to clarify a section's purpose. */
-.card__subtitle {
-  margin: -6px 0 12px;
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.4;
 }
 
 .stat {
@@ -1433,20 +1396,6 @@ input.pmrow__nameinput {
   padding: 40px 16px;
 }
 
-.iconbtn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 16px;
-  padding: 4px 8px;
-}
-
-.iconbtn:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
 .recur-form {
   display: flex;
   flex-direction: column;
@@ -1596,38 +1545,6 @@ input.pmrow__nameinput {
     width: 36px;
     height: 36px;
   }
-}
-
-.input,
-.select {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 15px;
-  width: 100%;
-}
-
-/* iOS renders date/time inputs at an intrinsic width that ignores width:100%
-   and overflows the form. Strip the native appearance so they size like every
-   other field. */
-.input[type='date'],
-.input[type='time'],
-.input[type='datetime-local'] {
-  -webkit-appearance: none;
-  appearance: none;
-  min-width: 0;
-  max-width: 100%;
-}
-
-/* Native <select> dropdown options render on a light OS menu, so force dark text
-   on a white background — otherwise the app's light input text is invisible. */
-.input option,
-.select option,
-select option {
-  color: #0f172a;
-  background: #ffffff;
 }
 
 .inline {
@@ -1895,93 +1812,6 @@ select option {
 .pill--warn {
   background: rgba(239, 68, 68, 0.18);
   color: var(--bad);
-}
-
-/* ---- Modal ---- */
-.modal__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal__backdrop--form {
-  padding: 12px;
-  background: rgba(3, 7, 18, 0.76);
-  backdrop-filter: blur(5px);
-}
-
-.modal__backdrop--form .modal__card {
-  width: min(420px, 100%);
-  max-height: calc(100dvh - 24px);
-  border-radius: 14px;
-  padding-bottom: 0;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
-}
-
-.formdrawer__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.formdrawer__head h3,
-.formdrawer__head .card__subtitle {
-  margin: 0;
-}
-
-.modal__card {
-  width: 100%;
-  max-width: 560px;
-  background: var(--surface);
-  border-top-left-radius: 18px;
-  border-top-right-radius: 18px;
-  border: 1px solid var(--border);
-  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
-  max-height: 90dvh;
-  overflow-y: auto;
-}
-
-.modal__card h3 {
-  margin: 0 0 16px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.field > span {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.modal__footer {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin: 16px -16px 0;
-  padding: 12px 16px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-}
-
-@media (min-width: 560px) {
-  .modal__backdrop {
-    align-items: center;
-  }
-  .modal__card {
-    border-radius: 18px;
-  }
 }
 
 /* Remind modal options */
@@ -2528,11 +2358,6 @@ select option {
 }
 
 /* ---- Phase B: reminders, bell inbox, reels quick-add, pie drill-down ---- */
-
-.btn--sm {
-  padding: 6px 12px;
-  font-size: 12px;
-}
 
 .pie__head {
   display: flex;
@@ -5324,6 +5149,12 @@ svg.lucide {
   gap: 12px;
   flex: 1;
   min-width: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
 }
 .ft-section__togglehead .ft-section__headtext {
   display: flex;
@@ -5331,6 +5162,12 @@ svg.lucide {
   flex-direction: column;
   min-width: 0;
   gap: 2px;
+}
+.ft-section__toggleactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 .ft-section--collapsible.ft-section--open .ft-section__body {
   margin-top: 12px;
@@ -5967,27 +5804,51 @@ svg.lucide {
   appearance: none;
 }
 /* Add-transaction modal (centred popup, so focus lands on the form). */
-.ft-addmodal {
+.ft-addmodal,
+.ft-sheet {
   width: min(460px, 94vw);
-  max-height: 88vh;
-  overflow-y: auto;
+  max-height: calc(100dvh - 24px);
 }
-.ft-addmodal__head {
+.ft-addmodal__head,
+.ft-sheet__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 14px;
 }
-.ft-addmodal__head h3 {
+.ft-addmodal__head h3,
+.ft-sheet__head h3 {
   margin: 0;
   font-size: 16px;
 }
-.ft-addmodal .ft-mf__add {
+.ft-addmodal .ft-mf__add,
+.ft-sheet .ft-mf__add {
   border: none;
   padding: 0;
   margin: 0;
 }
+.ft-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ft-sheet__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ft-sheet__form .ft-row {
+  min-height: 44px;
+}
+.ft-sheet__form .ft-row__field {
+  flex-basis: 52%;
+  max-width: 52%;
+}
+.ft-sheet__footer {
+  margin-top: 16px;
+}
+
 .ft-settings {
   gap: 10px;
 }
@@ -7957,70 +7818,6 @@ button.ft-settings__card {
   color: var(--muted);
   font-weight: 500;
   font-size: 12px;
-}
-
-/* ---- Shared settings-card header (icon + title + subtitle + chevron) ---- */
-.scard__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  background: none;
-  border: none;
-  padding: 2px 0 10px;
-  cursor: pointer;
-  color: inherit;
-  text-align: left;
-}
-.scard__head > svg:last-child {
-  flex: 0 0 auto;
-  color: var(--muted);
-}
-.scard__icon {
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
-}
-.scard__headtext {
-  flex: 1;
-  min-width: 0;
-}
-.scard__title {
-  display: block;
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: -0.2px;
-}
-.scard__sub {
-  display: block;
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 12.5px;
-}
-.scard--compact {
-  padding: 0 16px;
-  box-shadow: none;
-}
-.scard--compact .scard__head {
-  min-height: 52px;
-  padding: 0;
-}
-.scard--compact.scard--open {
-  padding-bottom: 12px;
-}
-.scard--compact.scard--open .scard__head {
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--border);
-}
-.scard--compact .scard__title {
-  font-size: 15px;
 }
 
 /* ---- Data & Backup card ---- */

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { CategoryRepository } from '../repository/categoryRepository';
 import AppIcon from './AppIcon';
+import Button from './ui/Button';
+import FormField from './ui/FormField';
+import Sheet from './ui/Sheet';
 import type { Alias, Category } from '../types/models';
 
 interface Props {
@@ -170,24 +172,26 @@ export default function Categories({ version, onChange }: Props) {
         );
       })}
 
-      {editorCategory && createPortal(
-        <div className="modal__backdrop modal__backdrop--form" onClick={() => setEditorCategory(null)}>
-          <div className="modal__card formdrawer" onClick={(event) => event.stopPropagation()}>
-            <div className="formdrawer__head">
-              <div>
-                <h3>{editorCategory === 'new' ? 'New category' : 'Edit category'}</h3>
-              </div>
-              <button className="iconbtn" onClick={() => setEditorCategory(null)} aria-label="Close category editor">
-                <AppIcon name="close" size={18} />
-              </button>
-            </div>
-            <div className="cats__drawerfields">
-              <label className="field cats__drawericon">
-                <span>Emoji</span>
+      {editorCategory && (
+        <Sheet
+          title={editorCategory === 'new' ? 'New category' : 'Edit category'}
+          onClose={() => setEditorCategory(null)}
+          closeLabel="Close category editor"
+          className="formdrawer"
+          bodyClassName="cats__drawerfields"
+          footer={(
+            <>
+              <Button variant="secondary" onClick={() => setEditorCategory(null)}>Cancel</Button>
+              <Button disabled={!newName.trim()} onClick={() => editorCategory === 'new' ? addCategory() : updateCategoryDetails(editorCategory)}>
+                {editorCategory === 'new' ? 'Add category' : 'Save changes'}
+              </Button>
+            </>
+          )}
+        >
+              <FormField label="Emoji" className="cats__drawericon">
                 <input className="input cats__iconinput" aria-label="Category icon" value={newIcon} onChange={(event) => setNewIcon(event.target.value)} maxLength={8} />
-              </label>
-              <label className="field">
-                <span>Name</span>
+              </FormField>
+              <FormField label="Name">
                 <input
                   className="input"
                   placeholder="e.g. Home"
@@ -200,21 +204,8 @@ export default function Categories({ version, onChange }: Props) {
                   }}
                   autoFocus
                 />
-              </label>
-            </div>
-            <div className="modal__footer">
-              <button className="btn btn--ghost" onClick={() => setEditorCategory(null)}>Cancel</button>
-              <button
-                className="btn"
-                disabled={!newName.trim()}
-                onClick={() => editorCategory === 'new' ? addCategory() : updateCategoryDetails(editorCategory)}
-              >
-                {editorCategory === 'new' ? 'Add category' : 'Save changes'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
+              </FormField>
+        </Sheet>
       )}
     </div>
   );

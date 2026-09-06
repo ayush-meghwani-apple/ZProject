@@ -5,7 +5,7 @@ import { GOAL_PRIORITIES } from '../../types/models';
 import { computeGoal, horizonLabel, classLabelMap, computeCashFlow, activeAssumptions, sipAccumulated } from '../../core/plannerMath';
 import { newId, addMonths, formatMonthYear } from '../../core/util';
 import AppIcon, { type IconName } from '../AppIcon';
-import { Section, MoneyRow, PercentRow, formatINR } from './shared';
+import { FortunaSheet, Section, MoneyRow, PercentRow, formatINR } from './shared';
 
 /** Pick a fitting glyph for a goal from its name (falls back to a target). */
 function goalIcon(name: string): IconName {
@@ -135,7 +135,12 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
               </div>
 
               {open && (
-                <div className="ft-goal__body">
+                <FortunaSheet
+                  title={g.name.trim() || 'New goal'}
+                  subtitle="Goal details and monthly investment plan"
+                  onClose={() => setOpenId(null)}
+                >
+                <div className="ft-goal__body ft-sheet__form">
                   <label className="ft-row">
                     <span className="ft-row__label">Goal name</span>
                     <span className="ft-row__field">
@@ -267,6 +272,7 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
                     <AppIcon name="trash" size={16} /> Delete goal
                   </button>
                 </div>
+                </FortunaSheet>
               )}
             </div>
           );

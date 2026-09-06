@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
 import type { Category, Expense, PaymentMethod } from '../types/models';
+import Button from './ui/Button';
+import FormField from './ui/FormField';
+import Sheet from './ui/Sheet';
 
 function toDateInput(iso: string): string {
   const d = new Date(iso);
@@ -89,13 +91,18 @@ export default function EditExpenseModal({
     onSaved();
   }
 
-  return createPortal(
-    <div className="modal__backdrop modal__backdrop--form" onClick={onClose}>
-      <div className="modal__card" onClick={(e) => e.stopPropagation()}>
-        <h3>{isNew ? 'Add Expense' : 'Edit Expense'}</h3>
-
-        <label className="field">
-          <span>Amount (₹)</span>
+  return (
+    <Sheet
+      title={isNew ? 'Add Expense' : 'Edit Expense'}
+      onClose={onClose}
+      footer={(
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={save}>Save</Button>
+        </>
+      )}
+    >
+        <FormField label="Amount (₹)">
           <input
             className="input"
             type="number"
@@ -103,10 +110,9 @@ export default function EditExpenseModal({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
-        </label>
+        </FormField>
 
-        <label className="field">
-          <span>Category</span>
+        <FormField label="Category">
           <select
             className="select"
             value={categoryId}
@@ -119,20 +125,18 @@ export default function EditExpenseModal({
               </option>
             ))}
           </select>
-        </label>
+        </FormField>
 
-        <label className="field">
-          <span>Date</span>
+        <FormField label="Date">
           <input
             className="input"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
-        </label>
+        </FormField>
 
-        <label className="field">
-          <span>Payment method</span>
+        <FormField label="Payment method">
           <select
             className="select"
             value={paymentMethodId}
@@ -145,23 +149,11 @@ export default function EditExpenseModal({
               </option>
             ))}
           </select>
-        </label>
+        </FormField>
 
-        <label className="field">
-          <span>Note</span>
+        <FormField label="Note">
           <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
-        </label>
-
-        <div className="modal__footer">
-          <button className="btn btn--ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn" onClick={save}>
-            Save
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </FormField>
+    </Sheet>
   );
 }

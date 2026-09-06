@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { LedgerEntry, LedgerKind, MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
@@ -16,6 +15,7 @@ import {
 import { searchSchemes, type SchemeMatch } from '../../core/amfi';
 import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
+import { FortunaSheet } from './shared';
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
@@ -580,19 +580,12 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
             {shown.length === 0 && <p className="ft-led__empty">No entries match these filters.</p>}
             {visibleRows.length < shown.length && (
               <button className="btn btn--ghost ft-led__more" onClick={() => setVisibleCount((count) => count + 50)}>
-                Show 50 older - {shown.length - visibleRows.length} remaining
+                Show 50 older · {shown.length - visibleRows.length} remaining
               </button>
             )}
 
-            {adding && createPortal(
-              <div className="modal__backdrop modal__backdrop--form" onClick={() => setAdding(false)}>
-                <div className="modal__card ft-addmodal" onClick={(e) => e.stopPropagation()}>
-                  <div className="ft-addmodal__head">
-                    <h3>Add transaction</h3>
-                    <button className="iconbtn" aria-label="Close" onClick={() => setAdding(false)}>
-                      <AppIcon name="close" size={18} />
-                    </button>
-                  </div>
+            {adding && (
+              <FortunaSheet title="Add transaction" subtitle="Record a fund transaction or another asset" onClose={() => setAdding(false)}>
                   <AddTransaction
                     funds={funds}
                     classes={assignableClasses(plan)}
@@ -630,9 +623,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                       setAdding(false);
                     }}
                   />
-                </div>
-              </div>,
-              document.body,
+              </FortunaSheet>
             )}
           </>
         )}

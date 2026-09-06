@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import CollapsibleCard from './CollapsibleCard';
 import { CategoryRepository } from '../repository/categoryRepository';
 import { RecurringRepository } from '../repository/recurringRepository';
 import { formatINR, formatDate } from '../core/util';
 import AppIcon from './AppIcon';
+import Button from './ui/Button';
+import FormField from './ui/FormField';
+import Sheet from './ui/Sheet';
 import type {
   Category,
   RecurringExpense,
@@ -173,67 +175,55 @@ export default function RecurringManager({ version, onChange }: Props) {
         </div>
       )}
 
-      {editorOpen && createPortal(
-        <div className="modal__backdrop modal__backdrop--form" onClick={() => setEditorOpen(false)}>
-          <div className="modal__card formdrawer" onClick={(event) => event.stopPropagation()}>
-            <div className="formdrawer__head">
-              <div>
-                <h3>{editing ? 'Edit recurring expense' : 'New recurring expense'}</h3>
-              </div>
-              <button className="iconbtn" onClick={() => setEditorOpen(false)} aria-label="Close recurring editor">
-                <AppIcon name="close" size={18} />
-              </button>
-            </div>
-            <div className="recur-form__grid">
-              <label className="field recur-form__icon">
-                <span>Icon</span>
+      {editorOpen && (
+        <Sheet
+          title={editing ? 'Edit recurring expense' : 'New recurring expense'}
+          onClose={() => setEditorOpen(false)}
+          closeLabel="Close recurring editor"
+          className="formdrawer"
+          bodyClassName="recur-form__grid"
+          footer={(
+            <>
+              <Button variant="secondary" onClick={() => setEditorOpen(false)}>Cancel</Button>
+              <Button onClick={save}>{editing ? 'Save changes' : 'Add recurring'}</Button>
+            </>
+          )}
+        >
+              <FormField label="Icon" className="recur-form__icon">
                 <input className="input" aria-label="Recurring expense icon" placeholder="✨" value={icon} onChange={(event) => setIcon(event.target.value)} maxLength={8} />
-              </label>
-              <label className="field recur-form__amount">
-                <span>Amount</span>
+              </FormField>
+              <FormField label="Amount" className="recur-form__amount">
                 <input className="input" type="number" inputMode="decimal" placeholder="₹ 0" value={amount} onChange={(event) => setAmount(event.target.value)} autoFocus />
-              </label>
-              <label className="field recur-form__wide">
-                <span>Note</span>
+              </FormField>
+              <FormField label="Note" className="recur-form__wide">
                 <input className="input" placeholder="e.g. Rent" value={note} onChange={(event) => setNote(event.target.value)} />
-              </label>
-              <label className="field recur-form__wide">
-                <span>Category</span>
+              </FormField>
+              <FormField label="Category" className="recur-form__wide">
                 <select className="select" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
                   <option value="">Uncategorized</option>
                   {categories.map((category) => <option key={category.id} value={category.id}>{category.icon} {category.name}</option>)}
                 </select>
-              </label>
-              <label className="field">
-                <span>Frequency</span>
+              </FormField>
+              <FormField label="Frequency">
                 <select className="select" value={frequency} onChange={(event) => setFrequency(event.target.value as RecurringFrequency)}>
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
                 </select>
-              </label>
+              </FormField>
               {frequency === 'monthly' && (
-                <label className="field">
-                  <span>Day of month</span>
+                <FormField label="Day of month">
                   <input className="input" type="number" inputMode="numeric" min={1} max={31} value={dayOfMonth} onChange={(event) => setDayOfMonth(event.target.value)} />
-                </label>
+                </FormField>
               )}
               {frequency === 'weekly' && (
-                <label className="field">
-                  <span>Weekday</span>
+                <FormField label="Weekday">
                   <select className="select" value={dayOfWeek} onChange={(event) => setDayOfWeek(event.target.value)}>
                     {WEEKDAYS.map((day, index) => <option key={day} value={index}>{day}</option>)}
                   </select>
-                </label>
+                </FormField>
               )}
-            </div>
-            <div className="modal__footer">
-              <button className="btn btn--ghost" onClick={() => setEditorOpen(false)}>Cancel</button>
-              <button className="btn" onClick={save}>{editing ? 'Save changes' : 'Add recurring'}</button>
-            </div>
-          </div>
-        </div>,
-        document.body,
+        </Sheet>
       )}
     </CollapsibleCard>
   );

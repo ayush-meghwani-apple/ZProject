@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import AmountInput from '../AmountInput';
 import AppIcon, { type IconName } from '../AppIcon';
+import SharedSection from '../ui/Section';
+import Sheet from '../ui/Sheet';
 import { formatINR } from '../../core/util';
 
 /** A titled card section used across Fortuna tabs. When `collapsible` is set the
@@ -25,45 +27,39 @@ export function Section({
   icon?: IconName;
   danger?: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const showBody = !collapsible || open;
-  const iconEl = icon ? (
-    <span className={`ft-section__icon ${danger ? 'ft-section__icon--danger' : ''}`}>
-      <AppIcon name={icon} size={20} />
-    </span>
-  ) : null;
-
-  if (collapsible) {
-    return (
-      <section className={`ft-section ft-section--collapsible ${open ? 'ft-section--open' : ''}`}>
-        <button className="ft-section__toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-          <span className="ft-section__togglehead">
-            {iconEl}
-            <span className="ft-section__headtext">
-              <span className="ft-section__title">{title}</span>
-              {subtitle && <span className="ft-section__sub">{subtitle}</span>}
-            </span>
-            {right}
-          </span>
-          <AppIcon name={open ? 'chevronUp' : 'chevronDown'} size={18} />
-        </button>
-        {showBody && <div className="ft-section__body">{children}</div>}
-      </section>
-    );
-  }
-
   return (
-    <section className="ft-section">
-      <div className="ft-section__head">
-        {iconEl}
-        <div className="ft-section__headtext">
-          <h3 className="ft-section__title">{title}</h3>
-          {subtitle && <p className="ft-section__sub">{subtitle}</p>}
-        </div>
-        {right}
-      </div>
-      <div className="ft-section__body">{children}</div>
-    </section>
+    <SharedSection
+      title={title}
+      subtitle={subtitle}
+      actions={right}
+      collapsible={collapsible}
+      defaultOpen={defaultOpen}
+      icon={icon}
+      danger={danger}
+      appearance="planner"
+    >
+      {children}
+    </SharedSection>
+  );
+}
+
+export function FortunaSheet({
+  title,
+  subtitle,
+  onClose,
+  children,
+  footer,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  return (
+    <Sheet title={title} subtitle={subtitle} onClose={onClose} footer={footer} className="ft-sheet" bodyClassName="ft-sheet__body">
+      {children}
+    </Sheet>
   );
 }
 

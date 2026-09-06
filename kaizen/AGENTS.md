@@ -31,7 +31,8 @@ Sub-apps (switched from the drawer, whole-UI swap — see `App.tsx` / `AppId`):
 - `core/` — **pure**, side-effect-free logic (testable, no DOM/storage): `plannerMath.ts` (Fortuna math), `recurringInvestments.ts`, `cycleDate.ts`, `vaultLock.ts` (crypto), `util.ts` (`newId`, `now`, `formatINR`), `noteTable.ts`.
 - `repository/` — persistence per domain (load/save/migrate). Repos own migrations.
 - `components/` — UI. Sub-app roots: `App.tsx`, `FortunaApp.tsx`, etc. Fortuna tabs live in `components/fortuna/`.
-- `style.css` — global styles (large; `.ft-*` = Fortuna). Consider splitting per-feature as it grows.
+- `components/ui/` — shared UI primitives (`Button`, `FormField`, `Section`, `Sheet`). Extend these before adding app-specific versions.
+- `styles/ui.css` — shared buttons, inputs, cards, modal sheets, and primitive structure. `style.css` holds app/feature-specific layouts (`.ft-*` = Fortuna).
 
 ## Fortuna (the most complex sub-app) — key facts
 

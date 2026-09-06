@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import CollapsibleCard from './CollapsibleCard';
 import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
 import AppIcon from './AppIcon';
+import Button from './ui/Button';
+import FormField from './ui/FormField';
+import Sheet from './ui/Sheet';
 import type { PaymentMethod } from '../types/models';
 
 /**
@@ -79,32 +81,27 @@ export default function PaymentMethodsManager() {
         ))}
       </div>
 
-      {editor && createPortal(
-        <div className="modal__backdrop modal__backdrop--form" onClick={() => setEditor(null)}>
-          <div className="modal__card formdrawer" onClick={(event) => event.stopPropagation()}>
-            <div className="formdrawer__head">
-              <h3>{editor === 'new' ? 'New payment method' : 'Edit payment method'}</h3>
-              <button className="iconbtn" onClick={() => setEditor(null)} aria-label="Close payment method editor">
-                <AppIcon name="close" size={18} />
-              </button>
-            </div>
-            <div className="pmform">
-              <label className="field pmform__icon">
-                <span>Emoji</span>
+      {editor && (
+        <Sheet
+          title={editor === 'new' ? 'New payment method' : 'Edit payment method'}
+          onClose={() => setEditor(null)}
+          closeLabel="Close payment method editor"
+          className="formdrawer"
+          bodyClassName="pmform"
+          footer={(
+            <>
+              <Button variant="secondary" onClick={() => setEditor(null)}>Cancel</Button>
+              <Button onClick={save} disabled={!name.trim()}>{editor === 'new' ? 'Add method' : 'Save changes'}</Button>
+            </>
+          )}
+        >
+              <FormField label="Emoji" className="pmform__icon">
                 <input className="input" value={icon} onChange={(event) => setIcon(event.target.value)} placeholder="💳" maxLength={8} aria-label="Payment method emoji" />
-              </label>
-              <label className="field">
-                <span>Name</span>
+              </FormField>
+              <FormField label="Name">
                 <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. HDFC Card" onKeyDown={(event) => event.key === 'Enter' && void save()} autoFocus />
-              </label>
-            </div>
-            <div className="modal__footer">
-              <button className="btn btn--ghost" onClick={() => setEditor(null)}>Cancel</button>
-              <button className="btn" onClick={save} disabled={!name.trim()}>{editor === 'new' ? 'Add method' : 'Save changes'}</button>
-            </div>
-          </div>
-        </div>,
-        document.body,
+              </FormField>
+        </Sheet>
       )}
     </CollapsibleCard>
   );

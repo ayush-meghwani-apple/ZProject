@@ -10,6 +10,7 @@ import { isDemoMode } from './core/demoMode';
 import { seedDemoDataIfNeeded } from './core/demoSeed';
 import { initViewport } from './core/viewport';
 import { initIosKeyboard } from './core/iosKeyboard';
+import './styles/ui.css';
 import './style.css';
 
 function renderFatal(message: string) {

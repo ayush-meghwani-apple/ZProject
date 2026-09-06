@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import type { NoteCategory } from '../types/models';
+import Button from './ui/Button';
+import FormField from './ui/FormField';
+import Sheet from './ui/Sheet';
 
 // A small set of handy icons; the text field also accepts any emoji you paste.
 const EMOJIS = [
@@ -24,13 +26,18 @@ export default function NoteCategoryModal({ initial, onSave, onClose }: Props) {
     onSave({ name: name.trim(), emoji });
   }
 
-  return createPortal(
-    <div className="modal__backdrop modal__backdrop--form" onClick={onClose}>
-      <div className="modal__card" onClick={(e) => e.stopPropagation()}>
-        <h3>{initial ? 'Edit category' : 'New category'}</h3>
-
-        <label className="field">
-          <span>Name</span>
+  return (
+    <Sheet
+      title={initial ? 'Edit category' : 'New category'}
+      onClose={onClose}
+      footer={(
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={save}>Save</Button>
+        </>
+      )}
+    >
+        <FormField label="Name">
           <input
             className="input"
             value={name}
@@ -39,10 +46,10 @@ export default function NoteCategoryModal({ initial, onSave, onClose }: Props) {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && save()}
           />
-        </label>
+        </FormField>
 
-        <div className="field">
-          <span>Icon</span>
+        <div className="field ui-field">
+          <span className="ui-field__label">Icon</span>
           <div className="emojigrid">
             {EMOJIS.map((e) => (
               <button
@@ -56,17 +63,6 @@ export default function NoteCategoryModal({ initial, onSave, onClose }: Props) {
             ))}
           </div>
         </div>
-
-        <div className="modal__footer">
-          <button className="btn btn--ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn" onClick={save}>
-            Save
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+    </Sheet>
   );
 }

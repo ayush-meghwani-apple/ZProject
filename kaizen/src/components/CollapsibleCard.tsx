@@ -1,5 +1,6 @@
-import { useState, type ComponentProps, type ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import AppIcon from './AppIcon';
+import Section from './ui/Section';
 
 interface Props {
   title: string;
@@ -20,27 +21,9 @@ export default function CollapsibleCard({
   defaultOpen = false,
   children,
 }: Props) {
-  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className={`card${compact ? ` scard--compact${open ? ' scard--open' : ''}` : ''}`}>
-      <button
-        type="button"
-        className="scard__head"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        {icon && (
-          <span className="scard__icon">
-            <AppIcon name={icon} size={22} />
-          </span>
-        )}
-        <span className="scard__headtext">
-          <span className="scard__title">{title}</span>
-          {subtitle && <span className="scard__sub">{subtitle}</span>}
-        </span>
-        <AppIcon name={open ? 'chevronUp' : 'chevronDown'} size={18} />
-      </button>
-      {open && <div>{children}</div>}
-    </div>
+    <Section title={title} subtitle={subtitle} icon={icon} compact={compact} collapsible defaultOpen={defaultOpen}>
+      {children}
+    </Section>
   );
 }
