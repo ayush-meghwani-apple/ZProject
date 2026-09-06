@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { planFlatCategoryMigration } from './flatCategories';
+import { FLAT_CATEGORIES, planFlatCategoryMigration } from './flatCategories';
 import type { Expense } from '../types/models';
 
 describe('planFlatCategoryMigration', () => {
+  it('renames the stable investments category to Savings without changing its id', () => {
+    expect(FLAT_CATEGORIES.find((category) => category.id === 'flat-investments-v1')?.name).toBe(
+      'Savings',
+    );
+  });
+
   it('maps the existing hierarchy to flat categories without changing expense data', () => {
     const expense: Expense = {
       id: 'e1',

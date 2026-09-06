@@ -25,7 +25,7 @@ export default function NoteCategoryModal({ initial, onSave, onClose }: Props) {
   }
 
   return createPortal(
-    <div className="modal__backdrop" onClick={onClose}>
+    <div className="modal__backdrop modal__backdrop--form" onClick={onClose}>
       <div className="modal__card" onClick={(e) => e.stopPropagation()}>
         <h3>{initial ? 'Edit category' : 'New category'}</h3>
 

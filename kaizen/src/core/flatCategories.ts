@@ -10,7 +10,7 @@ export const FLAT_CATEGORIES: Category[] = [
   { id: 'flat-entertainment-v1', name: 'Entertainment', icon: '🎬', color: '#eab308', order: 6 },
   { id: 'flat-travel-v1', name: 'Travel', icon: '✈️', color: '#14b8a6', order: 7 },
   { id: 'flat-family-v1', name: 'Family', icon: '👨‍👩‍👧', color: '#6366f1', order: 8 },
-  { id: 'flat-investments-v1', name: 'Investments & Savings', icon: '📈', color: '#10b981', order: 9 },
+  { id: 'flat-investments-v1', name: 'Savings', icon: '📈', color: '#10b981', order: 9 },
   { id: 'flat-other-v1', name: 'Other', icon: '📦', color: '#64748b', order: 10 },
 ];
 
@@ -62,7 +62,7 @@ const SUBCATEGORY_TARGET: Record<string, string> = {
   'taiwan trip': 'Travel',
   'future savings': 'Travel',
   'future trip savings': 'Travel',
-  'gold coin': 'Investments & Savings',
+  'gold coin': 'Savings',
   other: 'Other',
 };
 
@@ -73,7 +73,7 @@ const PARENT_TARGET: Record<string, string> = {
   trips: 'Travel',
   misc: 'Other',
   health: 'Health',
-  investment: 'Investments & Savings',
+  investment: 'Savings',
   food: 'Food',
   transport: 'Transport',
   bills: 'Bills & Insurance',

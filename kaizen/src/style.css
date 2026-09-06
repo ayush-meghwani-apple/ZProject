@@ -880,23 +880,42 @@ body {
 
 /* Payment Methods manager (Settings). */
 .pmlist {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pmrow {
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: 8px;
 }
 
-.pmrow--editing {
-  flex-wrap: wrap;
-  padding: 8px;
-  border: 1px solid var(--accent);
+.pmrow {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 34px 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
   border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.pmtoolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.pmtoolbar > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pmrow__glyph {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
   background: rgba(99, 102, 241, 0.08);
+  font-size: 18px;
 }
 
 .pmrow__name {
@@ -923,27 +942,30 @@ input.pmrow__nameinput {
   min-width: 0;
 }
 
-.pmrow__editbtns {
-  display: flex;
-  gap: 6px;
-  flex: 1 0 100%;
-  justify-content: flex-end;
+.pmrow .iconbtn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
-.pmadd {
-  margin-top: 12px;
+.pmrow .iconbtn:last-child {
+  color: #f87171;
 }
 
-.pmadd__label {
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 6px;
+.pmform {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
 }
 
-.pmadd__row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.pmform__icon .input {
+  padding-inline: 6px;
+  text-align: center;
+  font-size: 20px;
 }
 
 /* Payment-method breakdown rows under its pie. */
@@ -1434,9 +1456,26 @@ input.pmrow__nameinput {
 }
 
 .recur__intro {
-  margin: 0 0 12px;
+  margin: 0;
   color: var(--muted);
   font-size: 13px;
+}
+
+.recur__count {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.recur__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.recur__toolbar .btn {
+  flex: 0 0 auto;
 }
 
 .recur-list {
@@ -1528,6 +1567,11 @@ input.pmrow__nameinput {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.recur-form__icon,
+.recur-form__amount {
+  grid-column: span 1;
 }
 
 .recur-form__grid .field {
@@ -1864,6 +1908,33 @@ select option {
   z-index: 1000;
 }
 
+.modal__backdrop--form {
+  padding: 12px;
+  background: rgba(3, 7, 18, 0.76);
+  backdrop-filter: blur(5px);
+}
+
+.modal__backdrop--form .modal__card {
+  width: min(420px, 100%);
+  max-height: calc(100dvh - 24px);
+  border-radius: 14px;
+  padding-bottom: 0;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+
+.formdrawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.formdrawer__head h3,
+.formdrawer__head .card__subtitle {
+  margin: 0;
+}
+
 .modal__card {
   width: 100%;
   max-width: 560px;
@@ -1996,42 +2067,41 @@ select option {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  flex: 0 1 auto;
-  padding: 6px 8px;
-  border-radius: 999px;
-  background: rgba(22, 29, 51, 0.72);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  flex: 1 1 auto;
+  padding: 8px;
 }
 
 /* Top row: the cycle pill + the position counter, centred as a group so a long
    cycle name truncates inside its pill instead of sliding under the counter. */
 .reels__top {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
+  top: 8px;
+  left: 10px;
+  right: 10px;
   z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 9px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 22%, var(--border));
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 14px 34px rgba(99, 102, 241, 0.18), 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 .reels__toprow {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  justify-content: stretch;
+  gap: 4px;
 }
 
 .reels__nav {
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: var(--surface-2);
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  border: 0;
+  background: transparent;
   color: var(--text);
   font-size: 20px;
   line-height: 1;
@@ -2046,9 +2116,18 @@ select option {
 .reels__cycle {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
+  flex: 1 1 auto;
   min-width: 0;
   padding: 0 4px;
+}
+
+.reels__cycle-kicker {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
 }
 
 .reels__cycle-name {
@@ -2058,6 +2137,26 @@ select option {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+}
+
+.reels__counter {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent-2));
+  color: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.42);
+  font-variant-numeric: tabular-nums;
+}
+
+.reels__counter strong {
+  color: #fff;
+  font-size: 16px;
 }
 
 .reels__cycle-sub {
@@ -2080,6 +2179,12 @@ select option {
 
 .reels__track::-webkit-scrollbar {
   display: none;
+}
+
+.reel--cycle-transition {
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .reel {
@@ -7283,6 +7388,54 @@ svg.lucide {
   grid-template-columns: 52px minmax(0, 1fr) auto;
   gap: 8px;
 }
+.cats__sticky {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0 10px;
+  background: linear-gradient(var(--bg) 72%, transparent);
+}
+.cats__glance {
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+}
+.cats__glance > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -4px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  font-size: 14px;
+}
+.cats__glance > span:first-child {
+  margin-left: 0;
+}
+.cats__aliashead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.cats__aliashead strong {
+  font-size: 13px;
+}
+.cats__drawerfields {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+}
+.cats__drawericon .input {
+  padding-inline: 6px;
+  text-align: center;
+  font-size: 20px;
+}
 @media (max-width: 390px) {
   .page--cats .cats__details .btn {
     grid-column: 2;
@@ -7776,24 +7929,35 @@ svg.lucide {
   background: var(--border);
 }
 .dbk__remind {
-  display: flex;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
-  padding: 6px 6px 4px;
+  padding: 8px 6px 4px;
 }
 .dbk__remindlabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  font-weight: 600;
-  font-size: 14px;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.25;
 }
-.dbk__remindlabel svg {
+.dbk__remindlabel strong {
+  font-size: 13px;
+}
+.dbk__remindicon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: rgba(99, 102, 241, 0.12);
   color: var(--accent);
 }
 .dbk__select {
   width: auto;
+  max-width: 132px;
+  padding-block: 9px;
+  font-size: 13px;
 }
 
 /* ---- Settings: Cycle card rows ---- */

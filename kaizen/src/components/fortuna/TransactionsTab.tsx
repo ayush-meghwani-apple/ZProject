@@ -544,7 +544,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
             })}
 
             {adding && createPortal(
-              <div className="modal__backdrop" onClick={() => setAdding(false)}>
+              <div className="modal__backdrop modal__backdrop--form" onClick={() => setAdding(false)}>
                 <div className="modal__card ft-addmodal" onClick={(e) => e.stopPropagation()}>
                   <div className="ft-addmodal__head">
                     <h3>Add transaction</h3>

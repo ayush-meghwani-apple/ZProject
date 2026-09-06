@@ -96,16 +96,10 @@ export default function GmailImport({ onChange }: Props) {
 
   return (
     <CollapsibleCard
-      title="Auto-import from Gmail"
-      subtitle="Bank & card emails → expenses"
+      title="Gmail auto-import"
       icon="add"
+      compact
     >
-      <p className="muted" style={{ marginTop: 0 }}>
-        Reads bank &amp; card alerts (SBI, HSBC, ICICI, BOB, AU &amp; IDFC) and adds spends straight
-        into your expenses — review them in the <strong>Reels</strong> tab. Salary credits start a
-        new cycle. Read-only; nothing leaves your device.
-      </p>
-
       {!hasClientId && (
         <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
           <input

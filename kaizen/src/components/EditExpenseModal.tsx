@@ -90,7 +90,7 @@ export default function EditExpenseModal({
   }
 
   return createPortal(
-    <div className="modal__backdrop" onClick={onClose}>
+    <div className="modal__backdrop modal__backdrop--form" onClick={onClose}>
       <div className="modal__card" onClick={(e) => e.stopPropagation()}>
         <h3>{isNew ? 'Add Expense' : 'Edit Expense'}</h3>
 

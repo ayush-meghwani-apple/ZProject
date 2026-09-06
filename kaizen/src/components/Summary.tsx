@@ -142,15 +142,16 @@ export default function Summary({ version }: Props) {
       </div>
 
       {investmentTotal > 0 && (
-        <div className="card">
+        <div className={`card summarycat savingscat${expandedId === INVESTMENTS_CATEGORY_ID ? ' summarycat--open' : ''}`}>
           <button
             className="barrow__head"
             onClick={() =>
               setExpandedId(expandedId === INVESTMENTS_CATEGORY_ID ? null : INVESTMENTS_CATEGORY_ID)
             }
           >
+            <span className="barrow__dot" style={{ background: investmentCategory?.color ?? '#10b981' }} />
             <span className="barrow__name summarycat__label">
-              <span>{investmentCategory?.icon ?? '📈'} Investments &amp; Savings</span>
+              <span>{investmentCategory?.icon ?? '📈'} {investmentCategory?.name ?? 'Savings'}</span>
               <small>
                 Excluded from spending · {investments.length} transaction{investments.length === 1 ? '' : 's'}
               </small>
@@ -161,12 +162,15 @@ export default function Summary({ version }: Props) {
               size={16}
             />
           </button>
+          <div className="barrow__track">
+            <div className="barrow__fill" style={{ width: '100%', background: investmentCategory?.color ?? '#10b981' }} />
+          </div>
           {expandedId === INVESTMENTS_CATEGORY_ID && (
-            <div style={{ marginTop: 6 }}>
+            <div className="summarycat__entries">
               {investments.map((expense) => (
-                <div className="row" key={expense.id}>
+                <div className="summaryentry" key={expense.id}>
                   <span>
-                    <span>{expense.note || expense.rawText || 'Investment or saving'}</span>
+                    <span>{expense.note || expense.rawText || 'Saving'}</span>
                     <span className="muted"> · {formatDate(expense.date)}</span>
                   </span>
                   <strong>{formatINR(expense.amount)}</strong>

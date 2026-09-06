@@ -23,6 +23,9 @@ import type {
   Subcategory,
 } from '../types/models';
 
+const DEMO_SEED_VERSION = '3';
+const DEMO_SEED_KEY = 'kaizen.demoSeedVersion';
+
 const rand = () => Math.random();
 const pick = <T>(arr: T[]): T => arr[Math.floor(rand() * arr.length)];
 const iso = (d: Date) => d.toISOString();
@@ -105,14 +108,43 @@ function makeFund(
  */
 export async function seedDemoDataIfNeeded(): Promise<void> {
   const existing = await storage.expenses.getAll();
-  if (existing.length > 0) return; // already seeded this demo DB
+  let currentVersion: string | null = null;
+  try {
+    currentVersion = localStorage.getItem(DEMO_SEED_KEY);
+  } catch {
+    // Storage can be unavailable in private browsing; the demo still works.
+  }
+  if (existing.length > 0 && currentVersion === DEMO_SEED_VERSION) return;
+  if (existing.length > 0) {
+    await Promise.all([
+      storage.salaryCycles.clear(),
+      storage.expenses.clear(),
+      storage.activities.clear(),
+      storage.recurring.clear(),
+      storage.goals.clear(),
+      storage.noteDocs.clear(),
+      storage.noteCategories.clear(),
+      storage.vaultItems.clear(),
+      storage.plannerDocs.clear(),
+    ]);
+  }
 
   const categories: Category[] = await storage.categories.getAll();
   const subcategories: Subcategory[] = await storage.subcategories.getAll();
-  const methods: PaymentMethod[] = await storage.paymentMethods.getAll();
+  const storedMethods: PaymentMethod[] = await storage.paymentMethods.getAll();
+  const methodNames = new Set<string>();
+  const methods: PaymentMethod[] = [];
+  for (const method of storedMethods) {
+    const key = method.name.trim().toLowerCase();
+    if (methodNames.has(key)) await storage.paymentMethods.delete(method.id);
+    else {
+      methodNames.add(key);
+      methods.push(method);
+    }
+  }
   if (categories.length === 0) return; // defaults not seeded yet — bail safely
 
-  // ---- Salary cycles: the last 6 paydays (28th of each month) ----
+  // ---- Salary cycles: the last 8 paydays (28th of each month) ----
   const anchor = new Date();
   let y = anchor.getFullYear();
   let m = anchor.getMonth();
@@ -121,13 +153,14 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
     if (m < 0) { m = 11; y -= 1; }
   }
   const starts: Date[] = [];
-  for (let i = 5; i >= 0; i--) starts.push(new Date(y, m - i, 28, 0, 0, 0, 0));
+  for (let i = 7; i >= 0; i--) starts.push(new Date(y, m - i, 28, 0, 0, 0, 0));
 
   const cycles: SalaryCycle[] = starts.map((s, idx) => ({
     id: newId(),
     startDate: iso(s),
     endDate: idx === starts.length - 1 ? undefined : iso(starts[idx + 1]),
-    salaryReceived: roundTo(95000 + rand() * 16000, 500),
+    salaryReceived: roundTo(108000 + rand() * 18000, 500),
+    autoSalary: true,
   }));
   await storage.salaryCycles.bulkPut(cycles);
 
@@ -138,9 +171,14 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
     const start = starts[idx].getTime();
     const end = Math.min(idx === cycles.length - 1 ? today.getTime() : starts[idx + 1].getTime(), today.getTime());
     if (end <= start) return;
-    const count = 32 + Math.floor(rand() * 22);
+    const distanceFromNewest = cycles.length - 1 - idx;
+    const count = distanceFromNewest === 0
+      ? Math.min(12, categories.length + 1)
+      : distanceFromNewest === 1
+        ? 8
+        : 5 + (idx % 3);
     for (let k = 0; k < count; k++) {
-      const cat = pick(categories);
+      const cat = categories[(idx * 5 + k) % categories.length];
       const subs = subcategories.filter((s) => s.categoryId === cat.id);
       const sub = subs.length && rand() > 0.25 ? pick(subs) : undefined;
       const [lo, hi, step] = rangeFor(cat.name);
@@ -159,6 +197,8 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
         subcategoryId: sub?.id,
         paymentMethodId: method?.id,
         note: noteFor(cat.name),
+        autoImported: rand() < 0.16,
+        reviewed: rand() > 0.08,
         createdAt: ts,
         updatedAt: ts,
       });
@@ -175,25 +215,26 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
     return iso(d);
   };
   const recurring: RecurringExpense[] = [
-    { id: newId(), amount: 12000, categoryId: billsCat.id, note: 'Rent', frequency: 'monthly', dayOfMonth: 5, nextDate: nextOfMonth(5), active: true, createdAt: now(), updatedAt: now() },
-    { id: newId(), amount: 649, categoryId: entCat.id, note: 'Netflix', frequency: 'monthly', dayOfMonth: 2, nextDate: nextOfMonth(2), active: true, createdAt: now(), updatedAt: now() },
-    { id: newId(), amount: 999, categoryId: billsCat.id, note: 'Broadband', frequency: 'monthly', dayOfMonth: 8, nextDate: nextOfMonth(8), active: true, createdAt: now(), updatedAt: now() },
+    { id: newId(), amount: 18000, icon: '🏠', categoryId: billsCat.id, note: 'Rent', frequency: 'monthly', dayOfMonth: 5, nextDate: nextOfMonth(5), active: true, createdAt: now(), updatedAt: now() },
+    { id: newId(), amount: 649, icon: '🎬', categoryId: entCat.id, note: 'Netflix', frequency: 'monthly', dayOfMonth: 2, nextDate: nextOfMonth(2), active: true, createdAt: now(), updatedAt: now() },
+    { id: newId(), amount: 1199, icon: '📶', categoryId: billsCat.id, note: 'Broadband', frequency: 'monthly', dayOfMonth: 8, nextDate: nextOfMonth(8), active: true, createdAt: now(), updatedAt: now() },
+    { id: newId(), amount: 499, icon: '🏋️', categoryId: entCat.id, note: 'Fitness membership', frequency: 'monthly', dayOfMonth: 12, nextDate: nextOfMonth(12), active: false, createdAt: now(), updatedAt: now() },
   ];
   await storage.recurring.bulkPut(recurring);
 
   // ---- Fortuna plan (all figures modest, most well under ₹5L) ----
   const plan = await PlannerRepository.load(); // creates + returns a default plan in the demo DB
-  setRow(plan.cashFlow.inflows, 'Post-tax salary', 102000);
-  setRow(plan.cashFlow.inflows, 'Others', 4000);
-  setRow(plan.cashFlow.outflows, 'Monthly expenses', 46000);
-  setRow(plan.cashFlow.outflows, 'Compulsory investments', 19000);
-  setRow(plan.cashFlow.outflows, 'Loan EMIs', 11500);
-  setRow(plan.cashFlow.outflows, 'Insurance premiums', 2800);
+  setRow(plan.cashFlow.inflows, 'Post-tax salary', 118000);
+  setRow(plan.cashFlow.inflows, 'Freelance income', 7500);
+  setRow(plan.cashFlow.outflows, 'Monthly expenses', 52000);
+  setRow(plan.cashFlow.outflows, 'Compulsory investments', 26000);
+  setRow(plan.cashFlow.outflows, 'Loan EMIs', 14500);
+  setRow(plan.cashFlow.outflows, 'Insurance premiums', 3400);
 
   plan.assets.realEstate.reits = 60000;
-  plan.assets.debt.liquidCash = 240000;
-  plan.assets.debt.fds = [{ id: newId(), name: 'HDFC FD', value: 150000 }];
-  plan.assets.debt.epfPpfVpf = [{ id: newId(), name: 'EPF', value: 310000 }];
+  plan.assets.debt.liquidCash = 310000;
+  plan.assets.debt.fds = [{ id: newId(), name: 'Emergency FD', value: 225000 }];
+  plan.assets.debt.epfPpfVpf = [{ id: newId(), name: 'EPF', value: 465000 }];
   plan.assets.gold.jewellery = 130000;
   plan.assets.gold.sgb = 45000;
   plan.assets.domesticEquity.stocks = [
@@ -201,7 +242,10 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
     { id: newId(), name: 'Tata Motors', category: 'Midcap', value: 41000, units: 42 },
     { id: newId(), name: 'Zomato', category: 'Smallcap', value: 23000, units: 120 },
   ];
-  plan.assets.usEquity.others = [{ id: newId(), name: 'S&P 500 ETF (VOO)', value: 72000 }];
+  plan.assets.usEquity.others = [
+    { id: newId(), name: 'S&P 500 ETF', value: 126000 },
+    { id: newId(), name: 'Microsoft RSUs', value: 94000 },
+  ];
 
   plan.mutualFunds = [
     makeFund('Parag Parikh Flexi Cap Fund', 'flexicap', 122639, 55, 8000, 11),
@@ -219,4 +263,9 @@ export async function seedDemoDataIfNeeded(): Promise<void> {
   setRow(plan.liabilities.items, 'Credit card', 18000);
 
   await PlannerRepository.save(plan);
+  try {
+    localStorage.setItem(DEMO_SEED_KEY, DEMO_SEED_VERSION);
+  } catch {
+    // Best effort only; the separate demo database remains safe to rebuild.
+  }
 }

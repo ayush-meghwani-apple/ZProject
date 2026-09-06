@@ -111,7 +111,6 @@ export default function Settings({ version, onChange, global = false }: Props) {
         <div className="row settings-hub__row">
           <span>
             <strong>Demo mode</strong>
-            <small>Fill the app with sample data</small>
           </span>
           <button
             className={`btn btn--sm${isDemoMode() ? '' : ' btn--ghost'}`}
@@ -144,9 +143,7 @@ export default function Settings({ version, onChange, global = false }: Props) {
           </span>
         </div>
         <div className="row">
-          <span>
-            Update<span className="muted"> · pulls the latest version</span>
-          </span>
+          <span>App update</span>
           <button className="btn btn--sm" onClick={checkForUpdates}>
             Check for updates
           </button>

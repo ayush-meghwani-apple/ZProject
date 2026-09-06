@@ -1,7 +1,7 @@
 import { db } from '../storage/db';
 import { planFlatCategoryMigration } from '../core/flatCategories';
 
-const MIGRATION_KEY = `expense:flatCategories:v2:${db.name}`;
+const MIGRATION_KEY = `expense:flatCategories:v3:${db.name}`;
 
 /** Restart-safe automatic migration from legacy category/subcategory data. */
 export async function migrateToFlatCategories(force = false): Promise<void> {

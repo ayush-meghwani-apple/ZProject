@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import CollapsibleCard from './CollapsibleCard';
 import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
 import AppIcon from './AppIcon';
@@ -13,9 +14,7 @@ export default function PaymentMethodsManager() {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editIcon, setEditIcon] = useState('');
+  const [editor, setEditor] = useState<PaymentMethod | 'new' | null>(null);
 
   async function load() {
     setMethods(await PaymentMethodRepository.list());
@@ -24,37 +23,30 @@ export default function PaymentMethodsManager() {
     load();
   }, []);
 
-  // Cancel an in-progress edit when tapping anywhere outside the editing row.
-  useEffect(() => {
-    if (!editingId) return;
-    function onDown(e: PointerEvent) {
-      if (!(e.target as Element)?.closest?.('.pmrow--editing')) setEditingId(null);
-    }
-    document.addEventListener('pointerdown', onDown, true);
-    return () => document.removeEventListener('pointerdown', onDown, true);
-  }, [editingId]);
-
-  async function add() {
+  async function save() {
     const n = name.trim();
     if (!n) return;
-    await PaymentMethodRepository.add(n, icon.trim() || undefined);
+    if (editor === 'new') {
+      await PaymentMethodRepository.add(n, icon.trim() || undefined);
+    } else if (editor) {
+      await PaymentMethodRepository.update({ ...editor, name: n, icon: icon.trim() || undefined });
+    }
     setName('');
     setIcon('');
-    load();
+    setEditor(null);
+    await load();
   }
 
-  function startEdit(m: PaymentMethod) {
-    setEditingId(m.id);
-    setEditName(m.name);
-    setEditIcon(m.icon ?? '');
+  function openNew() {
+    setName('');
+    setIcon('');
+    setEditor('new');
   }
 
-  async function saveEdit(m: PaymentMethod) {
-    const n = editName.trim();
-    if (!n) return;
-    await PaymentMethodRepository.update({ ...m, name: n, icon: editIcon.trim() || undefined });
-    setEditingId(null);
-    load();
+  function openEdit(method: PaymentMethod) {
+    setName(method.name);
+    setIcon(method.icon ?? '');
+    setEditor(method);
   }
 
   async function remove(m: PaymentMethod) {
@@ -64,82 +56,56 @@ export default function PaymentMethodsManager() {
   }
 
   return (
-    <CollapsibleCard title="Payment Methods" compact>
-      <div className="muted" style={{ marginBottom: 12 }}>
-        Optional. Add your cash, cards, bank accounts, UPI Lite, Splitwise, etc.
-        You pick one from the Add tab (it's remembered) and can change it per
-        expense — it's never required.
+    <CollapsibleCard title="Payment Methods" icon="creditcard" compact>
+      <div className="pmtoolbar">
+        <span>{methods.length} saved</span>
+        <button className="btn btn--sm" onClick={openNew}>
+          <AppIcon name="plus" size={15} /> Add method
+        </button>
       </div>
 
       <div className="pmlist">
-        {methods.map((m) =>
-          editingId === m.id ? (
-            <div className="pmrow pmrow--editing" key={m.id}>
-              <input
-                className="input pmrow__icon"
-                value={editIcon}
-                onChange={(e) => setEditIcon(e.target.value)}
-                placeholder="🙂"
-                maxLength={2}
-                aria-label="Emoji"
-              />
-              <input
-                className="input pmrow__nameinput"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Name"
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && saveEdit(m)}
-              />
-              <div className="pmrow__editbtns">
-                <button className="btn btn--sm" onClick={() => saveEdit(m)}>
-                  Save
-                </button>
-                <button className="btn btn--ghost btn--sm" onClick={() => setEditingId(null)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="pmrow" key={m.id}>
-              <span className="pmrow__name">
-                {m.icon ? `${m.icon} ` : ''}
-                {m.name}
-              </span>
-              <button className="iconbtn" onClick={() => startEdit(m)} title="Edit">
+        {methods.map((method) => (
+            <div className="pmrow" key={method.id}>
+              <span className="pmrow__glyph">{method.icon || '💳'}</span>
+              <strong className="pmrow__name">{method.name}</strong>
+              <button className="iconbtn" onClick={() => openEdit(method)} title="Edit" aria-label={`Edit ${method.name}`}>
                 <AppIcon name="edit" size={16} />
               </button>
-              <button className="iconbtn" onClick={() => remove(m)} title="Remove">
+              <button className="iconbtn" onClick={() => remove(method)} title="Remove" aria-label={`Remove ${method.name}`}>
                 <AppIcon name="trash" size={16} />
               </button>
             </div>
-          ),
-        )}
+        ))}
       </div>
 
-      <div className="pmadd">
-        <div className="pmadd__label">Add a method</div>
-        <div className="pmadd__row">
-          <input
-            className="input pmrow__icon"
-            value={icon}
-            onChange={(e) => setIcon(e.target.value)}
-            placeholder="🙂"
-            maxLength={2}
-            aria-label="Emoji (optional)"
-          />
-          <input
-            className="input pmrow__nameinput"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. HDFC Card"
-            onKeyDown={(e) => e.key === 'Enter' && add()}
-          />
-          <button className="btn btn--sm" onClick={add}>
-            Add
-          </button>
-        </div>
-      </div>
+      {editor && createPortal(
+        <div className="modal__backdrop modal__backdrop--form" onClick={() => setEditor(null)}>
+          <div className="modal__card formdrawer" onClick={(event) => event.stopPropagation()}>
+            <div className="formdrawer__head">
+              <h3>{editor === 'new' ? 'New payment method' : 'Edit payment method'}</h3>
+              <button className="iconbtn" onClick={() => setEditor(null)} aria-label="Close payment method editor">
+                <AppIcon name="close" size={18} />
+              </button>
+            </div>
+            <div className="pmform">
+              <label className="field pmform__icon">
+                <span>Emoji</span>
+                <input className="input" value={icon} onChange={(event) => setIcon(event.target.value)} placeholder="💳" maxLength={8} aria-label="Payment method emoji" />
+              </label>
+              <label className="field">
+                <span>Name</span>
+                <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. HDFC Card" onKeyDown={(event) => event.key === 'Enter' && void save()} autoFocus />
+              </label>
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn--ghost" onClick={() => setEditor(null)}>Cancel</button>
+              <button className="btn" onClick={save} disabled={!name.trim()}>{editor === 'new' ? 'Add method' : 'Save changes'}</button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </CollapsibleCard>
   );
 }

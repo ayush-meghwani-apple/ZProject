@@ -60,6 +60,7 @@ export default function Reels({ version, onChange }: Props) {
   const [toast, setToast] = useState('');
   const trackRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
+  const changingCycle = useRef(false);
 
   function flashToast(msg: string) {
     setToast(msg);
@@ -122,6 +123,7 @@ export default function Reels({ version, onChange }: Props) {
   // A permanent “salary credited” marker reel for a cycle started from a salary.
   const viewedCycle = cycles.find((c) => c.id === cycleId);
   const showSalary = !!viewedCycle?.autoSalary;
+  const reelCount = notes.length + reels.length + (showSalary ? 1 : 0);
 
   // Return to the reel you were on for this cycle (or the top for a cycle you
   // haven't opened yet), once the track has a measurable height.
@@ -139,6 +141,9 @@ export default function Reels({ version, onChange }: Props) {
       }
       el.scrollTo({ top: target * h });
       setActive(target);
+      requestAnimationFrame(() => {
+        changingCycle.current = false;
+      });
     };
     raf = requestAnimationFrame(restore);
     return () => cancelAnimationFrame(raf);
@@ -149,6 +154,11 @@ export default function Reels({ version, onChange }: Props) {
     const el = trackRef.current;
     if (!el || el.clientHeight === 0) return;
     const idx = Math.round(el.scrollTop / el.clientHeight);
+    if (idx >= reelCount && reelCount > 0 && !changingCycle.current) {
+      changingCycle.current = true;
+      goOlder(true);
+      return;
+    }
     if (cycleId) reelScrollPos[cycleId] = idx;
     if (idx !== active) {
       setActive(idx);
@@ -159,13 +169,20 @@ export default function Reels({ version, onChange }: Props) {
 
   const cycleIdx = cycles.findIndex((c) => c.id === cycleId);
   // cycles are sorted newest-first: older = higher index, newer = lower index.
-  const hasOlder = cycleIdx >= 0 && cycleIdx < cycles.length - 1;
-  const hasNewer = cycleIdx > 0;
-  function goOlder() {
-    if (hasOlder) setCycleId(cycles[cycleIdx + 1].id);
+  const hasOlder = cycles.length > 1 && cycleIdx >= 0;
+  const hasNewer = cycles.length > 1 && cycleIdx >= 0;
+  function goOlder(fromReelEnd = false) {
+    if (!hasOlder) return;
+    const next = cycles[(cycleIdx + 1) % cycles.length];
+    if (fromReelEnd) {
+      reelScrollPos[next.id] = 0;
+      trackRef.current?.scrollTo({ top: 0 });
+    }
+    setCycleId(next.id);
   }
   function goNewer() {
-    if (hasNewer) setCycleId(cycles[cycleIdx - 1].id);
+    if (!hasNewer) return;
+    setCycleId(cycles[(cycleIdx - 1 + cycles.length) % cycles.length].id);
   }
 
   const cycleTitle = cycleIdx >= 0 ? cycleName(cycles[cycleIdx]) : 'All expenses';
@@ -330,13 +347,14 @@ export default function Reels({ version, onChange }: Props) {
           <div className="reels__bar">
             <button
               className="reels__nav"
-              onClick={goOlder}
+              onClick={() => goOlder()}
               disabled={!hasOlder}
               aria-label="Older cycle"
             >
               ‹
             </button>
             <div className="reels__cycle">
+              <span className="reels__cycle-kicker">Spending cycle</span>
               <span className="reels__cycle-name">{cycleTitle}</span>
               <span className="reels__cycle-sub">
                 {formatINR(total)} · {reels.length} expense{reels.length === 1 ? '' : 's'}
@@ -351,10 +369,10 @@ export default function Reels({ version, onChange }: Props) {
               ›
             </button>
           </div>
-          {notes.length + reels.length > 0 && (
+          {reelCount > 0 && (
             <div className="reels__counter">
-              {Math.min(active + 1, notes.length + reels.length + (showSalary ? 1 : 0))} /{' '}
-              {notes.length + reels.length + (showSalary ? 1 : 0)}
+              <strong>{Math.min(active + 1, reelCount)}</strong>
+              <span>/ {reelCount}</span>
             </div>
           )}
         </div>
@@ -368,7 +386,7 @@ export default function Reels({ version, onChange }: Props) {
         </div>
       ) : (
         <>
-          <div className="reels__track" ref={trackRef} onScroll={onScroll}>
+          <div key={cycleId} className="reels__track" ref={trackRef} onScroll={onScroll}>
             {notes.map((n) => (
               <section className="reel reel--note" key={`note-${n.id}`}>
                 <div className="reel__flame reel__flame--note">📝 Note</div>
@@ -550,6 +568,12 @@ export default function Reels({ version, onChange }: Props) {
                     <AppIcon name="plus" size={20} />
                   </button>
                 </div>
+              </section>
+            )}
+            {cycles.length > 1 && (
+              <section className="reel reel--cycle-transition" aria-hidden="true">
+                <AppIcon name="chevronDown" size={22} />
+                <span>{cycleName(cycles[(cycleIdx + 1) % cycles.length])}</span>
               </section>
             )}
           </div>

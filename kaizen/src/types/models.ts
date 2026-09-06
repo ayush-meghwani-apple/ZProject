@@ -72,6 +72,7 @@ export type RecurringFrequency = 'daily' | 'weekly' | 'monthly';
 export interface RecurringExpense {
   id: ID;
   amount: number;
+  icon?: string;
   categoryId?: ID;
   subcategoryId?: ID;
   note?: string;

@@ -103,14 +103,13 @@ export default function DataBackupCard({ onReload, beforeExport, defaultOpen = t
   }
 
   return (
-    <div className="card dbk">
+    <div className={`card dbk scard--compact${open ? ' scard--open' : ''}`}>
       <button className="scard__head" onClick={() => setOpen((o) => !o)}>
         <span className="scard__icon">
           <AppIcon name="backup" size={22} />
         </span>
         <span className="scard__headtext">
           <span className="scard__title">Data &amp; Backup</span>
-          <span className="scard__sub">Keep your data safe and backed up</span>
         </span>
         <AppIcon name={open ? 'chevronUp' : 'chevronDown'} size={18} />
       </button>
@@ -149,26 +148,31 @@ export default function DataBackupCard({ onReload, beforeExport, defaultOpen = t
                 disabled={busy}
                 aria-label="Save backup to phone"
               >
-                <AppIcon name="download" size={18} /> {busy ? '…' : 'Save'}
+                <AppIcon name="download" size={18} />
+                <strong>{busy ? 'Saving…' : 'Save'}</strong>
               </button>
               <button
                 className="dbk__act"
                 onClick={() => importRef.current?.click()}
                 aria-label="Import backup from phone"
               >
-                <AppIcon name="export" size={18} /> Import
+                <AppIcon name="export" size={18} />
+                <strong>Merge</strong>
               </button>
               <button
                 className="dbk__act dbk__act--danger"
                 onClick={() => restoreRef.current?.click()}
+                aria-label="Replace all app data from backup"
               >
-                <AppIcon name="restore" size={18} /> Restore
+                <AppIcon name="restore" size={18} />
+                <strong>Replace</strong>
               </button>
             </div>
             <span className="dbk__divh" />
             <div className="dbk__remind">
-              <span className="dbk__remindlabel" aria-label="Backup reminder">
-                <AppIcon name="remind" size={18} /> Reminder
+              <span className="dbk__remindicon"><AppIcon name="remind" size={18} /></span>
+              <span className="dbk__remindlabel">
+                <strong>Backup reminder</strong>
               </span>
               <select
                 className="input dbk__select"

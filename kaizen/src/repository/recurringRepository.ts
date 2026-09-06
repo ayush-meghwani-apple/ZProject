@@ -32,6 +32,7 @@ function advance(dateIso: string, freq: RecurringFrequency, dayOfMonth?: number)
 
 export type NewRecurringInput = {
   amount: number;
+  icon?: string;
   categoryId?: ID;
   subcategoryId?: ID;
   note?: string;
@@ -78,6 +79,7 @@ export const RecurringRepository = {
     const rec: RecurringExpense = {
       id: newId(),
       amount: input.amount,
+      icon: input.icon,
       categoryId: input.categoryId,
       subcategoryId: input.subcategoryId,
       note: input.note,
@@ -96,6 +98,19 @@ export const RecurringRepository = {
   async update(rec: RecurringExpense): Promise<void> {
     rec.updatedAt = now();
     await storage.recurring.put(rec);
+  },
+
+  async updateDetails(rec: RecurringExpense, input: NewRecurringInput): Promise<void> {
+    const scheduleChanged =
+      rec.frequency !== input.frequency ||
+      rec.dayOfWeek !== input.dayOfWeek ||
+      rec.dayOfMonth !== input.dayOfMonth;
+    await storage.recurring.put({
+      ...rec,
+      ...input,
+      nextDate: scheduleChanged ? firstNextDate(input) : rec.nextDate,
+      updatedAt: now(),
+    });
   },
 
   async remove(id: ID): Promise<void> {
