@@ -580,7 +580,13 @@ export default function Reels({ version, onChange }: Props) {
               >
                 <div className="reel__flame reel__flame--ok">💰 Salary credited</div>
                 <div className="reel__visual">
-                  <div className="reel__icon">🎉</div>
+                  <CategoryMotion
+                    categoryId="salary"
+                    color="#10b981"
+                    icon="🎉"
+                    name="Salary credited"
+                    active={active === notes.length + reels.length}
+                  />
                 </div>
                 <div className="reel__content">
                   <div className="reel__cat">Salary received — new cycle started</div>

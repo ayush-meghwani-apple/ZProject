@@ -39,10 +39,21 @@ export default function ExpensifyApp({ refreshNonce = 0, openReelsNonce = 0 }: P
     CategoryRepository.ensureDistinctColors().then((changed) => {
       if (changed > 0) setVersion((v) => v + 1);
     });
-    // Silent Gmail sync on open (no popup) — new spends flow into Reels.
-    GmailRepository.autoSync().then(({ imported, salary }) => {
+    // Sync on open and whenever the app returns to the foreground. This also
+    // retries after a service-worker update reloads the PWA.
+    const syncGmail = () => GmailRepository.autoSync().then(({ imported, salary }) => {
       if (imported > 0 || salary > 0) setVersion((v) => v + 1);
     });
+    void syncGmail();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void syncGmail();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', syncGmail);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', syncGmail);
+    };
   }, []);
 
   const tabs: TabDef[] = [

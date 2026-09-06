@@ -19,9 +19,24 @@ export default function GmailImport({ onChange }: Props) {
   const [diag, setDiag] = useState<string[]>([]);
 
   const last = getGmailSettings();
+  const lastSyncLabel = last.lastSyncAt
+    ? new Date(last.lastSyncAt).toLocaleString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : 'Never synced';
 
   // Reflect background/foreground syncs (incl. the silent one on app open).
-  useEffect(() => GmailRepository.subscribeSync(setSync), []);
+  useEffect(
+    () =>
+      GmailRepository.subscribeSync((next) => {
+        setSync(next);
+        setConnected(GmailRepository.isConnected());
+      }),
+    [],
+  );
 
   // After a "done" pill has shown for a moment, fade the button back to normal.
   useEffect(() => {
@@ -77,13 +92,6 @@ export default function GmailImport({ onChange }: Props) {
     onChange();
   }
 
-  // Runs the exact code path used automatically when the app opens (silent, no
-  // popup) — so the auto-import behaviour can be verified on demand.
-  async function testAutoSync() {
-    await GmailRepository.autoSync();
-    onChange();
-  }
-
   // Lists every email the sync fetches + how it's classified (fetch vs parse).
   async function runDiagnose() {
     setDiag(['Diagnosing…']);
@@ -99,6 +107,7 @@ export default function GmailImport({ onChange }: Props) {
       title="Gmail auto-import"
       icon="add"
       compact
+      subtitle={`Last sync: ${lastSyncLabel}`}
     >
       {!hasClientId && (
         <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
@@ -177,17 +186,7 @@ export default function GmailImport({ onChange }: Props) {
             style={{ marginTop: 6, marginLeft: 8, color: 'var(--danger, #ef4444)' }}
             onClick={resetForTest}
           >
-            Reset auto-imported (test)
-          </button>
-
-          <button
-            className="btn btn--sm btn--ghost"
-            style={{ marginTop: 6, marginLeft: 8 }}
-            onClick={testAutoSync}
-            disabled={syncing}
-            title="Runs the same silent import that happens automatically when the app opens"
-          >
-            Test auto-sync (as if app opened)
+            Reset auto-imported
           </button>
 
           <button
@@ -240,7 +239,7 @@ export default function GmailImport({ onChange }: Props) {
       )}
       {sync.phase === 'idle' && last.lastSyncAt && (
         <p className="muted" style={{ marginBottom: 0 }}>
-          Last sync imported {last.lastImported}, skipped {last.lastSkipped}
+          Last successful sync: {lastSyncLabel} · imported {last.lastImported}, skipped {last.lastSkipped}
           {last.lastSalary ? `, ${last.lastSalary} salary` : ''}.
         </p>
       )}

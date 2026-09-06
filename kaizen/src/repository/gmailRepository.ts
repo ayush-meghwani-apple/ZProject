@@ -143,20 +143,33 @@ export function isConnected(): boolean {
 
 function requestToken(client: TokenClient, prompt: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      fn();
+    };
+    const timeout = window.setTimeout(
+      () => finish(() => reject(new Error('Gmail authorization timed out.'))),
+      prompt === 'none' ? 6000 : 60_000,
+    );
     client.callback = (resp: TokenResponse) => {
       if (resp.error || !resp.access_token) {
-        reject(new Error(resp.error_description || resp.error || 'Authorization failed.'));
+        finish(() => reject(new Error(resp.error_description || resp.error || 'Authorization failed.')));
         return;
       }
-      accessToken = resp.access_token;
-      tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000;
-      persistToken();
-      resolve();
+      finish(() => {
+        accessToken = resp.access_token as string;
+        tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000;
+        persistToken();
+        resolve();
+      });
     };
     try {
       client.requestAccessToken({ prompt });
     } catch (e) {
-      reject(e instanceof Error ? e : new Error('Authorization failed.'));
+      finish(() => reject(e instanceof Error ? e : new Error('Authorization failed.')));
     }
   });
 }
@@ -355,6 +368,7 @@ export interface SyncState {
   result?: ImportResult;
 }
 let syncState: SyncState = { phase: 'idle', message: '' };
+let autoSyncPromise: Promise<ImportResult> | null = null;
 const syncListeners = new Set<(s: SyncState) => void>();
 function emitSync(next: SyncState) {
   syncState = next;
@@ -547,14 +561,15 @@ export async function diagnose(days?: number): Promise<string[]> {
  * Best-effort silent sync used on app open. Never pops a consent dialog and
  * never throws — returns 0/0/0 when not (yet) authorised.
  */
-export async function autoSync(): Promise<ImportResult> {
+async function runAutoSync(): Promise<ImportResult> {
   const zero: ImportResult = { imported: 0, skipped: 0, salary: 0 };
   const settings = getGmailSettings();
   if (!settings.clientId) return zero;
   try {
     if (!isConnected()) await connect(false);
   } catch {
-    return zero; // not authorised yet — stay silent, no phase change
+    emitSync({ phase: 'error', message: 'Gmail needs reconnecting. Tap Sync now.' });
+    return zero;
   }
   emitSync({ phase: 'syncing', message: 'Syncing…' });
   try {
@@ -568,6 +583,14 @@ export async function autoSync(): Promise<ImportResult> {
     emitSync({ phase: 'idle', message: '' });
     return zero;
   }
+}
+
+export function autoSync(): Promise<ImportResult> {
+  if (autoSyncPromise) return autoSyncPromise;
+  autoSyncPromise = runAutoSync().finally(() => {
+    autoSyncPromise = null;
+  });
+  return autoSyncPromise;
 }
 
 export const GmailRepository = {

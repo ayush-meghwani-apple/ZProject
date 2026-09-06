@@ -12,6 +12,7 @@ const MOTION_KIND: Record<string, string> = {
   'flat-family-v1': 'family',
   'flat-investments-v1': 'savings',
   'flat-other-v1': 'other',
+  salary: 'salary',
 };
 
 const ACCENTS: Record<string, [string, string]> = {
@@ -26,6 +27,7 @@ const ACCENTS: Record<string, [string, string]> = {
   family: ['♥', '♥'],
   savings: ['₹', '●'],
   other: ['?', '✦'],
+  salary: ['₹', '★'],
 };
 
 interface Props {
