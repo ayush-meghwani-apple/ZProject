@@ -10,7 +10,7 @@ function fund(): MutualFundHolding {
     category: 'midcap',
     transactions: [
       { id: 'old', date: '2026-08-01T00:00:00.000Z', amount: 5100, units: 21, nav: 242, kind: 'sip', auto: true },
-      { id: 'generated', date: '2026-09-01T00:00:00.000Z', amount: 5100, units: 0, nav: 0, kind: 'sip', auto: true, processing: true },
+      { id: 'generated', date: new Date(2026, 8, 1).toISOString(), amount: 5100, units: 0, nav: 0, kind: 'sip', auto: true, processing: true },
       { id: 'manual', date: '2026-09-02T00:00:00.000Z', amount: 1000, units: 4, nav: 250, kind: 'lumpsum' },
     ],
     createdAt: '2026-01-01T00:00:00.000Z',

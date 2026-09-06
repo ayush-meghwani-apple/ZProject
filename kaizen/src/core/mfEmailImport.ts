@@ -45,6 +45,12 @@ function localIso(date: string): string {
   return new Date(`${date}T00:00:00`).toISOString();
 }
 
+function localMonth(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function mergeMfEmailCandidates(
   funds: MutualFundHolding[],
   candidates: MfEmailCandidate[],
@@ -93,7 +99,7 @@ export function mergeMfEmailCandidates(
           transaction.kind === 'sip' &&
           transaction.auto === true &&
           !transaction.sourceId &&
-          transaction.date.slice(0, 7) === investmentMonth;
+          localMonth(transaction.date) === investmentMonth;
         if (replace) removedGenerated++;
         return !replace;
       });
