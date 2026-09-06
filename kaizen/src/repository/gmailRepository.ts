@@ -17,6 +17,7 @@ import {
 } from '../core/emailParse';
 import {
   getGmailSettings,
+  autoSyncWindowDays,
   isHandled,
   setGmailSettings,
   markImported,
@@ -275,7 +276,10 @@ function toRawEmail(msg: GmailMessage): RawEmail {
 
 // ---- Public sync ---------------------------------------------------------
 
-interface ListResponse { messages?: { id: string }[]; }
+interface ListResponse {
+  messages?: { id: string }[];
+  nextPageToken?: string;
+}
 
 async function prepareParserRevision(): Promise<void> {
   try {
@@ -311,11 +315,18 @@ export async function sync(days?: number): Promise<Candidate[]> {
   const settings = getGmailSettings();
   const window = days ?? settings.syncDays;
   const q = encodeURIComponent(buildGmailQuery(window));
-  const list = await api<ListResponse>(`/messages?maxResults=500&q=${q}`);
-  const ids = (list.messages ?? []).map((m) => m.id).filter((id) => !isHandled(id));
+  const ids: string[] = [];
+  let pageToken = '';
+  do {
+    const page = await api<ListResponse>(
+      `/messages?maxResults=500&q=${q}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+    );
+    ids.push(...(page.messages ?? []).map((message) => message.id));
+    pageToken = page.nextPageToken ?? '';
+  } while (pageToken);
 
   const candidates: Candidate[] = [];
-  for (const id of ids) {
+  for (const id of ids.filter((id) => !isHandled(id))) {
     const msg = await api<GmailMessage>(`/messages/${id}?format=full`);
     const email = toRawEmail(msg);
     const parsed = parseTransactionEmail(email);
@@ -324,7 +335,6 @@ export async function sync(days?: number): Promise<Candidate[]> {
   }
 
   candidates.sort((a, b) => (b.email.receivedAt ?? 0) - (a.email.receivedAt ?? 0));
-  setGmailSettings({ lastSyncAt: new Date().toISOString() });
   return candidates;
 }
 
@@ -500,6 +510,7 @@ export async function syncAndImport(
     if (!isConnected()) await connect(opts.interactive ?? true);
     const candidates = await sync(days);
     const result = await importCandidates(candidates);
+    setGmailSettings({ lastSyncAt: new Date().toISOString() });
     emitSync({ phase: 'done', message: summarize(result), result });
     return result;
   } catch (e) {
@@ -538,7 +549,8 @@ export async function diagnose(days?: number): Promise<string[]> {
  */
 export async function autoSync(): Promise<ImportResult> {
   const zero: ImportResult = { imported: 0, skipped: 0, salary: 0 };
-  if (!getGmailSettings().clientId) return zero;
+  const settings = getGmailSettings();
+  if (!settings.clientId) return zero;
   try {
     if (!isConnected()) await connect(false);
   } catch {
@@ -546,8 +558,10 @@ export async function autoSync(): Promise<ImportResult> {
   }
   emitSync({ phase: 'syncing', message: 'Syncing…' });
   try {
-    const candidates = await sync();
+    const candidates = await sync(autoSyncWindowDays(settings.lastAutoSyncAt, settings.syncDays));
     const result = await importCandidates(candidates);
+    const completedAt = new Date().toISOString();
+    setGmailSettings({ lastSyncAt: completedAt, lastAutoSyncAt: completedAt });
     emitSync({ phase: 'done', message: summarize(result), result });
     return result;
   } catch {

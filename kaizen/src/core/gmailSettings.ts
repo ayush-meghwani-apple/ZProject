@@ -14,6 +14,8 @@ export interface GmailSettings {
   syncDays: number;
   /** ISO timestamp of the last successful sync, or '' if never. */
   lastSyncAt: string;
+  /** ISO timestamp of the last fully successful automatic sync. */
+  lastAutoSyncAt: string;
   /** Summary of the last sync, shown in Settings (survives tab switches). */
   lastImported: number;
   lastSkipped: number;
@@ -24,6 +26,7 @@ const DEFAULTS: GmailSettings = {
   clientId: '',
   syncDays: 7,
   lastSyncAt: '',
+  lastAutoSyncAt: '',
   lastImported: 0,
   lastSkipped: 0,
   lastSalary: 0,
@@ -32,7 +35,15 @@ const DEFAULTS: GmailSettings = {
 export function getGmailSettings(): GmailSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<GmailSettings>) };
+    if (raw) {
+      const stored = JSON.parse(raw) as Partial<GmailSettings>;
+      const settings = { ...DEFAULTS, ...stored };
+      if (!Object.prototype.hasOwnProperty.call(stored, 'lastAutoSyncAt')) {
+        settings.lastAutoSyncAt = settings.lastSyncAt;
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      }
+      return settings;
+    }
   } catch {
     /* ignore unavailable/corrupt storage */
   }
@@ -47,6 +58,22 @@ export function setGmailSettings(patch: Partial<GmailSettings>): GmailSettings {
     /* ignore */
   }
   return next;
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+/** Gmail's newer_than filter is day-based, so round up with a full-day overlap. */
+export function autoSyncWindowDays(
+  lastSuccessfulAt: string,
+  fallbackDays: number,
+  now = Date.now(),
+): number {
+  const fallback = Math.max(1, Math.floor(fallbackDays) || 1);
+  if (!lastSuccessfulAt) return fallback;
+  const checkpoint = Date.parse(lastSuccessfulAt);
+  if (!Number.isFinite(checkpoint) || checkpoint > now) return fallback;
+  return Math.max(1, Math.ceil((now - checkpoint + DAY_MS) / DAY_MS));
 }
 
 function readSet(key: string): Set<string> {
@@ -113,5 +140,11 @@ export function clearImportMemory(): void {
   } catch {
     /* ignore */
   }
-  setGmailSettings({ lastImported: 0, lastSkipped: 0, lastSalary: 0, lastSyncAt: '' });
+  setGmailSettings({
+    lastImported: 0,
+    lastSkipped: 0,
+    lastSalary: 0,
+    lastSyncAt: '',
+    lastAutoSyncAt: '',
+  });
 }

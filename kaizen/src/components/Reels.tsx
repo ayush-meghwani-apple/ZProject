@@ -14,6 +14,7 @@ import { playSound } from '../core/sound';
 import { requestNotificationPermission } from '../core/notify';
 import EditExpenseModal from './EditExpenseModal';
 import AppIcon from './AppIcon';
+import CategoryMotion from './CategoryMotion';
 import type { Alias, Category, Expense, PaymentMethod, SalaryCycle, Subcategory } from '../types/models';
 
 interface Props {
@@ -124,6 +125,11 @@ export default function Reels({ version, onChange }: Props) {
   const viewedCycle = cycles.find((c) => c.id === cycleId);
   const showSalary = !!viewedCycle?.autoSalary;
   const reelCount = notes.length + reels.length + (showSalary ? 1 : 0);
+  const cycleIdx = cycles.findIndex((c) => c.id === cycleId);
+  // cycles are sorted newest-first: older = higher index, newer = lower index.
+  const hasOlder = cycles.length > 1 && cycleIdx >= 0;
+  const hasNewer = cycles.length > 1 && cycleIdx > 0;
+  const leadingTransition = hasNewer ? 1 : 0;
 
   // Return to the reel you were on for this cycle (or the top for a cycle you
   // haven't opened yet), once the track has a measurable height.
@@ -131,48 +137,50 @@ export default function Reels({ version, onChange }: Props) {
     if (!cycleId) return;
     const el = trackRef.current;
     if (!el) return;
-    const target = Math.min(reelScrollPos[cycleId] ?? 0, Math.max(0, reels.length - 1));
-    let raf = 0;
+    const target = Math.min(reelScrollPos[cycleId] ?? 0, Math.max(0, reelCount - 1));
+    let timer = 0;
     const restore = () => {
       const h = el.clientHeight;
       if (h === 0) {
-        raf = requestAnimationFrame(restore);
+        timer = window.setTimeout(restore, 16);
         return;
       }
-      el.scrollTo({ top: target * h });
+      el.scrollTo({ top: (target + leadingTransition) * h });
       setActive(target);
-      requestAnimationFrame(() => {
-        changingCycle.current = false;
-      });
+      changingCycle.current = false;
     };
-    raf = requestAnimationFrame(restore);
-    return () => cancelAnimationFrame(raf);
+    restore();
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cycleId]);
 
   function onScroll() {
     const el = trackRef.current;
     if (!el || el.clientHeight === 0) return;
+    if (changingCycle.current) return;
     const idx = Math.round(el.scrollTop / el.clientHeight);
-    if (idx >= reelCount && reelCount > 0 && !changingCycle.current) {
+    if (idx === 0 && leadingTransition) {
+      changingCycle.current = true;
+      goNewer();
+      return;
+    }
+    const reelIdx = idx - leadingTransition;
+    if (reelIdx >= reelCount && reelCount > 0) {
       changingCycle.current = true;
       goOlder(true);
       return;
     }
-    if (cycleId) reelScrollPos[cycleId] = idx;
-    if (idx !== active) {
-      setActive(idx);
+    if (cycleId) reelScrollPos[cycleId] = reelIdx;
+    if (reelIdx !== active) {
+      setActive(reelIdx);
       setMethodMenuFor(null);
       setActionMenuFor(null);
     }
   }
 
-  const cycleIdx = cycles.findIndex((c) => c.id === cycleId);
-  // cycles are sorted newest-first: older = higher index, newer = lower index.
-  const hasOlder = cycles.length > 1 && cycleIdx >= 0;
-  const hasNewer = cycles.length > 1 && cycleIdx >= 0;
   function goOlder(fromReelEnd = false) {
     if (!hasOlder) return;
+    changingCycle.current = true;
     const next = cycles[(cycleIdx + 1) % cycles.length];
     if (fromReelEnd) {
       reelScrollPos[next.id] = 0;
@@ -182,7 +190,9 @@ export default function Reels({ version, onChange }: Props) {
   }
   function goNewer() {
     if (!hasNewer) return;
-    setCycleId(cycles[(cycleIdx - 1 + cycles.length) % cycles.length].id);
+    changingCycle.current = true;
+    const next = cycles[cycleIdx - 1];
+    setCycleId(next.id);
   }
 
   const cycleTitle = cycleIdx >= 0 ? cycleName(cycles[cycleIdx]) : 'All expenses';
@@ -362,7 +372,7 @@ export default function Reels({ version, onChange }: Props) {
             </div>
             <button
               className="reels__nav"
-              onClick={goNewer}
+              onClick={() => goNewer()}
               disabled={!hasNewer}
               aria-label="Newer cycle"
             >
@@ -386,7 +396,18 @@ export default function Reels({ version, onChange }: Props) {
         </div>
       ) : (
         <>
-          <div key={cycleId} className="reels__track" ref={trackRef} onScroll={onScroll}>
+          <div
+            key={cycleId}
+            className="reels__track"
+            ref={trackRef}
+            onScroll={onScroll}
+          >
+            {hasNewer && (
+              <section className="reel reel--cycle-transition" aria-hidden="true">
+                <AppIcon name="chevronUp" size={22} />
+                <span>{cycleName(cycles[cycleIdx - 1])}</span>
+              </section>
+            )}
             {notes.map((n) => (
               <section className="reel reel--note" key={`note-${n.id}`}>
                 <div className="reel__flame reel__flame--note">📝 Note</div>
@@ -418,7 +439,7 @@ export default function Reels({ version, onChange }: Props) {
               </section>
             ))}
 
-            {reels.map((e) => {
+            {reels.map((e, expenseIndex) => {
               const cat = catFor(e);
               const color = cat?.color ?? '#6366f1';
               const sub = subOf(e);
@@ -434,9 +455,13 @@ export default function Reels({ version, onChange }: Props) {
                   }}
                 >
                   <div className="reel__visual">
-                    <div className="reel__icon" style={{ background: tint(color, 0.18) }}>
-                      {cat?.icon ?? '📦'}
-                    </div>
+                    <CategoryMotion
+                      categoryId={cat?.id}
+                      color={color}
+                      icon={cat?.icon ?? '📦'}
+                      name={cat ? `${cat.name} category` : 'Uncategorized expense'}
+                      active={active === notes.length + expenseIndex}
+                    />
                   </div>
 
                   <div className="reel__content">
