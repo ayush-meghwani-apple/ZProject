@@ -78,6 +78,7 @@ let tokenClient: TokenClient | null = null;
 let accessToken = '';
 let tokenExpiry = 0; // epoch millis
 let connectPromise: Promise<void> | null = null;
+let connectIsInteractive = false;
 
 // Restore a previously-granted token so a page reload (e.g. a new app version)
 // never forces re-authorising.
@@ -190,9 +191,16 @@ async function runConnect(interactive: boolean): Promise<void> {
 
 export function connect(interactive = true): Promise<void> {
   if (isConnected()) return Promise.resolve();
-  if (connectPromise) return connectPromise;
+  if (connectPromise) {
+    if (!interactive || connectIsInteractive) return connectPromise;
+    // A foreground tap must not inherit a startup prompt='none' failure. The
+    // silent request normally settles immediately; then retry interactively.
+    return connectPromise.catch(() => connect(true));
+  }
+  connectIsInteractive = interactive;
   connectPromise = runConnect(interactive).finally(() => {
     connectPromise = null;
+    connectIsInteractive = false;
   });
   return connectPromise;
 }
@@ -209,7 +217,7 @@ async function api<T>(path: string): Promise<T> {
   if (!isConnected()) {
     // Try a silent refresh before giving up.
     await connect(false).catch(() => {
-      throw new Error('Not connected to Gmail. Tap Connect first.');
+      throw new Error('Gmail reconnect required.');
     });
   }
   const res = await fetch(`${API}${path}`, {
@@ -217,7 +225,7 @@ async function api<T>(path: string): Promise<T> {
   });
   if (res.status === 401) {
     clearToken();
-    throw new Error('Gmail session expired. Tap Connect again.');
+    throw new Error('Gmail session expired. Reconnect from Settings.');
   }
   if (!res.ok) throw new Error(`Gmail API error ${res.status}.`);
   return res.json() as Promise<T>;
@@ -591,7 +599,7 @@ async function runAutoSync(): Promise<ImportResult> {
   try {
     if (!isConnected()) await connect(false);
   } catch {
-    emitSync({ phase: 'error', message: 'Gmail needs reconnecting. Tap Sync now.' });
+    emitSync({ phase: 'error', message: 'Gmail reconnect required.' });
     return zero;
   }
   emitSync({ phase: 'syncing', message: 'Syncing…' });

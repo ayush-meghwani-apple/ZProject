@@ -28,6 +28,13 @@ function todayInput(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+function monthLabel(iso: string): string {
+  if (!iso) return 'Current positions';
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? 'Other'
+    : date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
 const mfCatLabel = (c: string) => MF_CATEGORIES.find((x) => x.value === c)?.label ?? 'Other';
 
 /** A decimal input (units / NAV) backed by local text so a trailing "." isn't lost. */
@@ -104,9 +111,11 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   const [fCls, setFCls] = useState('all');
   const [fType, setFType] = useState('all');
   const [fKind, setFKind] = useState<'all' | 'buys' | 'sells'>('all');
-  const [fRange, setFRange] = useState('all');
+  const [fRange, setFRange] = useState('fy');
   const [fFrom, setFFrom] = useState('');
   const [fTo, setFTo] = useState('');
+  const [fQuery, setFQuery] = useState('');
+  const [visibleCount, setVisibleCount] = useState(50);
 
   const rows = useMemo<UnifiedRow[]>(() => {
     const mfRows: UnifiedRow[] = funds.flatMap((f) =>
@@ -255,6 +264,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
   }, []);
 
   const shown = rows.filter((r) => {
+    if (fQuery.trim() && !`${r.name} ${r.groupLabel}`.toLocaleLowerCase().includes(fQuery.trim().toLocaleLowerCase())) return false;
     if (fCls !== 'all' && r.classKey !== fCls) return false;
     if (fType !== 'all' && r.groupKey !== fType) return false;
     if (fKind === 'buys' && (r.isSell || r.source === 'holding')) return false;
@@ -265,9 +275,12 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
     }
     return true;
   });
-  const anyFilter = fCls !== 'all' || fType !== 'all' || fKind !== 'all' || fRange !== 'all';
+  const visibleRows = shown.slice(0, visibleCount);
+  const anyFilter = !!fQuery.trim() || fCls !== 'all' || fType !== 'all' || fKind !== 'all' || fRange !== 'fy' || !!fFrom || !!fTo;
   const invested = shown.reduce((s, r) => (r.source === 'holding' ? s : s + (r.isSell ? -r.amount : r.amount)), 0);
   const needsReview = rows.filter((r) => r.auto && !r.reviewed).length;
+
+  useEffect(() => setVisibleCount(50), [fQuery, fCls, fType, fKind, fRange, fFrom, fTo]);
 
   // ---- mutations ----------------------------------------------------------
   function editTxn(fundId: string, txnId: string, patch: Partial<MFTransaction>) {
@@ -344,12 +357,12 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
           <>
             <div className="ft-mf__total">
               <div className="ft-mf__totalrow">
-                <span>{anyFilter ? 'Net invested (filtered)' : 'Net invested (all buys)'}</span>
+                <span>Net invested (shown)</span>
                 <b>{formatINR(invested)}</b>
               </div>
               <div className="ft-mf__totalrow ft-mf__muted">
                 <span>Entries</span>
-                <span>{shown.length}</span>
+                <span>{shown.length} of {rows.length}</span>
               </div>
               {needsReview > 0 && (
                 <div className="ft-mf__totalrow ft-led__reviewnote">
@@ -361,6 +374,10 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
             </div>
 
             <div className="ft-led__filtergrid">
+              <label className="ft-led__search">
+                <AppIcon name="search" size={16} />
+                <input value={fQuery} onChange={(e) => setFQuery(e.target.value)} placeholder="Search funds or assets" aria-label="Search Ledger" />
+              </label>
               {clsOptions.length > 1 && (
                 <select className="input ft-led__filtersel" value={fCls} onChange={(e) => setFCls(e.target.value)} aria-label="Filter by asset">
                   {clsOptions.map((o) => (
@@ -400,17 +417,21 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                 </div>
               )}
               {anyFilter && (
-                <button className="ft-led__clearfilter" onClick={() => { setFCls('all'); setFType('all'); setFKind('all'); setFRange('all'); setFFrom(''); setFTo(''); }}>
-                  Clear filters
+                <button className="ft-led__clearfilter" onClick={() => { setFQuery(''); setFCls('all'); setFType('all'); setFKind('all'); setFRange('fy'); setFFrom(''); setFTo(''); }}>
+                  Reset filters
                 </button>
               )}
             </div>
 
-            {shown.map((r) => {
+            {visibleRows.map((r, index) => {
               const review = r.auto && !r.reviewed;
               const isPos = r.source === 'holding';
+              const month = monthLabel(r.date);
+              const previousMonth = index > 0 ? monthLabel(visibleRows[index - 1].date) : '';
               return (
-                <div className={`ft-led__item ${review ? 'ft-led__item--review' : ''} ${isPos ? 'ft-led__item--pos' : ''}`} key={r.id}>
+                <div className="ft-led__entry" key={r.id}>
+                  {month !== previousMonth && <h3 className="ft-led__month">{month}</h3>}
+                  <div className={`ft-led__item ${review ? 'ft-led__item--review' : ''} ${isPos ? 'ft-led__item--pos' : ''}`}>
                   <div className="ft-led__row">
                     <button className="ft-led__main" onClick={() => setOpenId((id) => (id === r.id ? null : r.id))}>
                       {r.isSip && (
@@ -551,9 +572,17 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
               );
             })}
+
+            {shown.length === 0 && <p className="ft-led__empty">No entries match these filters.</p>}
+            {visibleRows.length < shown.length && (
+              <button className="btn btn--ghost ft-led__more" onClick={() => setVisibleCount((count) => count + 50)}>
+                Show 50 older - {shown.length - visibleRows.length} remaining
+              </button>
+            )}
 
             {adding && createPortal(
               <div className="modal__backdrop modal__backdrop--form" onClick={() => setAdding(false)}>

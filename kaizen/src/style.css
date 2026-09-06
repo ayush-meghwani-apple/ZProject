@@ -5905,6 +5905,28 @@ svg.lucide {
 .ft-led__filtergrid .ft-led__filtersel {
   width: 100%;
 }
+.ft-led__search {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+.ft-led__search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+}
 .ft-led__clearfilter {
   grid-column: 1 / -1;
   justify-self: start;
@@ -6378,11 +6400,31 @@ button.ft-settings__card {
   font-size: 12px;
   color: var(--muted);
 }
+.ft-led__month {
+  margin: 18px 2px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.ft-led__entry:first-child .ft-led__month {
+  margin-top: 14px;
+}
 .ft-led__item {
-  margin-top: 8px;
+  margin-top: 6px;
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
+}
+.ft-led__empty {
+  margin: 24px 0;
+  color: var(--muted);
+  text-align: center;
+}
+.ft-led__more {
+  display: flex;
+  margin: 14px auto 0;
 }
 /* Auto-added, not-yet-reviewed rows get a subtle amber cue on the leading edge. */
 .ft-led__item--review {
