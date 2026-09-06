@@ -35,6 +35,103 @@ export function dayLabel(d: string): string {
   return Number.isNaN(date.getTime()) ? d : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 }
 
+export interface AssetHistoryPoint {
+  d: string;
+  totalAssets: number;
+}
+
+function rangeStart(range: ChartRange, asOf: Date): Date | null {
+  if (range === 'MAX') return null;
+  const back = range === '1W' ? 7 : range === '1M' ? 31 : range === '3M' ? 93 : range === '6M' ? 186 : 365;
+  const start = new Date(asOf);
+  start.setDate(start.getDate() - back);
+  return start;
+}
+
+/**
+ * Reconstruct total-assets history from dated Ledger and mutual-fund entries.
+ * Holdings without a transaction date remain a stable base; the final point is
+ * always the same live total shown in the Net Worth header.
+ */
+export function assetValueHistory(
+  plan: FinancialPlan,
+  range: ChartRange,
+  asOf: Date = new Date(),
+): AssetHistoryPoint[] {
+  const tracked = trackedFundsByClass(plan.mutualFunds);
+  const live = computeNetWorth(
+    plan.assets,
+    plan.liabilities,
+    plan.disabledClasses ?? [],
+    plan.customClasses ?? [],
+    tracked,
+  );
+  const disabled = new Set(plan.disabledClasses ?? []);
+  const enabledFunds = (plan.mutualFunds ?? []).filter((fund) => !disabled.has(fund.category === 'debt' ? 'debt' : 'equity_mf'));
+  const currentMf = enabledFunds.reduce((sum, fund) => {
+    const units = (fund.transactions ?? []).reduce((total, transaction) => total + (Number(transaction.units) || 0), 0);
+    return sum + units * (Number(fund.latestNav) || 0);
+  }, 0);
+  const ledgerEntries = (plan.ledger ?? []).filter((entry) => !disabled.has(entry.assetClassKey));
+  const currentLedger = ledgerEntries.reduce(
+    (sum, entry) => sum + (entry.kind === 'sell' ? -Math.abs(Number(entry.amount) || 0) : Math.abs(Number(entry.amount) || 0)),
+    0,
+  );
+  const stableBase = live.totalAssets - currentMf - currentLedger;
+  const start = rangeStart(range, asOf);
+  const startKey = start ? dayKey(start) : '';
+  const todayKey = dayKey(asOf);
+  const dates = new Set<string>([todayKey]);
+
+  if (start) dates.add(startKey);
+  for (const snapshot of plan.daySnapshots ?? []) {
+    if ((!startKey || snapshot.d >= startKey) && snapshot.d <= todayKey) dates.add(snapshot.d);
+  }
+  const addEventDate = (iso: string) => {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return;
+    const key = dayKey(date);
+    if ((!startKey || key >= startKey) && key <= todayKey) {
+      dates.add(key);
+      const previous = new Date(date);
+      previous.setDate(previous.getDate() - 1);
+      const previousKey = dayKey(previous);
+      if (!startKey || previousKey >= startKey) dates.add(previousKey);
+    }
+  };
+  for (const fund of enabledFunds) for (const transaction of fund.transactions ?? []) addEventDate(transaction.date);
+  for (const entry of ledgerEntries) addEventDate(entry.date);
+
+  const orderedDates = [...dates].sort();
+  return orderedDates.map((d) => {
+    const end = new Date(`${d}T23:59:59.999`).getTime();
+    let mfValue = 0;
+    for (const fund of enabledFunds) {
+      let units = 0;
+      let nav = 0;
+      let navTimestamp = -Infinity;
+      for (const transaction of fund.transactions ?? []) {
+        const timestamp = new Date(transaction.date).getTime();
+        if (!transaction.processing && Number.isFinite(timestamp) && timestamp <= end) {
+          units += Number(transaction.units) || 0;
+          if ((Number(transaction.nav) || 0) > 0 && timestamp >= navTimestamp) {
+            nav = Number(transaction.nav);
+            navTimestamp = timestamp;
+          }
+        }
+      }
+      if (d === todayKey && (Number(fund.latestNav) || 0) > 0) nav = Number(fund.latestNav);
+      mfValue += units * nav;
+    }
+    const ledgerValue = ledgerEntries.reduce((sum, entry) => {
+      if (new Date(entry.date).getTime() > end) return sum;
+      const amount = Math.abs(Number(entry.amount) || 0);
+      return sum + (entry.kind === 'sell' ? -amount : amount);
+    }, 0);
+    return { d, totalAssets: Math.round(stableBase + ledgerValue + mfValue) };
+  });
+}
+
 /** Tracked mutual funds' total invested and current value (units × latest NAV). */
 export function mfTotals(plan: FinancialPlan): { invested: number; current: number } {
   let invested = 0;

@@ -8,13 +8,13 @@ import {
   trackedFundsByClass,
   classBreakdown,
 } from '../../core/plannerMath';
-import type { AssetClassKey, DaySnapshot, HoldingRow } from '../../types/models';
+import type { AssetClassKey, HoldingRow } from '../../types/models';
 import HoldingList from './HoldingList';
 import AppIcon, { type IconName } from '../AppIcon';
 import { Section, TotalRow, formatINR } from './shared';
 import LineChart from './LineChart';
 import Donut from './Donut';
-import { sliceDays, dayLabel, type ChartRange } from '../../core/planSnapshot';
+import { assetValueHistory, dayLabel, type ChartRange } from '../../core/planSnapshot';
 
 const CHART_RANGES: ChartRange[] = ['1W', '1M', '3M', '6M', 'MAX'];
 const rangeLabel = (r: ChartRange) => (r === '1W' ? '7D' : r === 'MAX' ? 'Max' : r);
@@ -88,12 +88,8 @@ export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
     });
   const breakdownFor = (key: string) => classBreakdown(plan.assets, key, plan.mutualFunds ?? [], custom);
 
-  // "Assets over time" line chart — from daily snapshots, so it starts the day
-  // tracking began and builds forward (no misleading back-to-inception jumps).
-  const days = plan.daySnapshots ?? [];
   const [range, setRange] = useState<ChartRange>('1M');
-  const valueOf = (s: DaySnapshot): number => s.totalAssets;
-  const chartDays = sliceDays(days, range);
+  const chartDays = useMemo(() => assetValueHistory(plan, range), [plan, range]);
 
   return (
     <main className="app__body">
@@ -137,8 +133,8 @@ export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
           </div>
           <LineChart
             labels={chartDays.map((s) => dayLabel(s.d))}
-            series={[{ label: 'Total assets', color: '#6366f1', values: chartDays.map(valueOf) }]}
-            emptyHint="Open Fortuna over a few days and this chart of your assets will build up from today."
+            series={[{ label: 'Total assets', color: '#6366f1', values: chartDays.map((point) => point.totalAssets) }]}
+            emptyHint="Add dated Ledger transactions to build your asset history."
           />
         </Section>
 
