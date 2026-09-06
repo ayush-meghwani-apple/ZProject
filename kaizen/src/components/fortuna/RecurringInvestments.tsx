@@ -41,6 +41,7 @@ export default function RecurringInvestments({
   update: PlanUpdate;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [fundEditId, setFundEditId] = useState<string | null>(null);
   const sips = plan.recurringInvestments;
   // Mutual-fund SIPs live on each fund (Pulse tab), not in recurringInvestments —
   // surface them here too so ALL recurring contributions are visible in one place.
@@ -62,7 +63,6 @@ export default function RecurringInvestments({
   return (
     <Section
       title="Recurring investments (SIPs)"
-      subtitle="Auto-add contributions to your portfolio"
       icon="recurring"
       right={sips.length > 0 || fundSips.length > 0 ? <span className="ft-chip">{formatINR(monthlyTotal)}/mo</span> : undefined}
       collapsible
@@ -89,7 +89,6 @@ export default function RecurringInvestments({
             {open && (
               <FortunaSheet
                 title={s.label.trim() || 'New recurring investment'}
-                subtitle="Contribution, destination and schedule"
                 onClose={() => setOpenId(null)}
               >
               <div className="ft-sip__body ft-sheet__form">
@@ -265,40 +264,74 @@ export default function RecurringInvestments({
                     <span className="ft-sip__name">{f.name}</span>
                     <span className="ft-sip__meta">Monthly · Day {sip.dayOfMonth}{!sip.active && ' · paused'}</span>
                   </span>
-                  <span className="ft-mfsip__amt">
-                    <span className="ft-row__cur">₹</span>
-                    <AmountInput
-                      className="input"
-                      value={sip.amount}
-                      onChange={(v) => update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund?.sip) fund.sip.amount = v; })}
-                      placeholder="0"
-                    />
-                  </span>
+                  <span className="ft-mfsip__amt">{formatINR(sip.amount)}</span>
                   <button
                     className="ft-mfsip__btn"
-                    title={sip.active ? 'Pause' : 'Resume'}
-                    aria-label={sip.active ? 'Pause SIP' : 'Resume SIP'}
-                    onPointerDown={(e) => e.preventDefault()}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund?.sip) fund.sip.active = !fund.sip.active; })}
+                    title="Edit SIP"
+                    aria-label={`Edit ${f.name} SIP`}
+                    onClick={() => setFundEditId(f.id)}
                   >
-                    <AppIcon name={sip.active ? 'pause' : 'play'} size={15} />
-                  </button>
-                  <button
-                    className="ft-mfsip__btn ft-mfsip__btn--del"
-                    title="Stop this SIP"
-                    aria-label="Stop this SIP"
-                    onPointerDown={(e) => e.preventDefault()}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      if (confirm('Stop this recurring SIP? The fund stays on Pulse.')) {
-                        update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund) fund.sip = undefined; });
-                      }
-                    }}
-                  >
-                    <AppIcon name="trash" size={15} />
+                    <AppIcon name="edit" size={15} />
                   </button>
                 </div>
+                {fundEditId === f.id && (
+                  <FortunaSheet
+                    title={f.name}
+                    onClose={() => setFundEditId(null)}
+                    footer={(
+                      <div className="ft-sheet__actions">
+                        <button
+                          className="btn btn--ghost"
+                          onClick={() => update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund?.sip) fund.sip.active = !fund.sip.active; })}
+                        >
+                          <AppIcon name={sip.active ? 'pause' : 'play'} size={16} /> {sip.active ? 'Pause' : 'Resume'}
+                        </button>
+                        <button
+                          className="btn btn--ghost btn--danger"
+                          onClick={() => {
+                            if (confirm('Stop this recurring SIP? The fund stays on Pulse.')) {
+                              update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund) fund.sip = undefined; });
+                              setFundEditId(null);
+                            }
+                          }}
+                        >
+                          <AppIcon name="trash" size={16} /> Delete
+                        </button>
+                      </div>
+                    )}
+                  >
+                    <div className="ft-sheet__form">
+                      <label className="ft-row">
+                        <span className="ft-row__label">Monthly amount</span>
+                        <span className="ft-row__field">
+                          <span className="ft-row__cur">₹</span>
+                          <AmountInput
+                            className="input ft-row__input"
+                            value={sip.amount}
+                            onChange={(v) => update((d) => { const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id); if (fund?.sip) fund.sip.amount = v; })}
+                            placeholder="0"
+                          />
+                        </span>
+                      </label>
+                      <label className="ft-row">
+                        <span className="ft-row__label">Day of month</span>
+                        <span className="ft-row__field">
+                          <input
+                            className="input ft-row__input"
+                            type="number"
+                            min={1}
+                            max={28}
+                            value={sip.dayOfMonth}
+                            onChange={(event) => update((d) => {
+                              const fund = (d.mutualFunds ?? []).find((x) => x.id === f.id);
+                              if (fund?.sip) fund.sip.dayOfMonth = Math.min(28, Math.max(1, Number(event.target.value) || 1));
+                            })}
+                          />
+                        </span>
+                      </label>
+                    </div>
+                  </FortunaSheet>
+                )}
               </div>
             );
           })}
@@ -309,16 +342,8 @@ export default function RecurringInvestments({
         <span className="ft-addrec__icon"><AppIcon name="plus" size={18} /></span>
         <span className="ft-addrec__text">
           <span className="ft-addrec__title">Add recurring investment</span>
-          <span className="ft-addrec__sub">Choose a fund and set your SIP</span>
         </span>
       </button>
-
-      {fundSips.length > 0 && (
-        <div className="ft-sipnote">
-          <span className="ft-sipnote__icon"><AppIcon name="sparkle" size={16} /></span>
-          <p className="ft-sipnote__text">Adjust a fund’s SIP amount here or on the Pulse tab — installments post automatically each month at that day’s NAV.</p>
-        </div>
-      )}
     </Section>
   );
 }

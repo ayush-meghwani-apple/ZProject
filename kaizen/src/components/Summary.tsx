@@ -20,8 +20,20 @@ export default function Summary({ version }: Props) {
   const [cycles, setCycles] = useState<SalaryCycle[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [chipEdges, setChipEdges] = useState({ left: false, right: false });
   const initialized = useRef(false);
   const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const chipScrollerRef = useRef<HTMLDivElement | null>(null);
+
+  function updateChipEdges() {
+    const element = chipScrollerRef.current;
+    if (!element) return;
+    const maxScroll = element.scrollWidth - element.clientWidth;
+    setChipEdges({
+      left: element.scrollLeft > 2,
+      right: maxScroll - element.scrollLeft > 2,
+    });
+  }
 
   function selectCategory(categoryId: string, toggle = false, revealChip = false) {
     setExpandedId((current) => (toggle && current === categoryId ? null : categoryId));
@@ -67,6 +79,15 @@ export default function Summary({ version }: Props) {
   const topCategory = categorySummary[0];
   const ringCircumference = 2 * Math.PI * 45;
   let ringOffset = 0;
+
+  useEffect(() => {
+    const element = chipScrollerRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(updateChipEdges);
+    observer.observe(element);
+    requestAnimationFrame(updateChipEdges);
+    return () => observer.disconnect();
+  }, [categorySummary.length]);
 
   return (
     <div className="page page--summary">
@@ -119,24 +140,26 @@ export default function Summary({ version }: Props) {
           </div>
         </div>
         {categorySummary.length > 0 && (
-          <div className="summaryhero__chips" aria-label="Spending categories" data-noswipe>
-            {categorySummary.map((row) => {
-              const category = categories.find((item) => item.id === row.categoryId);
-              const active = expandedId === row.categoryId;
-              const percentage = spendingTotal > 0 ? Math.round((row.total / spendingTotal) * 100) : 0;
-              return (
-                <button
-                  key={row.categoryId}
-                  ref={(element) => { chipRefs.current[row.categoryId] = element; }}
-                  className={active ? 'is-active' : ''}
-                  onClick={() => selectCategory(row.categoryId, true)}
-                >
-                  <span className="summaryhero__chipdot" style={{ background: row.color }} />
-                  <span>{category?.icon ? `${category.icon} ` : ''}{row.name}</span>
-                  <strong>{percentage}%</strong>
-                </button>
-              );
-            })}
+          <div className={`summaryhero__chipswrap${chipEdges.left ? ' has-left' : ''}${chipEdges.right ? ' has-right' : ''}`}>
+            <div ref={chipScrollerRef} className="summaryhero__chips" aria-label="Spending categories" data-noswipe onScroll={updateChipEdges}>
+              {categorySummary.map((row) => {
+                const category = categories.find((item) => item.id === row.categoryId);
+                const active = expandedId === row.categoryId;
+                const percentage = spendingTotal > 0 ? Math.round((row.total / spendingTotal) * 100) : 0;
+                return (
+                  <button
+                    key={row.categoryId}
+                    ref={(element) => { chipRefs.current[row.categoryId] = element; }}
+                    className={active ? 'is-active' : ''}
+                    onClick={() => selectCategory(row.categoryId, true)}
+                  >
+                    <span className="summaryhero__chipdot" style={{ background: row.color }} />
+                    <span>{category?.icon ? `${category.icon} ` : ''}{row.name}</span>
+                    <strong>{percentage}%</strong>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -183,7 +206,6 @@ export default function Summary({ version }: Props) {
 
       <div className="card">
         <h3>Where it went</h3>
-        <p className="card__subtitle">Tap any category for its transactions.</p>
 
         {categorySummary.length === 0 ? (
           <p className="muted">No expenses in this selection.</p>

@@ -97,7 +97,7 @@ export interface Expense {
   paymentMethodId?: ID;
   note?: string;
   rawText?: string; // original chat input, for transparency
-  reviewed?: boolean; // user acknowledged a “big spend” so it stops drawing attention
+  reviewed?: boolean; // user acknowledged a ΓÇ£big spendΓÇ¥ so it stops drawing attention
   autoImported?: boolean; // created automatically from a Gmail bank/card alert
   recurringId?: ID; // set when auto-created from a recurring template
   createdAt: ISODate;
@@ -122,14 +122,14 @@ export interface GoalPlanItem {
   id: ID;
   kind: PlanItemKind; // recurring monthly saving, or a one-time lump sum / FD
   label: string; // e.g. "Bank savings", "FD 1"
-  amount: number; // recurring: monthly amount · lumpsum: the principal
+  amount: number; // recurring: monthly amount ┬╖ lumpsum: the principal
   startMonth: number; // months from the goal start when this begins (0 = now)
   durationMonths: number; // recurring: how many months you keep paying in
   //                          lumpsum: the FD/deposit tenure
   annualRatePct: number; // expected annual return, % (0 for a plain bank balance)
   stepUpPct?: number; // recurring only: yearly step-up applied to the amount, %
   compounding?: Compounding; // lumpsum only: how the deposit compounds (FD = quarterly)
-  vehicle?: SavingsVehicle; // where the money sits (bank, RD, mutual fund, bonds…)
+  vehicle?: SavingsVehicle; // where the money sits (bank, RD, mutual fund, bondsΓÇª)
 }
 
 /**
@@ -156,7 +156,7 @@ export type NoteBlockType = 'text' | 'bullets' | 'image' | 'link';
 export interface NoteBlock {
   id: ID;
   type: NoteBlockType;
-  text?: string; // text: paragraph · bullets: one item per line
+  text?: string; // text: paragraph ┬╖ bullets: one item per line
   dataUrl?: string; // image: a (downscaled) base64 data URL
   url?: string; // link: the raw URL
   title?: string; // link: optional label (raw for now; unfurled later)
@@ -204,7 +204,7 @@ export interface VaultItem {
 }
 
 // ---------------------------------------------------------------------------
-// Fortuna — Financial Planning ("Investments" tile).
+// Fortuna ΓÇö Financial Planning ("Investments" tile).
 //
 // Mirrors the user's Master Financial Planner spreadsheet. The ENTIRE plan is a
 // single versioned document (id `default`) so it saves atomically and is trivial
@@ -226,11 +226,11 @@ export type AssetClassKey =
   | 'real_estate';
 
 /**
- * A goal TYPE — a user-defined bucket you assign goals to (e.g. Short, Medium,
+ * A goal TYPE ΓÇö a user-defined bucket you assign goals to (e.g. Short, Medium,
  * Retirement, Wealth). Each type just carries a heading and a one-line
  * description; it is NOT derived from a time horizon. Its per-class allocation
  * weights live on the {@link AssetClassAssumption} rows (keyed by this id).
- * (`maxYears` is legacy — only used to migrate pre-goal-type plans; not shown.)
+ * (`maxYears` is legacy ΓÇö only used to migrate pre-goal-type plans; not shown.)
  */
 export interface HorizonDef {
   id: string; // 'short' | 'medium' | 'long' | a uuid for custom types
@@ -270,13 +270,13 @@ export interface CustomAssetClass {
 }
 
 /** A single line item inside a multi-row holdings list (a stock, MF, FD, an
- *  inflow/outflow/liability line…). */
+ *  inflow/outflow/liability lineΓÇª). */
 export interface HoldingRow {
   id: ID;
   name: string;
   category?: string; // e.g. Largecap/Midcap/Smallcap/Flexi, or a bank name
   value: number; // current value / amount in INR
-  units?: number; // optional units held (equity holdings) — for tracking
+  units?: number; // optional units held (equity holdings) ΓÇö for tracking
 }
 
 /**
@@ -287,7 +287,7 @@ export interface HoldingRow {
 export interface CashFlow {
   inflows: HoldingRow[];
   outflows: HoldingRow[];
-  /** Optional custom emergency-fund target. When unset, defaults to 6× monthly
+  /** Optional custom emergency-fund target. When unset, defaults to 6├ù monthly
    *  outflows (the recommended value); set it to override. */
   emergencyTarget?: number;
 }
@@ -315,7 +315,7 @@ export interface Liabilities {
   items: HoldingRow[];
 }
 
-/** Goal priority — a fixed 5-level scale from low to high. */
+/** Goal priority ΓÇö a fixed 5-level scale from low to high. */
 export type GoalPriority = 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
 export const GOAL_PRIORITIES: GoalPriority[] = ['Very Low', 'Low', 'Medium', 'High', 'Very High'];
 
@@ -324,7 +324,7 @@ export const GOAL_PRIORITIES: GoalPriority[] = ['Very Low', 'Low', 'Medium', 'Hi
 export interface FinancialGoalRow {
   id: ID;
   name: string;
-  priority?: GoalPriority; // 5-level scale (Very Low … Very High)
+  priority?: GoalPriority; // 5-level scale (Very Low ΓÇª Very High)
   goalTypeId?: string; // which goal type (its allocation weights drive the SIP split)
   yearsLeft: number;
   amountRequiredToday: number;
@@ -366,8 +366,8 @@ export interface RecurringInvestment {
   destination: SipDestination;
   category?: string; // equity only: Largecap/Midcap/Smallcap/Flexi
   frequency: SipFrequency;
-  dayOfMonth?: number; // monthly / quarterly (1–31, clamped)
-  dayOfWeek?: number; // weekly (0–6)
+  dayOfMonth?: number; // monthly / quarterly (1ΓÇô31, clamped)
+  dayOfWeek?: number; // weekly (0ΓÇô6)
   nextDate: ISODate; // next local-midnight the contribution is due
   lastRunAt?: ISODate; // when it last added to the portfolio
   active: boolean;
@@ -382,7 +382,7 @@ export interface RecurringInvestment {
 // can pull the live NAV from AMFI and compute the true current value plus
 // money-weighted returns (XIRR / CAGR) per fund, per category and overall.
 
-/** Broad fund category, used to group returns (large/mid/small/flexi/debt…). */
+/** Broad fund category, used to group returns (large/mid/small/flexi/debtΓÇª). */
 export type MFCategory = 'largecap' | 'midcap' | 'smallcap' | 'flexicap' | 'hybrid' | 'debt' | 'other';
 
 export const MF_CATEGORIES: { value: MFCategory; label: string }[] = [
@@ -401,7 +401,7 @@ export const MF_CATEGORIES: { value: MFCategory; label: string }[] = [
 export interface MFTransaction {
   id: ID;
   date: ISODate; // purchase date (local-midnight ISO)
-  amount: number; // INR invested (a redeem/sell stores this NEGATIVE = −proceeds)
+  amount: number; // INR invested (a redeem/sell stores this NEGATIVE = ΓêÆproceeds)
   units: number; // units allotted (a redeem/sell stores this NEGATIVE = units sold)
   nav: number; // NAV on the purchase / sale date
   kind: 'sip' | 'lumpsum' | 'redeem';
@@ -410,7 +410,7 @@ export interface MFTransaction {
   importSource?: 'etmoney';
   sourceId?: string; // stable provider order number for import de-duplication
   /** A SIP installment recorded on its scheduled date but whose units/NAV are
-   *  not final yet — the scheduled day fell on a weekend/holiday, so the AMC
+   *  not final yet ΓÇö the scheduled day fell on a weekend/holiday, so the AMC
    *  allots on the NEXT working day and that day's NAV isn't published until
    *  ~mid-morning. While true, `nav`/`units` are 0 and the Ledger shows
    *  "Processing"; it's filled in and cleared once the allotment NAV lands. */
@@ -421,7 +421,7 @@ export interface MFTransaction {
  *  month from `startDate`. Installments are auto-filled using historical NAV. */
 export interface MFSip {
   amount: number;
-  dayOfMonth: number; // 1–28 (clamped to month length)
+  dayOfMonth: number; // 1ΓÇô28 (clamped to month length)
   startDate: ISODate; // first installment date
   active: boolean;
 }
@@ -433,6 +433,9 @@ export interface MutualFundHolding {
   schemeCode: number; // AMFI scheme code (via api.mfapi.in)
   name: string;
   category: MFCategory;
+  /** Official AMFI/MFAPI category used for peer comparison. Kept separate from
+   *  the broader user-facing category that controls portfolio allocation. */
+  schemeCategory?: string;
   transactions: MFTransaction[];
   sip?: MFSip;
   latestNav?: number; // last NAV fetched from AMFI (cache)
@@ -443,10 +446,10 @@ export interface MutualFundHolding {
 
 // ---- General ledger (all asset types) -------------------------------------
 //
-// The ledger is the master transaction history across EVERY asset class — not
+// The ledger is the master transaction history across EVERY asset class ΓÇö not
 // just mutual funds. Mutual-fund buys live inside their fund (so the Pulse tab
 // can price them against live NAV); every OTHER asset type (gold, a custom
-// "gold coin" bucket, US stocks, FDs…) records its buys/sells as
+// "gold coin" bucket, US stocks, FDsΓÇª) records its buys/sells as
 // {@link LedgerEntry} rows here. Adding a non-MF entry also drops a matching
 // holding line into that asset class in the Portfolio (linked by `holdingId`),
 // so the ledger is the input and the portfolio reflects it.
@@ -481,14 +484,14 @@ export interface LedgerEntry {
 
 /** A monthly point-in-time snapshot of the plan's headline figures, captured
  *  once per calendar month on open, so the app can show a month-on-month trend
- *  without recomputing history. Oldest→newest. */
+ *  without recomputing history. OldestΓåÆnewest. */
 export interface PlanSnapshot {
   ym: string; // "yyyy-mm" (the calendar month this snapshot represents)
   at: ISODate; // when it was captured
   netWorth: number;
   totalAssets: number;
   mfInvested: number; // total put into tracked mutual funds
-  mfCurrent: number; // current value of tracked mutual funds (units × NAV)
+  mfCurrent: number; // current value of tracked mutual funds (units ├ù NAV)
 }
 
 /** A daily point-in-time snapshot, captured once per day on open. Powers the
@@ -521,7 +524,7 @@ export interface FinancialPlan {
    *  older documents load unchanged; defaulted to `[]` on migrate. */
   mutualFunds?: MutualFundHolding[];
   /** General ledger of non-mutual-fund transactions (gold, custom buckets, US
-   *  stocks…). Each maintains a linked Portfolio holding. Defaulted to `[]`. */
+   *  stocksΓÇª). Each maintains a linked Portfolio holding. Defaulted to `[]`. */
   ledger?: LedgerEntry[];
   /** Monthly headline snapshots (net worth / MF value) for the trend charts.
    *  Appended once per calendar month on open; defaulted to `[]`. */
@@ -536,9 +539,9 @@ export interface FinancialPlan {
    *  {@link AssetClassAssumption} row (same id) for its return & weights. */
   customClasses?: CustomAssetClass[];
   /** Custom display names for the built-in fixed portfolio lines (e.g. rename
-   *  "Home" → "Flat in Pune"). Keyed by a stable line id like `realEstate.home`. */
+   *  "Home" ΓåÆ "Flat in Pune"). Keyed by a stable line id like `realEstate.home`. */
   fixedLabels?: Record<string, string>;
-  /** Asset classes the user has turned off — excluded from net worth, the asset
+  /** Asset classes the user has turned off ΓÇö excluded from net worth, the asset
    *  mix, the Returns table and goal allocations, and shown collapsed at the
    *  bottom of the Portfolio tab. May include custom class ids. */
   disabledClasses?: string[];

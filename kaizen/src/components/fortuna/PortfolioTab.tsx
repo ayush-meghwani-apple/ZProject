@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
-import type { AssetClassKey, CustomAssetClass } from '../../types/models';
+import type { AssetClassKey, CustomAssetClass, HoldingRow } from '../../types/models';
 import { sectionTotals, capBreakdown, AGE_EQUITY_ALLOCATION, classBreakdown, trackedFundsByClass } from '../../core/plannerMath';
 import { newId } from '../../core/util';
+import AmountInput from '../AmountInput';
 import AppIcon from '../AppIcon';
 import RecurringInvestments from './RecurringInvestments';
 import HoldingList from './HoldingList';
 import DistributionBar from './DistributionBar';
-import { Section, RenamableMoneyRow, TotalRow, Switch, formatINR } from './shared';
+import { FortunaSheet, Section, TotalRow, Switch, formatINR } from './shared';
 
 const EQUITY_CATS = ['Largecap', 'Midcap', 'Smallcap', 'Flexi/Multi cap'];
 
@@ -28,6 +29,7 @@ export default function PortfolioTab({ plan, update, goTo }: FortunaTabProps) {
   const a = plan.assets;
   const capTotal = caps.reduce((s, c) => s + c.value, 0);
   const [newClassId, setNewClassId] = useState<string | null>(null);
+  const [editingClass, setEditingClass] = useState<string | null>(null);
 
   const customClasses = plan.customClasses ?? [];
   const disabledList = plan.disabledClasses ?? [];
@@ -80,6 +82,7 @@ export default function PortfolioTab({ plan, update, goTo }: FortunaTabProps) {
       d.assumptions.push({ key: id, label: '', expectedReturnPct: 8, weights: {} });
     });
     setNewClassId(id);
+    setEditingClass(id);
   }
   function removeCustomClass(id: string) {
     update((d) => {
@@ -103,10 +106,15 @@ export default function PortfolioTab({ plan, update, goTo }: FortunaTabProps) {
     });
   }
 
-  const HeadRight = ({ k, value }: { k: string; value: number }) => (
-    <span className="ft-secright">
+  const HeadRight = ({ k, value, editable = true }: { k: string; value: number; editable?: boolean }) => (
+    <span className="ft-secright ft-secright--assets">
       <Switch on={on(k)} onChange={(o) => toggleClass(k, !o)} label={on(k) ? 'On' : 'Off'} />
       <Chip value={value} />
+      {editable && (
+        <button className="iconbtn ft-assets__edit" onClick={() => setEditingClass(k)} aria-label={`Edit ${k} assets`} title="Edit assets">
+          <AppIcon name="edit" size={15} />
+        </button>
+      )}
     </span>
   );
 
@@ -133,26 +141,19 @@ export default function PortfolioTab({ plan, update, goTo }: FortunaTabProps) {
         {on('real_estate') && (
           <Section title="Real Estate & REITs" right={<HeadRight k="real_estate" value={totals.realEstate} />} collapsible defaultOpen={false}>
             <ClassDist k="real_estate" />
-            <RenamableMoneyRow label={fl('realEstate.home', 'Home')} value={a.realEstate.home} onChange={(v) => update((d) => { d.assets.realEstate.home = v; })} onRename={(n) => rename('realEstate.home', n)} />
-            <RenamableMoneyRow label={fl('realEstate.otherRealEstate', 'Other real estate')} value={a.realEstate.otherRealEstate} onChange={(v) => update((d) => { d.assets.realEstate.otherRealEstate = v; })} onRename={(n) => rename('realEstate.otherRealEstate', n)} />
-            <RenamableMoneyRow label={fl('realEstate.reits', 'REITs')} value={a.realEstate.reits} onChange={(v) => update((d) => { d.assets.realEstate.reits = v; })} onRename={(n) => rename('realEstate.reits', n)} />
-            <div className="ft-sublabel">Other holdings</div>
-            <HoldingList rows={a.realEstate.others} namePlaceholder="e.g. Plot, 2nd property" onChange={(m) => update((d) => m(d.assets.realEstate.others))} />
+            <AssetSummary rows={[
+              { id: 'home', name: fl('realEstate.home', 'Home'), value: a.realEstate.home },
+              { id: 'other', name: fl('realEstate.otherRealEstate', 'Other real estate'), value: a.realEstate.otherRealEstate },
+              { id: 'reits', name: fl('realEstate.reits', 'REITs'), value: a.realEstate.reits },
+              ...a.realEstate.others,
+            ]} />
           </Section>
         )}
 
         {on('domestic_equity') && (
-          <Section title="Equity Stocks" subtitle="Direct stocks" right={<HeadRight k="domestic_equity" value={secVal.domestic_equity} />} collapsible defaultOpen={false}>
+          <Section title="Equity Stocks" right={<HeadRight k="domestic_equity" value={secVal.domestic_equity} />} collapsible defaultOpen={false}>
             <ClassDist k="domestic_equity" />
-            <div className="ft-sublabel">Stocks</div>
-            <HoldingList
-              rows={a.domesticEquity.stocks}
-              categories={EQUITY_CATS}
-              namePlaceholder="Stock name"
-              showUnits
-              avatar
-              onChange={(m) => update((d) => m(d.assets.domesticEquity.stocks))}
-            />
+            <AssetSummary rows={a.domesticEquity.stocks} />
 
             {capTotal > 0 && (
               <>
@@ -196,71 +197,56 @@ export default function PortfolioTab({ plan, update, goTo }: FortunaTabProps) {
         )}
 
         {on('equity_mf') && (
-          <Section title="Equity Mutual Funds" subtitle="Funds & ETFs (also auto-tracked on Pulse)" right={<HeadRight k="equity_mf" value={secVal.equity_mf} />} collapsible defaultOpen={false}>
+          <Section title="Equity Mutual Funds" right={<HeadRight k="equity_mf" value={secVal.equity_mf} />} collapsible defaultOpen={false}>
             <ClassDist k="equity_mf" />
             {goTo && (
               <button className="ft-viewlink" onClick={() => goTo('funds')}>
                 Manage funds on Pulse <AppIcon name="chevronRight" size={15} />
               </button>
             )}
-            {a.domesticEquity.mutualFunds.length > 0 && <div className="ft-sublabel">Manually-entered funds</div>}
-            <HoldingList
-              rows={a.domesticEquity.mutualFunds}
-              categories={EQUITY_CATS}
-              namePlaceholder="Fund name"
-              showUnits
-              onChange={(m) => update((d) => m(d.assets.domesticEquity.mutualFunds))}
-            />
+            <AssetSummary rows={a.domesticEquity.mutualFunds} empty="No manually-entered funds" />
           </Section>
         )}
 
         {on('us_equity') && (
           <Section title="US Equity" right={<HeadRight k="us_equity" value={secVal.us_equity} />} collapsible defaultOpen={false}>
             <ClassDist k="us_equity" />
-            <HoldingList
-              rows={a.usEquity.others}
-              namePlaceholder="e.g. S&P 500 ETF, VOO, US mutual fund"
-              showUnits
-              onChange={(m) => update((d) => m(d.assets.usEquity.others))}
-            />
-            <RenamableMoneyRow label={fl('misc.smallcase', 'Smallcase')} value={a.misc.smallcase} onChange={(v) => update((d) => { d.assets.misc.smallcase = v; })} onRename={(n) => rename('misc.smallcase', n)} />
+            <AssetSummary rows={[...a.usEquity.others, { id: 'smallcase', name: fl('misc.smallcase', 'Smallcase'), value: a.misc.smallcase }]} />
           </Section>
         )}
 
         {on('debt') && (
-          <Section title="Debt" subtitle="Cash, FDs, debt funds, EPF/PPF/VPF" right={<HeadRight k="debt" value={secVal.debt} />} collapsible defaultOpen={false}>
+          <Section title="Debt" right={<HeadRight k="debt" value={secVal.debt} />} collapsible defaultOpen={false}>
             <ClassDist k="debt" />
             {trackedFor('debt') > 0 && (
               <TotalRow label="Auto-tracked debt funds · edit in the Ledger" value={trackedFor('debt')} />
             )}
-            <RenamableMoneyRow label={fl('debt.liquidCash', 'Liquid (savings, cash, liquid fund)')} value={a.debt.liquidCash} onChange={(v) => update((d) => { d.assets.debt.liquidCash = v; })} onRename={(n) => rename('debt.liquidCash', n)} />
-            <div className="ft-sublabel">Fixed deposits</div>
-            <HoldingList rows={a.debt.fds} namePlaceholder="Bank name" onChange={(m) => update((d) => m(d.assets.debt.fds))} />
-            <div className="ft-sublabel">Debt funds</div>
-            <HoldingList rows={a.debt.debtFunds} namePlaceholder="Fund name" onChange={(m) => update((d) => m(d.assets.debt.debtFunds))} />
-            <div className="ft-sublabel">EPF / PPF / VPF</div>
-            <HoldingList rows={a.debt.epfPpfVpf} namePlaceholder="Account" onChange={(m) => update((d) => m(d.assets.debt.epfPpfVpf))} />
-            <RenamableMoneyRow label={fl('misc.ulips', 'ULIPs / other insurance')} value={a.misc.ulips} onChange={(v) => update((d) => { d.assets.misc.ulips = v; })} onRename={(n) => rename('misc.ulips', n)} />
+            <AssetSummary rows={[
+              { id: 'cash', name: fl('debt.liquidCash', 'Liquid cash'), value: a.debt.liquidCash },
+              ...a.debt.fds,
+              ...a.debt.debtFunds,
+              ...a.debt.epfPpfVpf,
+              { id: 'ulips', name: fl('misc.ulips', 'ULIPs / other insurance'), value: a.misc.ulips },
+            ]} />
           </Section>
         )}
 
         {on('gold') && (
           <Section title="Gold" right={<HeadRight k="gold" value={secVal.gold} />} collapsible defaultOpen={false}>
             <ClassDist k="gold" />
-            <RenamableMoneyRow label={fl('gold.jewellery', 'Jewellery')} value={a.gold.jewellery} onChange={(v) => update((d) => { d.assets.gold.jewellery = v; })} onRename={(n) => rename('gold.jewellery', n)} />
-            <RenamableMoneyRow label={fl('gold.sgb', 'SGB')} value={a.gold.sgb} onChange={(v) => update((d) => { d.assets.gold.sgb = v; })} onRename={(n) => rename('gold.sgb', n)} />
-            <RenamableMoneyRow label={fl('gold.goldEtf', 'Gold ETF / digital gold')} value={a.gold.goldEtf} onChange={(v) => update((d) => { d.assets.gold.goldEtf = v; })} onRename={(n) => rename('gold.goldEtf', n)} />
-            <div className="ft-sublabel">Other holdings</div>
-            <HoldingList rows={a.gold.others} namePlaceholder="e.g. Gold coins, fund" onChange={(m) => update((d) => m(d.assets.gold.others))} />
+            <AssetSummary rows={[
+              { id: 'jewellery', name: fl('gold.jewellery', 'Jewellery'), value: a.gold.jewellery },
+              { id: 'sgb', name: fl('gold.sgb', 'SGB'), value: a.gold.sgb },
+              { id: 'goldEtf', name: fl('gold.goldEtf', 'Gold ETF / digital gold'), value: a.gold.goldEtf },
+              ...a.gold.others,
+            ]} />
           </Section>
         )}
 
         {on('crypto') && (
           <Section title="Crypto" right={<HeadRight k="crypto" value={secVal.crypto} />} collapsible defaultOpen={false}>
             <ClassDist k="crypto" />
-            <RenamableMoneyRow label={fl('crypto.crypto', 'Crypto')} value={a.crypto.crypto} onChange={(v) => update((d) => { d.assets.crypto.crypto = v; })} onRename={(n) => rename('crypto.crypto', n)} />
-            <div className="ft-sublabel">Other holdings</div>
-            <HoldingList rows={a.crypto.others} namePlaceholder="e.g. BTC, ETH, SOL" onChange={(m) => update((d) => m(d.assets.crypto.others))} />
+            <AssetSummary rows={[{ id: 'crypto', name: fl('crypto.crypto', 'Crypto'), value: a.crypto.crypto }, ...a.crypto.others]} />
           </Section>
         )}
 
@@ -273,47 +259,102 @@ export default function PortfolioTab({ plan, update, goTo }: FortunaTabProps) {
             defaultOpen={c.id === newClassId}
           >
             <ClassDist k={c.id} />
-            <label className="ft-row">
-              <span className="ft-row__label">Category name</span>
-              <span className="ft-row__field">
-                <input
-                  className="input ft-row__input"
-                  value={c.label}
-                  placeholder="e.g. Angel investments, P2P, Art"
-                  onChange={(e) => renameCustom(c.id, e.target.value)}
-                />
-              </span>
-            </label>
-            <label className="ft-row">
-              <span className="ft-row__label">
-                Counts as liquid
-                <span className="ft-row__hint">Off = illiquid (locked / hard to sell)</span>
-              </span>
-              <span className="ft-row__field ft-row__field--switch">
-                <Switch on={c.liquid} onChange={(o) => setCustomLiquid(c.id, o)} label={c.liquid ? 'Liquid' : 'Illiquid'} />
-              </span>
-            </label>
-            <div className="ft-sublabel">Holdings</div>
-            <HoldingList rows={c.holdings} namePlaceholder="Holding name" onChange={(m) => update((d) => { const cc = (d.customClasses ?? []).find((x) => x.id === c.id); if (cc) m(cc.holdings); })} />
-            <p className="ft-note">Set this category's expected return & goal weights in the Returns tab.</p>
-            <button className="ft-disablebtn ft-disablebtn--danger" onClick={() => removeCustomClass(c.id)}>
-              <AppIcon name="trash" size={14} /> Delete category
-            </button>
+            <AssetSummary rows={c.holdings} />
           </Section>
+        ))}
+
+        {editingClass === 'real_estate' && (
+          <FortunaSheet title="Edit Real Estate & REITs" onClose={() => setEditingClass(null)}>
+            <div className="ft-assetform">
+              <FixedAssetField label={fl('realEstate.home', 'Home')} value={a.realEstate.home} onRename={(name) => rename('realEstate.home', name)} onChange={(value) => update((d) => { d.assets.realEstate.home = value; })} />
+              <FixedAssetField label={fl('realEstate.otherRealEstate', 'Other real estate')} value={a.realEstate.otherRealEstate} onRename={(name) => rename('realEstate.otherRealEstate', name)} onChange={(value) => update((d) => { d.assets.realEstate.otherRealEstate = value; })} />
+              <FixedAssetField label={fl('realEstate.reits', 'REITs')} value={a.realEstate.reits} onRename={(name) => rename('realEstate.reits', name)} onChange={(value) => update((d) => { d.assets.realEstate.reits = value; })} />
+              <FormGroup title="Other holdings">
+                <HoldingList form rows={a.realEstate.others} namePlaceholder="e.g. Plot, 2nd property" onChange={(m) => update((d) => m(d.assets.realEstate.others))} />
+              </FormGroup>
+            </div>
+          </FortunaSheet>
+        )}
+
+        {editingClass === 'domestic_equity' && (
+          <FortunaSheet title="Edit Equity Stocks" onClose={() => setEditingClass(null)}>
+            <HoldingList form rows={a.domesticEquity.stocks} categories={EQUITY_CATS} namePlaceholder="Stock name" showUnits addLabel="Add stock" onChange={(m) => update((d) => m(d.assets.domesticEquity.stocks))} />
+          </FortunaSheet>
+        )}
+
+        {editingClass === 'equity_mf' && (
+          <FortunaSheet title="Edit Equity Mutual Funds" onClose={() => setEditingClass(null)}>
+            <HoldingList form rows={a.domesticEquity.mutualFunds} categories={EQUITY_CATS} namePlaceholder="Fund name" showUnits addLabel="Add fund" onChange={(m) => update((d) => m(d.assets.domesticEquity.mutualFunds))} />
+          </FortunaSheet>
+        )}
+
+        {editingClass === 'us_equity' && (
+          <FortunaSheet title="Edit US Equity" onClose={() => setEditingClass(null)}>
+            <div className="ft-assetform">
+              <FixedAssetField label={fl('misc.smallcase', 'Smallcase')} value={a.misc.smallcase} onRename={(name) => rename('misc.smallcase', name)} onChange={(value) => update((d) => { d.assets.misc.smallcase = value; })} />
+              <HoldingList form rows={a.usEquity.others} namePlaceholder="e.g. S&P 500 ETF, VOO" showUnits addLabel="Add holding" onChange={(m) => update((d) => m(d.assets.usEquity.others))} />
+            </div>
+          </FortunaSheet>
+        )}
+
+        {editingClass === 'debt' && (
+          <FortunaSheet title="Edit Debt" onClose={() => setEditingClass(null)}>
+            <div className="ft-assetform">
+              <FixedAssetField label={fl('debt.liquidCash', 'Liquid cash')} value={a.debt.liquidCash} onRename={(name) => rename('debt.liquidCash', name)} onChange={(value) => update((d) => { d.assets.debt.liquidCash = value; })} />
+              <FormGroup title="Fixed deposits"><HoldingList form rows={a.debt.fds} namePlaceholder="Bank name" addLabel="Add deposit" onChange={(m) => update((d) => m(d.assets.debt.fds))} /></FormGroup>
+              <FormGroup title="Debt funds"><HoldingList form rows={a.debt.debtFunds} namePlaceholder="Fund name" addLabel="Add fund" onChange={(m) => update((d) => m(d.assets.debt.debtFunds))} /></FormGroup>
+              <FormGroup title="EPF / PPF / VPF"><HoldingList form rows={a.debt.epfPpfVpf} namePlaceholder="Account" addLabel="Add account" onChange={(m) => update((d) => m(d.assets.debt.epfPpfVpf))} /></FormGroup>
+              <FixedAssetField label={fl('misc.ulips', 'ULIPs / other insurance')} value={a.misc.ulips} onRename={(name) => rename('misc.ulips', name)} onChange={(value) => update((d) => { d.assets.misc.ulips = value; })} />
+            </div>
+          </FortunaSheet>
+        )}
+
+        {editingClass === 'gold' && (
+          <FortunaSheet title="Edit Gold" onClose={() => setEditingClass(null)}>
+            <div className="ft-assetform">
+              <FixedAssetField label={fl('gold.jewellery', 'Jewellery')} value={a.gold.jewellery} onRename={(name) => rename('gold.jewellery', name)} onChange={(value) => update((d) => { d.assets.gold.jewellery = value; })} />
+              <FixedAssetField label={fl('gold.sgb', 'SGB')} value={a.gold.sgb} onRename={(name) => rename('gold.sgb', name)} onChange={(value) => update((d) => { d.assets.gold.sgb = value; })} />
+              <FixedAssetField label={fl('gold.goldEtf', 'Gold ETF / digital gold')} value={a.gold.goldEtf} onRename={(name) => rename('gold.goldEtf', name)} onChange={(value) => update((d) => { d.assets.gold.goldEtf = value; })} />
+              <FormGroup title="Other holdings"><HoldingList form rows={a.gold.others} namePlaceholder="e.g. Gold coins, fund" addLabel="Add holding" onChange={(m) => update((d) => m(d.assets.gold.others))} /></FormGroup>
+            </div>
+          </FortunaSheet>
+        )}
+
+        {editingClass === 'crypto' && (
+          <FortunaSheet title="Edit Crypto" onClose={() => setEditingClass(null)}>
+            <div className="ft-assetform">
+              <FixedAssetField label={fl('crypto.crypto', 'Crypto')} value={a.crypto.crypto} onRename={(name) => rename('crypto.crypto', name)} onChange={(value) => update((d) => { d.assets.crypto.crypto = value; })} />
+              <FormGroup title="Other holdings"><HoldingList form rows={a.crypto.others} namePlaceholder="e.g. BTC, ETH, SOL" addLabel="Add holding" onChange={(m) => update((d) => m(d.assets.crypto.others))} /></FormGroup>
+            </div>
+          </FortunaSheet>
+        )}
+
+        {customClasses.map((c) => editingClass === c.id && (
+          <FortunaSheet
+            key={c.id}
+            title={c.label.trim() || 'Edit asset category'}
+            onClose={() => setEditingClass(null)}
+            footer={<button className="btn btn--ghost btn--danger" onClick={() => { removeCustomClass(c.id); setEditingClass(null); }}><AppIcon name="trash" size={16} /> Delete category</button>}
+          >
+            <div className="ft-assetform">
+              <label className="ft-assetform__field"><span>Category name</span><input className="input" value={c.label} placeholder="e.g. Angel investments" onChange={(event) => renameCustom(c.id, event.target.value)} /></label>
+              <label className="ft-assetform__switch"><span>Liquid asset</span><Switch on={c.liquid} onChange={(value) => setCustomLiquid(c.id, value)} label={c.liquid ? 'Liquid' : 'Illiquid'} /></label>
+              <FormGroup title="Holdings"><HoldingList form rows={c.holdings} namePlaceholder="Holding name" addLabel="Add holding" onChange={(m) => update((d) => { const custom = (d.customClasses ?? []).find((x) => x.id === c.id); if (custom) m(custom.holdings); })} /></FormGroup>
+            </div>
+          </FortunaSheet>
         ))}
 
         <button className="ft-addclass" onClick={addCustomClass}>
           <AppIcon name="plus" size={18} /> Add asset category
         </button>
 
-        <Section title="Total portfolio">
+        <Section title="Total assets">
           <TotalRow label="All assets" value={enabledTotal} strong />
         </Section>
 
         {disabledList.length > 0 && (
           <Section
             title={`Disabled (${disabledList.length})`}
-            subtitle="Excluded from net worth, mix, Returns & goals"
             collapsible
             defaultOpen={false}
           >
@@ -340,4 +381,31 @@ export default function PortfolioTab({ plan, update, goTo }: FortunaTabProps) {
 
 function Chip({ value }: { value: number }) {
   return <span className="ft-chip">{formatINR(value)}</span>;
+}
+
+function AssetSummary({ rows, empty = 'No holdings' }: { rows: Pick<HoldingRow, 'id' | 'name' | 'value'>[]; empty?: string }) {
+  if (rows.length === 0) return <span className="ft-assets__empty">{empty}</span>;
+  return (
+    <div className="ft-assets__summary">
+      {rows.map((row) => (
+        <div className="ft-assets__row" key={row.id}>
+          <span>{row.name.trim() || 'Untitled'}</span>
+          <strong>{formatINR(row.value)}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FixedAssetField({ label, value, onRename, onChange }: { label: string; value: number; onRename: (name: string) => void; onChange: (value: number) => void }) {
+  return (
+    <div className="ft-fixedasset">
+      <label className="ft-assetform__field"><span>Name</span><input className="input" value={label} onChange={(event) => onRename(event.target.value)} /></label>
+      <label className="ft-assetform__field"><span>Amount</span><span className="ft-holdingform__money"><span className="ft-row__cur">₹</span><AmountInput className="input" value={value} onChange={onChange} placeholder="0" /></span></label>
+    </div>
+  );
+}
+
+function FormGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return <div className="ft-assetform__group"><div className="ft-sublabel">{title}</div>{children}</div>;
 }

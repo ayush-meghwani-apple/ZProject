@@ -33,6 +33,18 @@ export function formatDate(iso: ISODate): string {
   });
 }
 
+/** Convert a stored instant to the local calendar date expected by date inputs. */
+export function dateInputValue(iso: ISODate): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** Store a date-input value as local midnight while retaining an ISO timestamp. */
+export function dateInputToIso(value: string): ISODate {
+  return new Date(`${value}T00:00:00`).toISOString();
+}
+
 /** Human duration from a (possibly fractional) number of years, e.g. "1y 4m". */
 export function formatDuration(years: number): string {
   const totalMonths = Math.max(0, Math.round(years * 12));

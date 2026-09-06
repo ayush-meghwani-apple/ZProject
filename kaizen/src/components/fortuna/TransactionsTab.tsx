@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { LedgerEntry, LedgerKind, MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
-import { formatINR, newId, now } from '../../core/util';
+import { dateInputToIso, dateInputValue, formatINR, newId, now } from '../../core/util';
 import {
   assignableClasses,
   assignableSubcats,
@@ -349,7 +349,6 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
         <div className="ft-mf__head">
           <div>
             <h2 className="ft-mf__h">Ledger</h2>
-            <p className="ft-mf__sub">Every investment transaction across your portfolio · mutual funds feed the Pulse tab</p>
           </div>
           {!adding && (
             <button className="btn btn--sm" onClick={() => setAdding(true)} aria-label="Add transaction">
@@ -361,7 +360,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
         {rows.length === 0 && !adding ? (
           <div className="ft-mf__empty">
             <AppIcon name="table" size={30} />
-            <p>No transactions yet. Add a mutual-fund buy (from the Pulse tab, or here) or record any other asset — a gold coin, a US stock, an FD — and it updates your Portfolio.</p>
+            <p>No transactions yet. Add a mutual-fund buy (from Pulse or here) or record another asset.</p>
           </div>
         ) : (
           <>
@@ -455,7 +454,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                   )}
                   {monthOpen && <div className={`ft-led__item ${review ? 'ft-led__item--review' : ''} ${isPos ? 'ft-led__item--pos' : ''}`}>
                   <div className="ft-led__row">
-                    <button className="ft-led__main" onClick={() => setOpenId((id) => (id === r.id ? null : r.id))}>
+                    <div className="ft-led__main">
                       {r.isSip && (
                         <span className="ft-led__badge ft-led__badge--sip" title="SIP installment">
                           <AppIcon name="recurring" size={12} />
@@ -485,8 +484,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                         {r.isSell ? '−' : ''}
                         {formatINR(r.amount)}
                       </b>
-                      <AppIcon name={openId === r.id ? 'chevronUp' : 'chevronDown'} size={16} className="ft-mf__chev" />
-                    </button>
+                    </div>
                     {review && (
                       <button
                         className="iconbtn ft-led__review"
@@ -499,19 +497,31 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                         <AppIcon name="reviewed" size={18} />
                       </button>
                     )}
+                    <button
+                      className={`iconbtn ft-led__edit ${openId === r.id ? 'ft-led__edit--active' : ''}`}
+                      title={openId === r.id ? 'Close editor' : 'Edit transaction'}
+                      aria-label={openId === r.id ? 'Close transaction editor' : 'Edit transaction'}
+                      aria-expanded={openId === r.id}
+                      onClick={() => setOpenId((id) => (id === r.id ? null : r.id))}
+                    >
+                      <AppIcon name={openId === r.id ? 'close' : 'edit'} size={16} />
+                    </button>
                   </div>
 
                   {openId === r.id && !isPos && (
                     <div className="ft-mf__fundbody">
                       {r.source === 'mf' ? (
-                        <div className="ft-mf__txn">
-                          <input
-                            className="input ft-mf__txndate"
-                            type="date"
-                            value={r.date.slice(0, 10)}
-                            max={todayInput()}
-                            onChange={(e) => editTxn(r.fundId!, r.id, { date: new Date(e.target.value + 'T00:00:00').toISOString() })}
-                          />
+                        <div className="ft-mf__txn ft-led__editor">
+                          <label className="ft-mf__txnf">
+                            <span>Date</span>
+                            <input
+                              className="input ft-mf__txndate"
+                              type="date"
+                              value={dateInputValue(r.date)}
+                              max={todayInput()}
+                              onChange={(e) => editTxn(r.fundId!, r.id, { date: dateInputToIso(e.target.value) })}
+                            />
+                          </label>
                           <label className="ft-mf__txnf">
                             <span>{r.isSell ? '₹ Proceeds' : '₹ Amount'}</span>
                             <AmountInput className="input" value={r.amount} onChange={(v) => editTxn(r.fundId!, r.id, { amount: r.isSell ? -v : v })} placeholder="0" />
@@ -536,14 +546,17 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                           </button>
                         </div>
                       ) : (
-                        <div className="ft-mf__txn">
-                          <input
-                            className="input ft-mf__txndate"
-                            type="date"
-                            value={r.date.slice(0, 10)}
-                            max={todayInput()}
-                            onChange={(e) => editEntry(r.entryId!, { date: new Date(e.target.value + 'T00:00:00').toISOString() })}
-                          />
+                        <div className="ft-mf__txn ft-led__editor">
+                          <label className="ft-mf__txnf">
+                            <span>Date</span>
+                            <input
+                              className="input ft-mf__txndate"
+                              type="date"
+                              value={dateInputValue(r.date)}
+                              max={todayInput()}
+                              onChange={(e) => editEntry(r.entryId!, { date: dateInputToIso(e.target.value) })}
+                            />
+                          </label>
                           <label className="ft-mf__txnf ft-led__txnname">
                             <span>Name</span>
                             <input className="input" value={r.name} onChange={(e) => editEntry(r.entryId!, { name: e.target.value })} />
@@ -573,8 +586,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
 
                   {openId === r.id && isPos && r.posSource && (
                     <div className="ft-mf__fundbody">
-                      <p className="ft-led__posnote">Edits sync straight to your Portfolio.</p>
-                      <div className="ft-mf__txn">
+                      <div className="ft-mf__txn ft-led__editor">
                         {r.posSource.kind === 'row' ? (
                           <label className="ft-mf__txnf ft-led__txnname">
                             <span>Name</span>
@@ -607,7 +619,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
             )}
 
             {adding && (
-              <FortunaSheet title="Add transaction" subtitle="Record a fund transaction or another asset" onClose={() => setAdding(false)}>
+              <FortunaSheet title="Add transaction" onClose={() => setAdding(false)}>
                   <AddTransaction
                     funds={funds}
                     classes={assignableClasses(plan)}
@@ -729,7 +741,7 @@ function AddTransaction({
     // holdings/returns sum stays correct and FIFO can consume it.
     return {
       id: newId(),
-      date: new Date(date + 'T00:00:00').toISOString(),
+      date: dateInputToIso(date),
       amount: redeem ? -amount : amount,
       units: redeem ? -u : u,
       nav,
@@ -907,7 +919,7 @@ function AddTransaction({
             onClick={() =>
               onAddEntry({
                 id: newId(),
-                date: new Date(date + 'T00:00:00').toISOString(),
+                date: dateInputToIso(date),
                 assetClassKey: classKey,
                 name: name.trim(),
                 amount,

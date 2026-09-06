@@ -36,7 +36,6 @@ export default function SettingsTab({ plan, update, reload, beforeExternalChange
             <span className="scard__icon"><AppIcon name="calendar" size={22} /></span>
             <span className="scard__headtext">
               <span className="scard__title">Returns &amp; assumptions</span>
-              <span className="ft-settings__sub">Expected returns and goal-type weights</span>
             </span>
             <AppIcon name="chevronRight" size={18} />
           </span>

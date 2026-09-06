@@ -86,7 +86,7 @@ export function AssumptionsContent({ plan, update }: FortunaTabProps) {
 
   return (
     <>
-        <Section title="Effective returns" subtitle="Blended annual return used for each goal type" icon="investments">
+        <Section title="Effective returns" icon="investments">
           <div className="ft-eff">
             {goalTypes.map((h) => (
               <div className="ft-eff__cell" key={h.id}>
@@ -100,7 +100,7 @@ export function AssumptionsContent({ plan, update }: FortunaTabProps) {
           </div>
         </Section>
 
-        <Section title="Goal types" subtitle="Your own goal buckets — tap a row to rename or edit it" icon="goals">
+        <Section title="Goal types" icon="goals">
           {goalTypes.map((h) => (
             <GoalTypeRow
               key={h.id}
@@ -116,7 +116,7 @@ export function AssumptionsContent({ plan, update }: FortunaTabProps) {
           </button>
         </Section>
 
-        <Section title="Asset classes" subtitle="Rows are goal types; columns are your asset classes" icon="portfolio">
+        <Section title="Asset classes" icon="portfolio">
           <div className="ft-mx" style={{ gridTemplateColumns: cols }}>
             <div className="ft-mx__corner" />
             {activeWithIndex.map(({ a }) => (
@@ -162,11 +162,10 @@ export function AssumptionsContent({ plan, update }: FortunaTabProps) {
               );
             })}
           </div>
-          <p className="ft-note">Each goal type's weights (its row) should ideally add up to 100%.</p>
           {disabled.size > 0 && (
             <p className="ft-note">
               {disabled.size} category{disabled.size > 1 ? 'ies' : ''} disabled — hidden here and excluded from the
-              effective returns and goal allocations. Re-enable from the Portfolio tab.
+              effective returns and goal allocations. Re-enable from Assets.
             </p>
           )}
         </Section>

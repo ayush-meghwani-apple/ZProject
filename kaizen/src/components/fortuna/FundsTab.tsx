@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
-import { formatINR, newId, now } from '../../core/util';
-import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
+import { dateInputToIso, dateInputValue, formatINR, newId, now } from '../../core/util';
+import { fetchNavHistoryWithMeta, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
 import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
 import { mfValueSeries, type TrendRange } from '../../core/mfTrend';
+import { weightedNavIndex, weightedSeriesAverage } from '../../core/mfBenchmark';
 import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
+import { fetchCategoryBenchmark } from '../../repository/mfPeerRepository';
 import LineChart from './LineChart';
 import AmountInput from '../AmountInput';
 import AppIcon, { type IconName } from '../AppIcon';
@@ -121,6 +123,13 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   // instantly instead of flickering from a fallback shape while NAVs refetch.
   const [navs, setNavs] = useState<Record<number, NavPoint[]>>(() => ({ ...NAV_CACHE }));
   const [perfRange, setPerfRange] = useState<TrendRange>('1M');
+  const [perfScope, setPerfScope] = useState('portfolio');
+  const [peerState, setPeerState] = useState<{
+    status: 'idle' | 'loading' | 'ready' | 'error';
+    values: (number | null)[];
+    sampleSize: number;
+    message?: string;
+  }>({ status: 'idle', values: [], sampleSize: 0 });
 
   // A fund is "active" if it has a running SIP; otherwise it's held but not
   // being added to (inactive).
@@ -144,9 +153,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
       const results = await Promise.all(
         current.map(async (f) => {
           try {
-            const points = await fetchNavHistory(f.schemeCode, force);
+            const history = await fetchNavHistoryWithMeta(f.schemeCode, force);
+            const points = history.points;
             const latest = latestNav(points);
-            return { id: f.id, schemeCode: f.schemeCode, ok: true as const, nav: latest?.nav, navDate: latest?.iso, points };
+            return { id: f.id, schemeCode: f.schemeCode, ok: true as const, nav: latest?.nav, navDate: latest?.iso, schemeCategory: history.meta.schemeCategory, points };
           } catch {
             return { id: f.id, schemeCode: f.schemeCode, ok: false as const };
           }
@@ -160,6 +170,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
             f.latestNav = r.nav;
             f.latestNavDate = r.navDate;
           }
+          if (r.schemeCategory) f.schemeCategory = r.schemeCategory;
         }
       });
       const failed = results.filter((r) => !r.ok).length;
@@ -195,6 +206,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   }, [funds.length, syncAll]);
 
   const asOf = new Date();
+  asOf.setHours(0, 0, 0, 0);
   const { groups, total } = byCategory(shownFunds, asOf);
 
   // Reconstruct the selected period from dated transactions and historical NAVs.
@@ -212,6 +224,75 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
     { value: '7D', label: '7D' }, { value: '1M', label: '1M' }, { value: '6M', label: '6M' },
     { value: '1Y', label: '1Y' }, { value: '3Y', label: '3Y' }, { value: 'MAX', label: 'Max' },
   ];
+  const scopeFunds = perfScope.startsWith('fund:')
+    ? funds.filter((fund) => fund.id === perfScope.slice(5))
+    : perfScope.startsWith('category:')
+      ? funds.filter((fund) => fund.category === perfScope.slice(9))
+      : funds;
+  const comparisonTrend = perfScope === 'portfolio' ? [] : mfValueSeries(scopeFunds, navs, perfRange, asOf);
+  const comparisonTimestamps = comparisonTrend.map((point) => point.t);
+  const holdingWeight = (fund: MutualFundHolding) => Math.max(1, fund.transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0));
+  const ownIndex = weightedNavIndex(
+    scopeFunds.map((fund) => ({ points: navs[fund.schemeCode] ?? [], weight: holdingWeight(fund) })),
+    comparisonTimestamps,
+  );
+  const selectedFund = perfScope.startsWith('fund:') ? scopeFunds[0] : undefined;
+  const comparisonLabel = selectedFund ? 'Fund' : `Your ${scopeFunds.length === 1 ? 'fund' : 'funds'}`;
+  const comparisonDelta = ownIndex.values.length ? (ownIndex.values[ownIndex.values.length - 1] ?? 100) - 100 : 0;
+  const comparisonSignature = scopeFunds
+    .map((fund) => `${fund.schemeCode}:${fund.schemeCategory ?? ''}:${holdingWeight(fund)}`)
+    .sort()
+    .join('|');
+
+  useEffect(() => {
+    if (perfScope === 'portfolio') {
+      setPeerState({ status: 'idle', values: [], sampleSize: 0 });
+      return;
+    }
+    if (comparisonTimestamps.length < 2) {
+      setPeerState({ status: 'error', values: [], sampleSize: 0, message: 'Add transaction history to compare this selection.' });
+      return;
+    }
+    if (scopeFunds.some((fund) => !fund.schemeCategory)) {
+      setPeerState({ status: 'loading', values: [], sampleSize: 0, message: 'Reading official fund categories…' });
+      return;
+    }
+
+    const weights = new Map<string, number>();
+    for (const fund of scopeFunds) {
+      const category = fund.schemeCategory as string;
+      weights.set(category, (weights.get(category) ?? 0) + holdingWeight(fund));
+    }
+    let cancelled = false;
+    setPeerState({ status: 'loading', values: [], sampleSize: 0 });
+    void Promise.all(
+      [...weights].map(async ([category, weight]) => ({
+        benchmark: await fetchCategoryBenchmark(category, comparisonTimestamps, funds.map((fund) => fund.schemeCode)),
+        weight,
+      })),
+    ).then((results) => {
+      if (cancelled) return;
+      setPeerState({
+        status: 'ready',
+        values: weightedSeriesAverage(results.map(({ benchmark, weight }) => ({ values: benchmark.values, weight }))),
+        sampleSize: results.reduce((sum, result) => sum + result.benchmark.sampleSize, 0),
+      });
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      setPeerState({
+        status: 'error',
+        values: [],
+        sampleSize: 0,
+        message: error instanceof Error ? error.message : 'Peer comparison is unavailable right now.',
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // comparisonSignature captures category and allocation changes without
+    // restarting a catalog request on unrelated plan updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perfScope, perfRange, navs, comparisonSignature]);
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
     const id = newId();
@@ -279,22 +360,58 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
             <div className="ft-trend">
               <div className="ft-trend__head">
                 <span className="ft-trend__title">Performance</span>
-                {perfTrend.length >= 2 && (
+                {perfScope === 'portfolio' && perfTrend.length >= 2 && (
                   <span className={`ft-trend__delta ${perfDelta > 0 ? 'ft-mf__pos' : perfDelta < 0 ? 'ft-mf__neg' : ''}`}>
                     {perfDelta > 0 ? '\u25b2' : perfDelta < 0 ? '\u25bc' : '\u25a0'} {formatINR(Math.abs(perfDelta))}{' '}
                     <small>({perfPct >= 0 ? '+' : ''}{perfPct.toFixed(1)}%)</small>
                   </span>
                 )}
+                {perfScope !== 'portfolio' && ownIndex.sampleSize > 0 && (
+                  <span className={`ft-trend__delta ${comparisonDelta > 0 ? 'ft-mf__pos' : comparisonDelta < 0 ? 'ft-mf__neg' : ''}`}>
+                    {comparisonDelta >= 0 ? '+' : ''}{comparisonDelta.toFixed(1)}%
+                  </span>
+                )}
               </div>
+              <select
+                className="ft-chartctl__sel ft-trend__scope"
+                aria-label="Performance comparison scope"
+                value={perfScope}
+                onChange={(event) => setPerfScope(event.target.value)}
+              >
+                <option value="portfolio">Portfolio value</option>
+                <optgroup label="Categories">
+                  {MF_CATEGORIES.filter((category) => funds.some((fund) => fund.category === category.value)).map((category) => (
+                    <option key={category.value} value={`category:${category.value}`}>{category.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Funds">
+                  {funds.map((fund) => <option key={fund.id} value={`fund:${fund.id}`}>{fund.name}</option>)}
+                </optgroup>
+              </select>
               <LineChart
-                labels={perfTrend.map((p) => trendLabel(p.t))}
-                series={[
-                  { label: 'Value', color: '#6366f1', values: perfTrend.map((p) => p.value) },
-                  { label: 'Invested', color: '#94a3b8', values: perfTrend.map((p) => p.invested), dashed: true },
-                ]}
+                key={perfScope}
+                labels={(perfScope === 'portfolio' ? perfTrend : comparisonTrend).map((p) => trendLabel(p.t))}
+                series={perfScope === 'portfolio'
+                  ? [
+                      { label: 'Value', color: '#6366f1', values: perfTrend.map((p) => p.value) },
+                      { label: 'Invested', color: '#94a3b8', values: perfTrend.map((p) => p.invested), dashed: true },
+                    ]
+                  : [
+                      { label: comparisonLabel, color: '#6366f1', values: ownIndex.values },
+                      ...(peerState.status === 'ready'
+                        ? [{ label: `Peer avg (${peerState.sampleSize})`, color: '#14b8a6', values: peerState.values, dashed: true }]
+                        : []),
+                    ]}
                 height={170}
+                valueFormat={perfScope === 'portfolio' ? 'inr' : 'index'}
                 emptyHint="Add a fund and its performance will chart here, back to your first transaction."
               />
+              {perfScope !== 'portfolio' && peerState.status === 'loading' && (
+                <p className="ft-trend__peerstatus">{peerState.message ?? 'Building peer average…'}</p>
+              )}
+              {perfScope !== 'portfolio' && peerState.status === 'error' && (
+                <p className="ft-trend__peerstatus ft-trend__peerstatus--error">{peerState.message}</p>
+              )}
               <div className="ft-trend__foot">
                 <div className="ft-trend__ranges">
                   {PERF_RANGES.map((rangeOption) => (
@@ -308,7 +425,9 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
                     </button>
                   ))}
                 </div>
-                <span className="ft-trend__baseline">– – Invested</span>
+                <span className="ft-trend__baseline">
+                  {perfScope === 'portfolio' ? '– – Invested' : peerState.status === 'ready' ? `– – ${peerState.sampleSize} peers · base 100` : 'Base 100'}
+                </span>
               </div>
             </div>
           </div>
@@ -364,7 +483,6 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
         {adding && (
           <FortunaSheet
             title="Add mutual fund"
-            subtitle="Find an AMFI scheme and optionally set up a SIP"
             onClose={() => setAdding(false)}
           >
             <AddFund onCancel={() => setAdding(false)} onAdd={addFund} existing={funds.map((f) => f.schemeCode)} />
@@ -573,11 +691,11 @@ function SipEditor({ fund, mutate }: { fund: MutualFundHolding; mutate: (fn: (f:
             <input
               className="input"
               type="date"
-              value={(sip?.startDate ?? new Date().toISOString()).slice(0, 10)}
+              value={dateInputValue(sip?.startDate ?? new Date().toISOString())}
               max={todayInput()}
               onChange={(e) =>
                 mutate((f) => {
-                  const iso = new Date(e.target.value + 'T00:00:00').toISOString();
+                  const iso = dateInputToIso(e.target.value);
                   (f.sip ??= { amount: 0, dayOfMonth: 1, startDate: iso, active: true }).startDate = iso;
                 })
               }
@@ -601,9 +719,9 @@ function TxnRow({ txn, onChange, onDelete }: { txn: MFTransaction; onChange: (pa
       <input
         className="input ft-mf__txndate"
         type="date"
-        value={txn.date.slice(0, 10)}
+        value={dateInputValue(txn.date)}
         max={todayInput()}
-        onChange={(e) => onChange({ date: new Date(e.target.value + 'T00:00:00').toISOString() })}
+        onChange={(e) => onChange({ date: dateInputToIso(e.target.value) })}
       />
       <label className="ft-mf__txnf">
         <span>{redeem ? '₹ Proceeds' : '₹ Amount'}</span>
@@ -856,7 +974,7 @@ function AddFund({
               onAdd(
                 picked,
                 category,
-                sipAmount > 0 ? { amount: sipAmount, dayOfMonth: sipDay, startDate: new Date(sipStart + 'T00:00:00').toISOString() } : undefined,
+                sipAmount > 0 ? { amount: sipAmount, dayOfMonth: sipDay, startDate: dateInputToIso(sipStart) } : undefined,
               )
             }
           >

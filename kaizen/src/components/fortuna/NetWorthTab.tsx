@@ -116,7 +116,7 @@ export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
           </div>
         </div>
 
-        <Section title="Assets over time" subtitle="Track the growth of your assets">
+        <Section title="Assets over time">
           <div className="ft-chartctl">
             <div className="ft-chartctl__ranges">
               {CHART_RANGES.map((r) => (
@@ -138,7 +138,7 @@ export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
           />
         </Section>
 
-        <Section title="Current asset mix" subtitle="Where your money is invested">
+        <Section title="Current asset mix">
           {nw.totalAssets > 0 ? (
             <>
               <div className="ft-mix">
@@ -195,15 +195,12 @@ export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
               )}
             </>
           ) : (
-            <p className="muted">Add your holdings in the Portfolio tab to see your asset mix.</p>
+            <p className="muted">Add holdings in Assets to see your asset mix.</p>
           )}
         </Section>
 
         {targetTotal > 0 && (
-          <Section
-            title="Target monthly investment"
-            subtitle="Where your goal SIPs stack up against target asset classes"
-          >
+          <Section title="Target monthly investment">
             <div className="ft-mix ft-mix--rev">
               <div className="ft-mix__legend">
                 <ul className="ft-legend">
@@ -234,7 +231,7 @@ export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
           </Section>
         )}
 
-        <Section title="Assets breakdown" subtitle="Liquid vs illiquid">
+        <Section title="Assets breakdown">
           <div className="ft-breakdown">
             <div className="ft-breakrow">
               <span className="ft-breakrow__ic ft-breakrow__ic--liquid"><AppIcon name="liquid" size={16} /></span>
@@ -257,7 +254,7 @@ export default function NetWorthTab({ plan, update, goTo }: FortunaTabProps) {
           </div>
         </Section>
 
-        <Section title="Liabilities" subtitle="What you owe — rename, edit, remove or add lines">
+        <Section title="Liabilities">
           <HoldingList
             rows={plan.liabilities.items}
             namePlaceholder="Liability name"

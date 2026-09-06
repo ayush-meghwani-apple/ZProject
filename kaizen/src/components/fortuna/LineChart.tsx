@@ -31,11 +31,13 @@ export default function LineChart({
   series,
   height = 180,
   emptyHint = 'Not enough data yet — this builds up as you use the app.',
+  valueFormat = 'inr',
 }: {
   labels: string[];
   series: ChartSeries[];
   height?: number;
   emptyHint?: string;
+  valueFormat?: 'inr' | 'index';
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(320);
@@ -95,6 +97,8 @@ export default function LineChart({
 
   const yTicks = [max, (min + max) / 2, min];
   const xTickIdx = [0, Math.floor((n - 1) / 2), n - 1];
+  const formatTick = valueFormat === 'index' ? (value: number) => value.toFixed(0) : compactINR;
+  const formatValue = valueFormat === 'index' ? (value: number) => value.toFixed(1) : fullINR;
 
   function onMove(e: React.PointerEvent) {
     const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
@@ -141,14 +145,12 @@ export default function LineChart({
               return (
                 <span className="ft-chart__roitem" key={s.label}>
                   <span className="ft-chart__tipdot" style={{ background: s.color }} />
-                  {s.label} <b>{fullINR(v)}</b>
+                  {s.label} <b>{formatValue(v)}</b>
                 </span>
               );
             })}
           </>
-        ) : (
-          <span className="ft-chart__rohint">Tap the chart to read any day’s values</span>
-        )}
+        ) : null}
       </div>
       <svg
         className="ft-chart__svg"
@@ -165,7 +167,7 @@ export default function LineChart({
           return (
             <g key={i}>
               <line x1={padL} y1={y} x2={w - padR} y2={y} className="ft-chart__grid" />
-              <text x={padL - 6} y={y + 3} className="ft-chart__ylabel">{compactINR(t)}</text>
+              <text x={padL - 6} y={y + 3} className="ft-chart__ylabel">{formatTick(t)}</text>
             </g>
           );
         })}

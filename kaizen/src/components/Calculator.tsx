@@ -23,10 +23,6 @@ export function SipCalculator() {
   return (
     <div className="card">
       <h3>Step-up SIP Calculator</h3>
-      <p className="card__subtitle">
-        See what a monthly investment grows to with a yearly step-up — nothing saved, just a quick
-        what-if.
-      </p>
       <div className="field">
         <label>Monthly investment (₹)</label>
         <AmountInput value={calc.monthly} onChange={(v) => setCalc({ ...calc, monthly: v })} />
@@ -99,11 +95,6 @@ function RetirementCalculator() {
   return (
     <div className="card">
       <h3>Retirement Corpus Calculator</h3>
-      <p className="card__subtitle">
-        How big a corpus you need by retirement to cover your expenses (rising with inflation every
-        year) for as long as you'll need it — and how much to invest each month to get there.
-      </p>
-
       <div className="field">
         <label>Monthly expenses today (₹)</label>
         <AmountInput

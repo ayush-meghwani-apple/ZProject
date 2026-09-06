@@ -280,6 +280,7 @@ function migrateMutualFunds(raw: unknown): MutualFundHolding[] {
       schemeCode: code,
       name: (r.name as string) || 'Fund',
       category: (r.category as MutualFundHolding['category']) || 'other',
+      schemeCategory: (r.schemeCategory as string) || undefined,
       transactions: txns,
       sip,
       latestNav: Number.isFinite(Number(r.latestNav)) ? Number(r.latestNav) : undefined,

@@ -5,7 +5,7 @@ import { GOAL_PRIORITIES } from '../../types/models';
 import { computeGoal, horizonLabel, classLabelMap, computeCashFlow, activeAssumptions, sipAccumulated } from '../../core/plannerMath';
 import { newId, addMonths, formatMonthYear } from '../../core/util';
 import AppIcon, { type IconName } from '../AppIcon';
-import { FortunaSheet, Section, MoneyRow, PercentRow, formatINR } from './shared';
+import { FortunaSheet, MoneyRow, PercentRow, formatINR } from './shared';
 
 /** Pick a fitting glyph for a goal from its name (falls back to a target). */
 function goalIcon(name: string): IconName {
@@ -137,7 +137,6 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
               {open && (
                 <FortunaSheet
                   title={g.name.trim() || 'New goal'}
-                  subtitle="Goal details and monthly investment plan"
                   onClose={() => setOpenId(null)}
                 >
                 <div className="ft-goal__body ft-sheet__form">
@@ -282,13 +281,6 @@ export default function GoalsTab({ plan, update }: FortunaTabProps) {
           <AppIcon name="plus" size={18} /> Add goal
         </button>
 
-        <Section title="How this works">
-          <p className="ft-note">
-            Each goal's future cost is your required amount grown by inflation, minus what you've already set aside
-            grown at the expected return for its goal type. The SIP is the monthly amount that reaches that
-            shortfall by the goal date, then split across asset classes using your Returns assumptions.
-          </p>
-        </Section>
       </div>
     </main>
   );

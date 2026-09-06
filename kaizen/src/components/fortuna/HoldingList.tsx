@@ -62,6 +62,8 @@ export default function HoldingList({
   showUnits = false,
   iconFor,
   avatar = false,
+  form = false,
+  formStyle = 'default',
   onChange,
 }: {
   rows: HoldingRow[];
@@ -73,6 +75,8 @@ export default function HoldingList({
   showUnits?: boolean;
   iconFor?: (row: HoldingRow) => IconName;
   avatar?: boolean;
+  form?: boolean;
+  formStyle?: 'default' | 'cash';
   onChange: (mutate: (rows: HoldingRow[]) => void) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -91,7 +95,82 @@ export default function HoldingList({
   function addRow() {
     const id = newId();
     onChange((rs) => { rs.push({ id, name: '', category: categories?.[0], value: 0 }); });
-    setEditingId(id);
+    if (!form) setEditingId(id);
+  }
+
+  if (form) {
+    return (
+      <div className={`ft-holdings ft-holdings--form${formStyle === 'cash' ? ' ft-holdings--cash' : ''}`}>
+        {rows.map((row, i) => (
+          <div className={`ft-holdingform ${categories || showUnits ? 'ft-holdingform--detailed' : 'ft-holdingform--simple'}`} key={row.id}>
+            {formStyle === 'cash' && (
+              <span className={`ft-holdingform__icon ft-holdingform__icon--${i % 6}`} aria-hidden="true">
+                <AppIcon name={iconFor?.(row) ?? 'cashflow'} size={19} />
+              </span>
+            )}
+            <label className="ft-holdingform__field ft-holdingform__field--name">
+              <span>Name</span>
+              <input
+                className="input"
+                value={row.name}
+                placeholder={namePlaceholder}
+                onChange={(event) => onChange((rs) => { rs[i].name = event.target.value; })}
+              />
+            </label>
+            {categories && (
+              <label className="ft-holdingform__field ft-holdingform__field--category">
+                <span>Category</span>
+                <select
+                  className="input"
+                  value={row.category ?? categories[0]}
+                  onChange={(event) => onChange((rs) => { rs[i].category = event.target.value; })}
+                >
+                  {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+                </select>
+              </label>
+            )}
+            <label className="ft-holdingform__field ft-holdingform__field--amount">
+              <span>Amount</span>
+              <span className="ft-holdingform__money">
+                <span className="ft-row__cur">₹</span>
+                <AmountInput
+                  className="input"
+                  value={row.value}
+                  onChange={(value) => onChange((rs) => { rs[i].value = value; })}
+                  placeholder="0"
+                />
+              </span>
+            </label>
+            {showUnits && (
+              <label className="ft-holdingform__field ft-holdingform__field--units">
+                <span>Units</span>
+                <UnitsField value={row.units ?? 0} onChange={(units) => onChange((rs) => { rs[i].units = units; })} />
+              </label>
+            )}
+            <button
+              className="iconbtn ft-holdingform__delete"
+              aria-label={`Remove ${row.name || 'holding'}`}
+              title="Remove"
+              onClick={() => onChange((rs) => { rs.splice(i, 1); })}
+            >
+              <AppIcon name="trash" size={16} />
+            </button>
+          </div>
+        ))}
+
+        {total && formStyle !== 'cash' && rows.length > 0 && (
+          <div className="ft-total ft-total--strong">
+            <span>{totalLabel}</span>
+            <span className="ft-total__val">{formatINR(sum)}</span>
+          </div>
+        )}
+        <div className="ft-holdings__foot">
+          <button className="ft-addrow" onClick={addRow}>
+            <AppIcon name="plus" size={16} /> {addLabel}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

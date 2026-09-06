@@ -1,5 +1,5 @@
 import type { MFCategory, MutualFundHolding } from '../types/models';
-import { newId, now } from './util';
+import { dateInputToIso, newId, now } from './util';
 import { MF_EMAIL_IMPORT_START } from './mfGmailSettings';
 import type { ParsedMfSipEmail } from './mfEmailParse';
 
@@ -42,7 +42,7 @@ export function inferMfCategory(name: string): MFCategory {
 }
 
 function localIso(date: string): string {
-  return new Date(`${date}T00:00:00`).toISOString();
+  return dateInputToIso(date);
 }
 
 function localMonth(iso: string): string {
