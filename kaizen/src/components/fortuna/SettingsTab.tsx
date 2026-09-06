@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
-import { PlannerRepository } from '../../repository/plannerRepository';
 import AppIcon from '../AppIcon';
-import DataBackupCard from '../DataBackupCard';
-import { Section } from './shared';
+import Settings from '../Settings';
 import { AssumptionsContent } from './AssumptionsTab';
+import MfGmailImport from './MfGmailImport';
 
 interface Props extends FortunaTabProps {
   onLock: () => void;
   reload: () => Promise<void>;
+  beforeExternalChange: () => Promise<void>;
 }
 
-export default function SettingsTab({ plan, update, reload }: Props) {
+export default function SettingsTab({ plan, update, reload, beforeExternalChange }: Props) {
   // Returns/assumptions used to be its own tab; it now lives here as a drill-in.
   const [showReturns, setShowReturns] = useState(false);
 
@@ -30,44 +30,28 @@ export default function SettingsTab({ plan, update, reload }: Props) {
 
   return (
     <main className="app__body">
-      <div className="page ft-page">
-        <Section title="Planning" subtitle="Plan your investments and financial goals" icon="calendar">
-          <button className="ft-navrow" onClick={() => setShowReturns(true)}>
-            <span className="ft-navrow__main">
-              <span className="ft-navrow__title">Returns &amp; assumptions</span>
-              <span className="ft-navrow__sub">Expected returns per asset class · goal-type weights</span>
+      <div className="page ft-page ft-settings">
+        <button type="button" className="card scard--compact ft-settings__card" onClick={() => setShowReturns(true)}>
+          <span className="scard__head">
+            <span className="scard__icon"><AppIcon name="calendar" size={22} /></span>
+            <span className="scard__headtext">
+              <span className="scard__title">Returns &amp; assumptions</span>
+              <span className="ft-settings__sub">Expected returns and goal-type weights</span>
             </span>
             <AppIcon name="chevronRight" size={18} />
-          </button>
-        </Section>
+          </span>
+        </button>
 
-        <DataBackupCard
+        <MfGmailImport beforeImport={beforeExternalChange} onChange={reload} />
+
+        <Settings
+          version={0}
+          onChange={() => {}}
+          global
+          embedded
           onReload={reload}
-          beforeExport={async () => {
-            // Flush the latest in-memory plan to storage FIRST, so a change made
-            // moments ago (before the debounced auto-save fired) is captured.
-            await PlannerRepository.save(plan);
-          }}
+          beforeExport={beforeExternalChange}
         />
-
-        <Section title="About" subtitle="Version & build info" icon="info">
-          <div className="ft-total" style={{ borderTop: 'none', paddingTop: 0 }}>
-            <span>Version</span>
-            <span className="ft-total__val">
-              <span className="ft-pill ft-pill--ok">v{__APP_VERSION__}</span>
-              <span className="ft-about__built">
-                {' · '}
-                {new Date(__BUILD_TIME__).toLocaleString('en-IN', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-            </span>
-          </div>
-        </Section>
       </div>
     </main>
   );

@@ -13,6 +13,12 @@ interface Props {
   /** When true (shared Settings inside a sub-app), show only the cross-app
    * cards: Data & Backup and About. */
   global?: boolean;
+  /** Avoid adding a second page wrapper when embedded in another settings tab. */
+  embedded?: boolean;
+  /** Reload the host after a backup merge/replace. */
+  onReload?: () => void | Promise<void>;
+  /** Flush host state before exporting a backup. */
+  beforeExport?: () => Promise<void>;
 }
 
 /** Full date + time, e.g. "25 Jul 2026, 2:34 pm" — used for the build stamp. */
@@ -38,7 +44,14 @@ async function checkForUpdates(): Promise<void> {
   window.setTimeout(() => window.location.reload(), 1200);
 }
 
-export default function Settings({ version, onChange, global = false }: Props) {
+export default function Settings({
+  version,
+  onChange,
+  global = false,
+  embedded = false,
+  onReload,
+  beforeExport,
+}: Props) {
   const [soundOn, setSoundOn] = useState(true);
 
   async function load() {
@@ -76,10 +89,10 @@ export default function Settings({ version, onChange, global = false }: Props) {
   }
 
   return (
-    <div className="page page--settings">
+    <div className={embedded ? 'page--settings' : 'page page--settings'}>
       {!global && <GmailImport onChange={onChange} />}
 
-      <DataBackupCard onReload={load} defaultOpen={global} />
+      <DataBackupCard onReload={onReload ?? load} beforeExport={beforeExport} />
 
       {!global && (
         <>

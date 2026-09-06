@@ -168,6 +168,16 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     }
   }, []);
 
+  const flushPending = useCallback(async () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    const toSave = pendingSave.current;
+    pendingSave.current = null;
+    if (toSave) await PlannerRepository.save(toSave);
+  }, []);
+
   // Persist on unmount / lock so nothing in-flight is lost.
   useEffect(() => flush, [flush]);
 
@@ -224,7 +234,7 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     { id: 'funds', label: 'Pulse', icon: <AppIcon name="investments" size={20} />, render: () => <FundsTab {...props} /> },
     { id: 'transactions', label: 'Ledger', icon: <AppIcon name="table" size={20} />, render: () => <TransactionsTab {...props} /> },
     { id: 'goals', label: 'Goals', icon: <AppIcon name="goals" size={20} />, render: () => <GoalsTab {...props} /> },
-    { id: 'settings', label: 'Settings', icon: <AppIcon name="settings" size={20} />, render: () => <SettingsTab {...props} reload={reload} onLock={() => { flush(); onLock(); }} /> },
+    { id: 'settings', label: 'Settings', icon: <AppIcon name="settings" size={20} />, render: () => <SettingsTab {...props} reload={reload} beforeExternalChange={flushPending} onLock={() => { flush(); onLock(); }} /> },
   ];
 
   return <TabbedApp tabs={tabs} initialId="networth" controlledOpen={navReq} swipeable={false} />;

@@ -9,6 +9,7 @@ import AppIcon, { type IconName } from './components/AppIcon';
 import { RemindersRepository } from './repository/remindersRepository';
 import { VaultRepository } from './repository/vaultRepository';
 import { GoalRepository } from './repository/goalRepository';
+import { MfGmailRepository } from './repository/mfGmailRepository';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
 import { isDemoMode, enterDemo, exitDemo } from './core/demoMode';
@@ -75,6 +76,12 @@ export default function App() {
           RemindersRepository.markNotified(r.id);
         });
     }
+  }, []);
+
+  // Fortuna uses the same Gmail grant as Expensify, but owns an independent
+  // current-month query, checkpoint and imported-message set.
+  useEffect(() => {
+    if (!isDemoMode()) void MfGmailRepository.autoSync();
   }, []);
 
   // The Vault sub-app was removed; purge its stored data once (the shared PIN

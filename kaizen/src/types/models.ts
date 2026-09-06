@@ -407,6 +407,8 @@ export interface MFTransaction {
   kind: 'sip' | 'lumpsum' | 'redeem';
   auto?: boolean; // true = auto-generated from the SIP rule (untouched by user)
   reviewed?: boolean; // user has acknowledged an auto-added buy (clears the review hint)
+  importSource?: 'etmoney';
+  sourceId?: string; // stable provider order number for import de-duplication
   /** A SIP installment recorded on its scheduled date but whose units/NAV are
    *  not final yet — the scheduled day fell on a weekend/holiday, so the AMC
    *  allots on the NEXT working day and that day's NAV isn't published until
@@ -542,7 +544,6 @@ export interface FinancialPlan {
   disabledClasses?: string[];
   updatedAt: ISODate;
 }
-
 
 export type ActivityType =
   | 'expense.added'

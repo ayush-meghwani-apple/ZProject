@@ -4,7 +4,6 @@ import type { MFCategory, MFTransaction, MutualFundHolding } from '../../types/m
 import { MF_CATEGORIES } from '../../types/models';
 import { formatINR, newId, now } from '../../core/util';
 import { fetchNavHistory, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
-import { generateSipInstallments, settlePendingSips } from '../../core/mfSip';
 import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
 import { mfMonthlyTrend } from '../../core/mfTrend';
 import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
@@ -146,8 +145,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
           try {
             const points = await fetchNavHistory(f.schemeCode, force);
             const latest = latestNav(points);
-            const newTxns = generateSipInstallments(f, points);
-            return { id: f.id, schemeCode: f.schemeCode, ok: true as const, nav: latest?.nav, navDate: latest?.iso, newTxns, points };
+            return { id: f.id, schemeCode: f.schemeCode, ok: true as const, nav: latest?.nav, navDate: latest?.iso, points };
           } catch {
             return { id: f.id, schemeCode: f.schemeCode, ok: false as const };
           }
@@ -161,19 +159,9 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
             f.latestNav = r.nav;
             f.latestNavDate = r.navDate;
           }
-          if (r.newTxns && r.newTxns.length) {
-            f.transactions.push(...r.newTxns);
-            f.updatedAt = now();
-          }
-          if (r.points) {
-            // Fill in any earlier PROCESSING installments now that a fresh NAV
-            // history is in hand (the allotment day may have published since).
-            if (settlePendingSips(f, r.points)) f.updatedAt = now();
-          }
         }
       });
       const failed = results.filter((r) => !r.ok).length;
-      const added = results.reduce((s, r) => s + (r.ok && r.newTxns ? r.newTxns.length : 0), 0);
       // Stash the fetched NAV histories so the Pulse graph can reconstruct the
       // value-vs-invested curve back to the first transaction.
       const navMap: Record<number, NavPoint[]> = {};
@@ -186,8 +174,8 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
       setNote(
         failed
           ? 'Some NAVs couldn’t update (offline?). Showing last known values.'
-          : added
-            ? `Updated NAVs · added ${added} SIP installment${added > 1 ? 's' : ''}.`
+          : force
+            ? 'NAVs updated.'
             : '',
       );
       if (force) {
@@ -346,7 +334,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
         {funds.length === 0 && !adding && (
           <div className="ft-mf__empty">
             <AppIcon name="investments" size={30} />
-            <p>Track your mutual funds with live NAVs and true XIRR/CAGR returns — set a SIP and Fortuna fills in each month’s units automatically.</p>
+            <p>Track mutual funds with live NAVs and true XIRR/CAGR returns. Confirmed ET Money SIPs import from Gmail with their exact units and NAV.</p>
           </div>
         )}
 

@@ -77,6 +77,7 @@ const TOKEN_KEY = 'gmail:token';
 let tokenClient: TokenClient | null = null;
 let accessToken = '';
 let tokenExpiry = 0; // epoch millis
+let connectPromise: Promise<void> | null = null;
 
 // Restore a previously-granted token so a page reload (e.g. a new app version)
 // never forces re-authorising.
@@ -181,10 +182,19 @@ function requestToken(client: TokenClient, prompt: string): Promise<void> {
  * popup); `interactive=false` uses prompt='none' (background, never pops a
  * window).
  */
-export async function connect(interactive = true): Promise<void> {
+async function runConnect(interactive: boolean): Promise<void> {
   if (isConnected()) return;
   const client = await ensureTokenClient();
   await requestToken(client, interactive ? '' : 'none');
+}
+
+export function connect(interactive = true): Promise<void> {
+  if (isConnected()) return Promise.resolve();
+  if (connectPromise) return connectPromise;
+  connectPromise = runConnect(interactive).finally(() => {
+    connectPromise = null;
+  });
+  return connectPromise;
 }
 
 /** Forget the token (in memory + persisted) and revoke it with Google. */
@@ -294,6 +304,31 @@ interface ListResponse {
   nextPageToken?: string;
 }
 
+/** Shared Gmail transport used by domain-specific importers. Authentication,
+ * pagination and MIME decoding live here; each importer owns its query,
+ * parser, de-duplication state and persistence. */
+export async function fetchRawEmails(
+  query: string,
+  skip: (id: string) => boolean = () => false,
+): Promise<RawEmail[]> {
+  const ids: string[] = [];
+  let pageToken = '';
+  do {
+    const page = await api<ListResponse>(
+      `/messages?maxResults=500&q=${encodeURIComponent(query)}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+    );
+    ids.push(...(page.messages ?? []).map((message) => message.id));
+    pageToken = page.nextPageToken ?? '';
+  } while (pageToken);
+
+  const emails: RawEmail[] = [];
+  for (const id of ids.filter((messageId) => !skip(messageId))) {
+    const message = await api<GmailMessage>(`/messages/${id}?format=full`);
+    emails.push(toRawEmail(message));
+  }
+  return emails;
+}
+
 async function prepareParserRevision(): Promise<void> {
   try {
     if (localStorage.getItem(PARSER_REVISION_KEY) === PARSER_REVISION) return;
@@ -327,24 +362,12 @@ export async function sync(days?: number): Promise<Candidate[]> {
   await prepareParserRevision();
   const settings = getGmailSettings();
   const window = days ?? settings.syncDays;
-  const q = encodeURIComponent(buildGmailQuery(window));
-  const ids: string[] = [];
-  let pageToken = '';
-  do {
-    const page = await api<ListResponse>(
-      `/messages?maxResults=500&q=${q}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
-    );
-    ids.push(...(page.messages ?? []).map((message) => message.id));
-    pageToken = page.nextPageToken ?? '';
-  } while (pageToken);
-
+  const emails = await fetchRawEmails(buildGmailQuery(window), isHandled);
   const candidates: Candidate[] = [];
-  for (const id of ids.filter((id) => !isHandled(id))) {
-    const msg = await api<GmailMessage>(`/messages/${id}?format=full`);
-    const email = toRawEmail(msg);
+  for (const email of emails) {
     const parsed = parseTransactionEmail(email);
     if (parsed.amount === null) continue; // nothing to import
-    candidates.push({ id, parsed, email });
+    candidates.push({ id: email.id as string, parsed, email });
   }
 
   candidates.sort((a, b) => (b.email.receivedAt ?? 0) - (a.email.receivedAt ?? 0));
@@ -604,4 +627,5 @@ export const GmailRepository = {
   getSyncState,
   subscribeSync,
   diagnose,
+  fetchRawEmails,
 };

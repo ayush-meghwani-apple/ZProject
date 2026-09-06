@@ -74,6 +74,7 @@ interface UnifiedRow {
   isSell: boolean;
   auto: boolean;
   reviewed: boolean;
+  emailImported?: boolean;
   /** A SIP installment whose units/NAV are still pending (scheduled on a
    *  weekend/holiday → allotted on the next working day). */
   processing?: boolean;
@@ -127,6 +128,7 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
           isSell: redeem,
           auto: t.auto === true,
           reviewed: t.reviewed === true,
+          emailImported: t.importSource === 'etmoney',
           processing: t.processing === true,
           fundId: f.id,
         };
@@ -320,12 +322,17 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
 
   return (
     <main className="app__body">
-      <div className="page ft-mf ft-page--fab">
+      <div className="page ft-mf">
         <div className="ft-mf__head">
           <div>
             <h2 className="ft-mf__h">Ledger</h2>
             <p className="ft-mf__sub">Every investment transaction across your portfolio · mutual funds feed the Pulse tab</p>
           </div>
+          {!adding && (
+            <button className="btn btn--sm" onClick={() => setAdding(true)} aria-label="Add transaction">
+              <AppIcon name="plus" size={17} /> Add
+            </button>
+          )}
         </div>
 
         {rows.length === 0 && !adding ? (
@@ -409,6 +416,11 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
                       {r.isSip && (
                         <span className="ft-led__badge ft-led__badge--sip" title="SIP installment">
                           <AppIcon name="recurring" size={12} />
+                        </span>
+                      )}
+                      {r.emailImported && (
+                        <span className="ft-led__badge" title="Imported from ET Money email">
+                          <AppIcon name="email" size={12} />
                         </span>
                       )}
                       <span className="ft-led__name">
@@ -596,14 +608,6 @@ export default function TransactionsTab({ plan, update }: FortunaTabProps) {
           </>
         )}
 
-        {/* Floating Add — portalled to <body> so the tab-slide transform can't
-            make its fixed position flicker/jump when switching tabs. */}
-        {!adding && createPortal(
-          <button className="ft-fab" onClick={() => setAdding(true)} aria-label="Add transaction" title="Add transaction">
-            <AppIcon name="plus" size={20} /> Add
-          </button>,
-          document.body,
-        )}
       </div>
     </main>
   );
