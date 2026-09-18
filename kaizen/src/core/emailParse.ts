@@ -231,8 +231,11 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
   const isStatement =
     STATEMENT_WORDS.test(text) && !DEBIT_WORDS.test(subject) && !isBobTransactionConfirmation;
   const isFailed = FAILED_RE.test(text);
+  const needsVerifiedCardSpend = source === 'hsbc-cc' || source === 'icici-cc';
   const isPromo =
-    (PROMO_RE.test(text) && !REAL_TXN_RE.test(text)) || NOTICE_SUBJECT_RE.test(subject);
+    (PROMO_RE.test(text) && !REAL_TXN_RE.test(text)) ||
+    NOTICE_SUBJECT_RE.test(subject) ||
+    (needsVerifiedCardSpend && !isStatement && !REAL_TXN_RE.test(text));
   const amount = extractAmount(text);
 
   let direction: TxnDirection | null = null;

@@ -27,6 +27,8 @@ import {
 import { guessCategory } from '../core/merchantCategory';
 import { detectSalary, SALARY_MIN_AMOUNT } from '../core/salaryDetect';
 import { gmailApiFailure } from '../core/gmailApiError';
+import { gmailExpenseKey } from '../core/gmailExpenseDedupe';
+import { dateInputValue } from '../core/util';
 import { ExpenseRepository } from './expenseRepository';
 import { CategoryRepository } from './categoryRepository';
 import { PaymentMethodRepository } from './paymentMethodRepository';
@@ -36,7 +38,7 @@ const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const PARSER_REVISION_KEY = 'gmail:parserRevision';
-const PARSER_REVISION = '4';
+const PARSER_REVISION = '5';
 const API_TIMEOUT_MS = 20_000;
 const FETCH_CONCURRENCY = 3;
 const API_RETRY_DELAYS_MS = [1_000, 2_000, 4_000];
@@ -494,13 +496,27 @@ function isoFromDate(date: string | null): string | undefined {
  * so they never resurface. Returns how many were imported vs skipped.
  */
 export async function importCandidates(candidates: Candidate[]): Promise<ImportResult> {
-  const [categories, subcategories, aliases, methods] = await Promise.all([
+  const [categories, subcategories, aliases, methods, existingExpenses] = await Promise.all([
     CategoryRepository.getCategories(),
     CategoryRepository.getSubcategories(),
     CategoryRepository.getAliases(),
     PaymentMethodRepository.list(),
+    ExpenseRepository.getExpenses(),
   ]);
   const methodId = new Map(methods.map((m) => [m.name.toLowerCase(), m.id]));
+  const knownExpenseKeys = new Set(
+    existingExpenses
+      .filter((expense) => expense.autoImported)
+      .map((expense) =>
+        gmailExpenseKey({
+          amount: expense.amount,
+          date: dateInputValue(expense.date),
+          paymentMethodId: expense.paymentMethodId,
+          merchant: expense.note,
+        }),
+      )
+      .filter((key): key is string => key !== null),
+  );
   const salaryMinAmount = SALARY_MIN_AMOUNT;
   const salaryEvents: { date: string; amount: number; note: string }[] = [];
 
@@ -561,6 +577,16 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
     const guess = guessCategory(p.merchant, categories, subcategories, aliases);
     // Payment method already shows the card/account, so the note is just the payee.
     const note = p.merchant ?? undefined;
+    const expenseKey = gmailExpenseKey({
+      amount: p.amount as number,
+      date: p.date,
+      paymentMethodId: pmId,
+      merchant: note,
+    });
+    if (expenseKey && knownExpenseKeys.has(expenseKey)) {
+      markImported(c.id);
+      continue;
+    }
     await ExpenseRepository.addExpense({
       amount: p.amount as number,
       date: isoFromDate(p.date),
@@ -569,7 +595,11 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       note,
       rawText: p.raw.subject,
       autoImported: true,
+      emailReceivedAt: c.email.receivedAt
+        ? new Date(c.email.receivedAt).toISOString()
+        : undefined,
     });
+    if (expenseKey) knownExpenseKeys.add(expenseKey);
     markImported(c.id);
     imported++;
   }

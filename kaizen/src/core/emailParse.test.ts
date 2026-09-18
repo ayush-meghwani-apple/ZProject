@@ -204,6 +204,26 @@ describe('parseTransactionEmail', () => {
     expect(p.kind).toBe('promo');
   });
 
+  it('rejects an ICICI cashback offer containing a card and currency amount', () => {
+    const p = parseTransactionEmail({
+      from: 'ICICI Bank <services@customer.icici.bank.in>',
+      subject: 'Exclusive cashback offer for your ICICI Bank Credit Card',
+      body: 'Earn cashback of INR 5,000 on eligible spends with your ICICI Bank Credit Card XX6005 this month.',
+    });
+    expect(p.source).toBe('icici-cc');
+    expect(p.kind).toBe('promo');
+  });
+
+  it('rejects an HSBC rewards offer containing a transaction amount', () => {
+    const p = parseTransactionEmail({
+      from: 'HSBC <hsbc@mail.hsbc.co.in>',
+      subject: 'More rewards with your HSBC Credit Card',
+      body: 'Spend INR 2,000 with your HSBC Credit Card xx6043 and earn accelerated reward points.',
+    });
+    expect(p.source).toBe('hsbc-cc');
+    expect(p.kind).toBe('promo');
+  });
+
   it('parses a YONO SBI fund transfer (Transaction success) as an account debit', () => {
     const p = parseTransactionEmail({
       from: 'YONO SBI <yonobysbi@alerts.sbi.bank.in>',

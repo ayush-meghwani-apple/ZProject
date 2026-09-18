@@ -99,6 +99,7 @@ export interface Expense {
   rawText?: string; // original chat input, for transparency
   reviewed?: boolean; // user acknowledged a ΓÇ£big spendΓÇ¥ so it stops drawing attention
   autoImported?: boolean; // created automatically from a Gmail bank/card alert
+  emailReceivedAt?: ISODate; // Gmail arrival time, used to order same-day imports
   recurringId?: ID; // set when auto-created from a recurring template
   createdAt: ISODate;
   updatedAt: ISODate;

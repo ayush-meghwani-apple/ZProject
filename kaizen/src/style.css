@@ -7378,6 +7378,7 @@ button.ft-settings__card {
   flex: 1 1 0;
   min-height: 112px;
   width: 100%;
+  transform: translateX(25px);
 }
 .reel__content {
   display: flex;
@@ -7695,34 +7696,8 @@ button.ft-settings__card {
 .reel__act--add svg {
   color: var(--accent);
 }
-.reel__moreicon {
-  font-size: 20px;
-  line-height: 1;
-  letter-spacing: 0;
-}
-.reel__moremenu {
-  position: absolute;
-  right: 52px;
-  bottom: 0;
-  min-width: 128px;
-  padding: 5px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-}
-.reel__moremenu button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 9px 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
+.reel__act--dismiss svg {
   color: #f87171;
-  font: inherit;
-  font-size: 13px;
 }
 
 /* ---- Categories ---- */

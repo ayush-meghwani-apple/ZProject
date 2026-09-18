@@ -1,5 +1,6 @@
 import { storage } from '../storage';
 import { newId, now } from '../core/util';
+import { compareExpensesNewest } from '../core/expenseSort';
 import { ActivityRepository } from './activityRepository';
 import { SalaryCycleRepository } from './salaryCycleRepository';
 import type { Expense, ID } from '../types/models';
@@ -16,6 +17,7 @@ export type NewExpenseInput = {
   date?: string;
   recurringId?: ID;
   autoImported?: boolean;
+  emailReceivedAt?: string;
 };
 
 export const ExpenseRepository = {
@@ -25,7 +27,7 @@ export const ExpenseRepository = {
 
   async getExpensesSorted(): Promise<Expense[]> {
     const all = await storage.expenses.getAll();
-    return all.sort((a, b) => b.date.localeCompare(a.date));
+    return all.sort(compareExpensesNewest);
   },
 
   async getByCycle(salaryCycleId: ID): Promise<Expense[]> {
@@ -51,6 +53,7 @@ export const ExpenseRepository = {
       rawText: input.rawText,
       recurringId: input.recurringId,
       autoImported: input.autoImported,
+      emailReceivedAt: input.emailReceivedAt,
       createdAt: timestamp,
       updatedAt: timestamp,
     };

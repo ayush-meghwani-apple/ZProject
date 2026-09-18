@@ -9,6 +9,7 @@ import { RemindersRepository } from '../repository/remindersRepository';
 import { parseInput } from '../core/parser';
 import { cycleName } from '../core/salaryCycle';
 import { formatINR, formatDate, addMonths } from '../core/util';
+import { compareExpensesNewest } from '../core/expenseSort';
 import { getPrefs, setPrefs } from '../core/preferences';
 import { playSound } from '../core/sound';
 import { requestNotificationPermission } from '../core/notify';
@@ -50,7 +51,6 @@ export default function Reels({ version, onChange }: Props) {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [methodMenuFor, setMethodMenuFor] = useState<string | null>(null);
   const [categoryMenuFor, setCategoryMenuFor] = useState<string | null>(null);
-  const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [noteEditingFor, setNoteEditingFor] = useState<string | null>(null);
   const [active, setActive] = useState(0);
@@ -100,7 +100,7 @@ export default function Reels({ version, onChange }: Props) {
 
   // Close an open reel quick-edit menu when tapping elsewhere.
   useEffect(() => {
-    if (!methodMenuFor && !categoryMenuFor && !actionMenuFor) return;
+    if (!methodMenuFor && !categoryMenuFor) return;
     function onDown(e: PointerEvent) {
       if (!(e.target as Element)?.closest?.('.reel__methodwrap, .reelcatpicker')) {
         setMethodMenuFor(null);
@@ -108,15 +108,14 @@ export default function Reels({ version, onChange }: Props) {
       if (!(e.target as Element)?.closest?.('.reel__categorywrap, .reelcatpicker')) {
         setCategoryMenuFor(null);
       }
-      if (!(e.target as Element)?.closest?.('.reel__actions')) setActionMenuFor(null);
     }
     document.addEventListener('pointerdown', onDown, true);
     return () => document.removeEventListener('pointerdown', onDown, true);
-  }, [methodMenuFor, categoryMenuFor, actionMenuFor]);
+  }, [methodMenuFor, categoryMenuFor]);
 
   const reels = useMemo(() => {
     const list = cycleId ? expenses.filter((e) => e.salaryCycleId === cycleId) : expenses;
-    return [...list].sort((a, b) => b.date.localeCompare(a.date));
+    return [...list].sort(compareExpensesNewest);
   }, [expenses, cycleId]);
 
   const total = useMemo(() => reels.reduce((sum, e) => sum + e.amount, 0), [reels]);
@@ -174,7 +173,6 @@ export default function Reels({ version, onChange }: Props) {
     if (reelIdx !== active) {
       setActive(reelIdx);
       setMethodMenuFor(null);
-      setActionMenuFor(null);
     }
   }
 
@@ -256,9 +254,10 @@ export default function Reels({ version, onChange }: Props) {
     flashToast(note ? 'Note saved' : 'Note removed');
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this expense?')) return;
-    await ExpenseRepository.deleteExpense(id);
+  async function handleDelete(expense: Expense) {
+    const action = expense.autoImported ? 'Dismiss' : 'Delete';
+    if (!confirm(`${action} this expense?`)) return;
+    await ExpenseRepository.deleteExpense(expense.id);
     await load();
     onChange();
   }
@@ -555,16 +554,14 @@ export default function Reels({ version, onChange }: Props) {
                     <button className="reel__act reel__act--rem" onClick={() => setRemindExpense(e)} aria-label="Remind me" title="Remind me">
                       <AppIcon name="remind" size={20} />
                     </button>
-                    <button className="reel__act" onClick={() => setActionMenuFor(actionMenuFor === e.id ? null : e.id)} aria-label="More actions" title="More actions">
-                      <span className="reel__moreicon">•••</span>
+                    <button
+                      className="reel__act reel__act--dismiss"
+                      onClick={() => handleDelete(e)}
+                      aria-label={e.autoImported ? 'Dismiss expense' : 'Delete expense'}
+                      title={e.autoImported ? 'Dismiss' : 'Delete'}
+                    >
+                      <AppIcon name="trash" size={20} />
                     </button>
-                    {actionMenuFor === e.id && (
-                      <div className="reel__moremenu">
-                        <button onClick={() => handleDelete(e.id)}>
-                          <AppIcon name="trash" size={16} /> {e.autoImported ? 'Dismiss' : 'Delete'}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </section>
               );
