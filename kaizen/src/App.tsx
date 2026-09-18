@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import ExpensifyApp from './components/ExpensifyApp';
 import GoalsApp from './components/GoalsApp';
 import NotesApp from './components/NotesApp';
@@ -44,7 +44,11 @@ export default function App() {
   // Bumped to make Expensify reload / jump to Reels from the reminders inbox.
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [openReelsNonce, setOpenReelsNonce] = useState(0);
-  const [gmailSync, setGmailSync] = useState<SyncState>(GmailRepository.getSyncState());
+  const gmailSync = useSyncExternalStore(
+    GmailRepository.subscribeSync,
+    GmailRepository.getSyncState,
+    GmailRepository.getSyncState,
+  ) as SyncState;
 
   const current = APPS.find((a) => a.id === activeApp)!;
   const demo = isDemoMode();
@@ -86,8 +90,6 @@ export default function App() {
   useEffect(() => {
     if (!isDemoMode()) void MfGmailRepository.autoSync();
   }, []);
-
-  useEffect(() => GmailRepository.subscribeSync(setGmailSync), []);
 
   // The Vault sub-app was removed; purge its stored data once (the shared PIN
   // in vaultLock stays — Fortuna's lock still uses it).
