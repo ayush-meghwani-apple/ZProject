@@ -457,6 +457,8 @@ export interface ImportResult {
   examined: number;
   /** Emails matching a reel that already exists. */
   duplicates: number;
+  /** Existing exact-message reels corrected from the latest parser. */
+  repaired: number;
 }
 
 // ---- Observable sync state (for the Settings UI to show Syncing→Synced) ----
@@ -495,7 +497,7 @@ function summarize(r: ImportResult): string {
 }
 
 function summarizeRestore(r: ImportResult): string {
-  return `Restore checked ${r.examined} candidate email${r.examined === 1 ? '' : 's'} · restored ${r.imported} · ${r.duplicates} already existed · ${r.skipped} rejected`;
+  return `Restore checked ${r.examined} candidate email${r.examined === 1 ? '' : 's'} · restored ${r.imported} · repaired ${r.repaired} · ${r.duplicates} already existed · ${r.skipped} rejected`;
 }
 
 /** yyyy-mm-dd → ISO at local midnight, matching the rest of the app. */
@@ -509,7 +511,10 @@ function isoFromDate(date: string | null): string | undefined {
  * tagged with a per-card payment method. Credits and statements are dismissed
  * so they never resurface. Returns how many were imported vs skipped.
  */
-export async function importCandidates(candidates: Candidate[]): Promise<ImportResult> {
+export async function importCandidates(
+  candidates: Candidate[],
+  opts: { repairExisting?: boolean } = {},
+): Promise<ImportResult> {
   const [categories, subcategories, aliases, methods, existingExpenses] = await Promise.all([
     CategoryRepository.getCategories(),
     CategoryRepository.getSubcategories(),
@@ -518,6 +523,11 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
     ExpenseRepository.getExpenses(),
   ]);
   const methodId = new Map(methods.map((m) => [m.name.toLowerCase(), m.id]));
+  const expenseByMessageId = new Map(
+    existingExpenses.flatMap((expense) =>
+      expense.gmailMessageId ? [[expense.gmailMessageId, expense] as const] : [],
+    ),
+  );
   const knownMessageIds = new Set(
     existingExpenses.flatMap((expense) =>
       expense.gmailMessageId ? [expense.gmailMessageId] : [],
@@ -550,6 +560,7 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
   let imported = 0;
   let skipped = 0;
   let duplicates = 0;
+  let repaired = 0;
   for (const c of candidates) {
     const p = c.parsed;
 
@@ -593,11 +604,6 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       }
       continue;
     }
-    if (knownMessageIds.has(c.id)) {
-      markImported(c.id);
-      duplicates++;
-      continue;
-    }
     const pmId = await ensureMethod(sourceLabel(p.source));
     const guess = guessCategory(p.merchant, categories, subcategories, aliases);
     // Payment method already shows the card/account, so the note is just the payee.
@@ -611,6 +617,41 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       accountLast4: p.accountLast4,
       transactionTime: p.transactionTime,
     });
+    const existingByMessage = expenseByMessageId.get(c.id);
+    if (existingByMessage) {
+      if (opts.repairExisting) {
+        const correctedDate = isoFromDate(p.date) ?? existingByMessage.date;
+        const correctedNote = note ?? existingByMessage.note;
+        const changed =
+          existingByMessage.amount !== p.amount ||
+          existingByMessage.date !== correctedDate ||
+          existingByMessage.note !== correctedNote ||
+          existingByMessage.paymentMethodId !== pmId ||
+          existingByMessage.gmailTransactionKey !== (expenseKey ?? undefined);
+        if (changed) {
+          await ExpenseRepository.updateExpense({
+            ...existingByMessage,
+            amount: p.amount as number,
+            date: correctedDate,
+            note: correctedNote,
+            paymentMethodId: pmId,
+            rawText: p.raw.subject,
+            gmailTransactionKey: expenseKey ?? undefined,
+            emailReceivedAt: c.email.receivedAt
+              ? new Date(c.email.receivedAt).toISOString()
+              : existingByMessage.emailReceivedAt,
+          });
+          if (expenseKey) knownExpenseKeys.add(expenseKey);
+          repaired++;
+        } else {
+          duplicates++;
+        }
+      } else {
+        duplicates++;
+      }
+      markImported(c.id);
+      continue;
+    }
     if (expenseKey && knownExpenseKeys.has(expenseKey)) {
       markImported(c.id);
       duplicates++;
@@ -663,6 +704,7 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
     salary: uniqueSalary.length,
     examined: candidates.length,
     duplicates,
+    repaired,
   };
 }
 
@@ -678,7 +720,7 @@ export async function syncAndImport(
   try {
     if (!isConnected()) await connect(opts.interactive ?? true);
     const candidates = await sync(days, { rescan: opts.rescan });
-    const result = await importCandidates(candidates);
+    const result = await importCandidates(candidates, { repairExisting: opts.rescan });
     setGmailSettings({ lastSyncAt: new Date().toISOString() });
     emitSync({
       phase: 'done',
@@ -720,7 +762,14 @@ export async function diagnose(days?: number): Promise<string[]> {
  * never throws — returns 0/0/0 when not (yet) authorised.
  */
 async function runAutoSync(): Promise<ImportResult> {
-  const zero: ImportResult = { imported: 0, skipped: 0, salary: 0, examined: 0, duplicates: 0 };
+  const zero: ImportResult = {
+    imported: 0,
+    skipped: 0,
+    salary: 0,
+    examined: 0,
+    duplicates: 0,
+    repaired: 0,
+  };
   const settings = getGmailSettings();
   if (!settings.clientId) return zero;
   if (!isConnected()) {
