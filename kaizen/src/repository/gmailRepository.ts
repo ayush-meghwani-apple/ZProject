@@ -36,6 +36,8 @@ const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const PARSER_REVISION_KEY = 'gmail:parserRevision';
 const PARSER_REVISION = '4';
+const API_TIMEOUT_MS = 20_000;
+const FETCH_CONCURRENCY = 8;
 
 // Minimal shape of the GIS token client we rely on (the library is loaded at
 // runtime from Google, so we declare only what we use).
@@ -75,10 +77,12 @@ export interface Candidate {
 const TOKEN_KEY = 'gmail:token';
 
 let tokenClient: TokenClient | null = null;
+let tokenClientId = '';
 let accessToken = '';
 let tokenExpiry = 0; // epoch millis
 let connectPromise: Promise<void> | null = null;
 let connectIsInteractive = false;
+let gisScriptPromise: Promise<void> | null = null;
 
 // Restore a previously-granted token so a page reload (e.g. a new app version)
 // never forces re-authorising.
@@ -112,14 +116,25 @@ function clearToken() {
 }
 
 function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+  if (window.google) return Promise.resolve();
+  if (gisScriptPromise) return gisScriptPromise;
+  gisScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Failed to load Google sign-in library.')), { once: true });
+      return;
+    }
     const s = document.createElement('script');
     s.src = src;
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => reject(new Error('Failed to load Google sign-in library.'));
     document.head.appendChild(s);
+  });
+  return gisScriptPromise.catch((error) => {
+    gisScriptPromise = null;
+    throw error;
   });
 }
 
@@ -128,12 +143,13 @@ async function ensureTokenClient(): Promise<TokenClient> {
   if (!clientId) throw new Error('Add your Google OAuth client id in Settings first.');
   await loadScript(GIS_SRC);
   if (!window.google) throw new Error('Google sign-in failed to load.');
-  if (!tokenClient) {
+  if (!tokenClient || tokenClientId !== clientId) {
     tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: SCOPE,
       callback: () => {}, // replaced per-request in connect()
     });
+    tokenClientId = clientId;
   }
   return tokenClient;
 }
@@ -213,18 +229,37 @@ export function signOut(): void {
   clearToken();
 }
 
-async function api<T>(path: string): Promise<T> {
+async function api<T>(path: string, retryAfterAuthFailure = true): Promise<T> {
   if (!isConnected()) {
     // Try a silent refresh before giving up.
     await connect(false).catch(() => {
       throw new Error('Gmail reconnect required.');
     });
   }
-  const res = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API}${path}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('Gmail did not respond. Check your internet connection and try again.');
+    }
+    throw new Error('Could not reach Gmail. Check your internet connection and try again.');
+  } finally {
+    window.clearTimeout(timeout);
+  }
   if (res.status === 401) {
     clearToken();
+    if (retryAfterAuthFailure) {
+      await connect(false).catch(() => {
+        throw new Error('Gmail reconnect required. Tap Sync now to continue.');
+      });
+      return api<T>(path, false);
+    }
     throw new Error('Gmail session expired. Reconnect from Settings.');
   }
   if (!res.ok) throw new Error(`Gmail API error ${res.status}.`);
@@ -312,6 +347,19 @@ interface ListResponse {
   nextPageToken?: string;
 }
 
+async function mapConcurrent<T, R>(items: T[], worker: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  async function runWorker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await worker(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(FETCH_CONCURRENCY, items.length) }, runWorker));
+  return results;
+}
+
 /** Shared Gmail transport used by domain-specific importers. Authentication,
  * pagination and MIME decoding live here; each importer owns its query,
  * parser, de-duplication state and persistence. */
@@ -329,12 +377,10 @@ export async function fetchRawEmails(
     pageToken = page.nextPageToken ?? '';
   } while (pageToken);
 
-  const emails: RawEmail[] = [];
-  for (const id of ids.filter((messageId) => !skip(messageId))) {
+  return mapConcurrent(ids.filter((messageId) => !skip(messageId)), async (id) => {
     const message = await api<GmailMessage>(`/messages/${id}?format=full`);
-    emails.push(toRawEmail(message));
-  }
-  return emails;
+    return toRawEmail(message);
+  });
 }
 
 async function prepareParserRevision(): Promise<void> {
@@ -576,15 +622,14 @@ export async function diagnose(days?: number): Promise<string[]> {
   const list = await api<ListResponse>(`/messages?maxResults=50&q=${q}`);
   const ids = (list.messages ?? []).map((m) => m.id);
   const lines = [`Fetched ${ids.length} email(s) · window ${window}d`];
-  for (const id of ids) {
+  const details = await mapConcurrent(ids, async (id) => {
     const msg = await api<GmailMessage>(`/messages/${id}?format=full`);
     const email = toRawEmail(msg);
     const p = parseTransactionEmail(email);
     const domain = email.from.match(/@([^>\s]+)/)?.[1] ?? email.from;
-    lines.push(
-      `${domain} | ${p.source}/${p.kind} | ${p.amount ?? 'no-amt'} ${p.direction ?? '-'} | ${email.subject.slice(0, 32)}`,
-    );
-  }
+    return `${domain} | ${p.source}/${p.kind} | ${p.amount ?? 'no-amt'} ${p.direction ?? '-'} | ${email.subject.slice(0, 32)}`;
+  });
+  lines.push(...details);
   return lines;
 }
 
@@ -610,8 +655,11 @@ async function runAutoSync(): Promise<ImportResult> {
     setGmailSettings({ lastSyncAt: completedAt, lastAutoSyncAt: completedAt });
     emitSync({ phase: 'done', message: summarize(result), result });
     return result;
-  } catch {
-    emitSync({ phase: 'idle', message: '' });
+  } catch (error) {
+    emitSync({
+      phase: 'error',
+      message: error instanceof Error ? error.message : 'Automatic Gmail sync failed.',
+    });
     return zero;
   }
 }

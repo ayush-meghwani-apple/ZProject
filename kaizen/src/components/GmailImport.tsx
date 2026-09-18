@@ -17,6 +17,7 @@ export default function GmailImport({ onChange }: Props) {
   const [days, setDays] = useState(getGmailSettings().syncDays);
   const [sync, setSync] = useState<SyncState>(GmailRepository.getSyncState());
   const [diag, setDiag] = useState<string[]>([]);
+  const [diagnosing, setDiagnosing] = useState(false);
 
   const last = getGmailSettings();
   const lastSyncLabel = last.lastSyncAt
@@ -62,9 +63,8 @@ export default function GmailImport({ onChange }: Props) {
     const window = Math.max(1, Math.floor(days) || 1);
     setGmailSettings({ syncDays: window });
     try {
-      if (!GmailRepository.isConnected()) await GmailRepository.connect(true);
-      setConnected(true);
       await GmailRepository.syncAndImport(window, { interactive: true });
+      setConnected(GmailRepository.isConnected());
       onChange();
     } catch {
       /* error surfaced via sync state */
@@ -94,11 +94,15 @@ export default function GmailImport({ onChange }: Props) {
 
   // Lists every email the sync fetches + how it's classified (fetch vs parse).
   async function runDiagnose() {
+    setDiagnosing(true);
     setDiag(['Diagnosing…']);
     try {
       setDiag(await GmailRepository.diagnose(Math.max(1, Math.floor(days) || 7)));
     } catch (e) {
       setDiag([e instanceof Error ? e.message : 'Diagnose failed.']);
+    } finally {
+      setConnected(GmailRepository.isConnected());
+      setDiagnosing(false);
     }
   }
 
@@ -132,7 +136,7 @@ export default function GmailImport({ onChange }: Props) {
         <>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             <span className={`pill ${connected ? 'pill--good' : ''}`}>
-              {connected ? 'Connected' : 'Not connected'}
+              {connected ? 'Connected' : 'Ready to renew'}
             </span>
             <span className="inline" style={{ gap: 8 }}>
               <label className="muted" style={{ fontSize: 13 }}>
@@ -192,10 +196,11 @@ export default function GmailImport({ onChange }: Props) {
           <button
             className="btn btn--sm btn--ghost"
             style={{ marginTop: 6, marginLeft: 8 }}
-            onClick={runDiagnose}
+            onClick={() => void runDiagnose()}
+            disabled={diagnosing || syncing}
             title="List every email the sync fetches and how it's classified"
           >
-            Diagnose (list fetched)
+            {diagnosing ? 'Diagnosing…' : 'Diagnose (list fetched)'}
           </button>
 
           {diag.length > 0 && (
