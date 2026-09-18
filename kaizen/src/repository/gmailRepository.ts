@@ -26,6 +26,7 @@ import {
 } from '../core/gmailSettings';
 import { guessCategory } from '../core/merchantCategory';
 import { detectSalary, SALARY_MIN_AMOUNT } from '../core/salaryDetect';
+import { gmailApiFailure } from '../core/gmailApiError';
 import { ExpenseRepository } from './expenseRepository';
 import { CategoryRepository } from './categoryRepository';
 import { PaymentMethodRepository } from './paymentMethodRepository';
@@ -37,7 +38,8 @@ const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const PARSER_REVISION_KEY = 'gmail:parserRevision';
 const PARSER_REVISION = '4';
 const API_TIMEOUT_MS = 20_000;
-const FETCH_CONCURRENCY = 8;
+const FETCH_CONCURRENCY = 3;
+const API_RETRY_DELAYS_MS = [1_000, 2_000, 4_000];
 
 // Minimal shape of the GIS token client we rely on (the library is loaded at
 // runtime from Google, so we declare only what we use).
@@ -228,7 +230,11 @@ export function signOut(): void {
   clearToken();
 }
 
-async function api<T>(path: string): Promise<T> {
+function retryDelay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms + Math.random() * 250));
+}
+
+async function api<T>(path: string, attempt = 0): Promise<T> {
   if (!isConnected()) {
     throw new Error('Gmail access expired. Tap Sync now once to reconnect.');
   }
@@ -252,7 +258,21 @@ async function api<T>(path: string): Promise<T> {
     clearToken();
     throw new Error('Gmail access expired. Tap Sync now once to reconnect.');
   }
-  if (!res.ok) throw new Error(`Gmail API error ${res.status}.`);
+  if (!res.ok) {
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
+    const failure = gmailApiFailure(res.status, body);
+    if (failure.retryable && attempt < API_RETRY_DELAYS_MS.length) {
+      await retryDelay(API_RETRY_DELAYS_MS[attempt]);
+      return api<T>(path, attempt + 1);
+    }
+    const reason = failure.reason ? ` (${failure.reason})` : '';
+    throw new Error(`Gmail: ${failure.message}${reason}.`);
+  }
   return res.json() as Promise<T>;
 }
 
