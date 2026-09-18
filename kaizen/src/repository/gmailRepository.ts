@@ -424,11 +424,17 @@ async function prepareParserRevision(): Promise<void> {
  * drop any Gmail message already imported or dismissed. Sorted newest first.
  * Requires an active connection (call {@link connect} first).
  */
-export async function sync(days?: number): Promise<Candidate[]> {
+export async function sync(
+  days?: number,
+  opts: { rescan?: boolean } = {},
+): Promise<Candidate[]> {
   await prepareParserRevision();
   const settings = getGmailSettings();
   const window = days ?? settings.syncDays;
-  const emails = await fetchRawEmails(buildGmailQuery(window), isHandled);
+  const emails = await fetchRawEmails(
+    buildGmailQuery(window),
+    opts.rescan ? () => false : isHandled,
+  );
   const candidates: Candidate[] = [];
   for (const email of emails) {
     const parsed = parseTransactionEmail(email);
@@ -447,6 +453,10 @@ export interface ImportResult {
   skipped: number;
   /** Salary credits detected → new salary cycles started. */
   salary: number;
+  /** Amount-bearing emails examined by this sync. */
+  examined: number;
+  /** Emails matching a reel that already exists. */
+  duplicates: number;
 }
 
 // ---- Observable sync state (for the Settings UI to show Syncing→Synced) ----
@@ -484,6 +494,10 @@ function summarize(r: ImportResult): string {
   return `Synced · ${parts.join(' · ')}`;
 }
 
+function summarizeRestore(r: ImportResult): string {
+  return `Restore checked ${r.examined} candidate email${r.examined === 1 ? '' : 's'} · restored ${r.imported} · ${r.duplicates} already existed · ${r.skipped} rejected`;
+}
+
 /** yyyy-mm-dd → ISO at local midnight, matching the rest of the app. */
 function isoFromDate(date: string | null): string | undefined {
   return date ? new Date(`${date}T00:00:00`).toISOString() : undefined;
@@ -511,7 +525,6 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
   );
   const knownExpenseKeys = new Set(
     existingExpenses
-      .filter((expense) => expense.autoImported)
       .map((expense) =>
         gmailExpenseKey({
           amount: expense.amount,
@@ -535,6 +548,7 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
 
   let imported = 0;
   let skipped = 0;
+  let duplicates = 0;
   for (const c of candidates) {
     const p = c.parsed;
 
@@ -580,6 +594,7 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
     }
     if (knownMessageIds.has(c.id)) {
       markImported(c.id);
+      duplicates++;
       continue;
     }
     const pmId = await ensureMethod(sourceLabel(p.source));
@@ -594,6 +609,7 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
     });
     if (expenseKey && knownExpenseKeys.has(expenseKey)) {
       markImported(c.id);
+      duplicates++;
       continue;
     }
     await ExpenseRepository.addExpense({
@@ -636,7 +652,13 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
   }
 
   setGmailSettings({ lastImported: imported, lastSkipped: skipped, lastSalary: uniqueSalary.length });
-  return { imported, skipped, salary: uniqueSalary.length };
+  return {
+    imported,
+    skipped,
+    salary: uniqueSalary.length,
+    examined: candidates.length,
+    duplicates,
+  };
 }
 
 /**
@@ -645,15 +667,19 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
  */
 export async function syncAndImport(
   days?: number,
-  opts: { interactive?: boolean } = {},
+  opts: { interactive?: boolean; rescan?: boolean } = {},
 ): Promise<ImportResult> {
   emitSync({ phase: 'syncing', message: 'Reading emails…' });
   try {
     if (!isConnected()) await connect(opts.interactive ?? true);
-    const candidates = await sync(days);
+    const candidates = await sync(days, { rescan: opts.rescan });
     const result = await importCandidates(candidates);
     setGmailSettings({ lastSyncAt: new Date().toISOString() });
-    emitSync({ phase: 'done', message: summarize(result), result });
+    emitSync({
+      phase: 'done',
+      message: opts.rescan ? summarizeRestore(result) : summarize(result),
+      result,
+    });
     return result;
   } catch (e) {
     emitSync({ phase: 'error', message: e instanceof Error ? e.message : 'Sync failed.' });
@@ -689,7 +715,7 @@ export async function diagnose(days?: number): Promise<string[]> {
  * never throws — returns 0/0/0 when not (yet) authorised.
  */
 async function runAutoSync(): Promise<ImportResult> {
-  const zero: ImportResult = { imported: 0, skipped: 0, salary: 0 };
+  const zero: ImportResult = { imported: 0, skipped: 0, salary: 0, examined: 0, duplicates: 0 };
   const settings = getGmailSettings();
   if (!settings.clientId) return zero;
   if (!isConnected()) {

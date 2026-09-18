@@ -4,7 +4,6 @@ import {
   getGmailSettings,
   setGmailSettings,
   clearImportMemory,
-  clearImportedMemory,
 } from '../core/gmailSettings';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
@@ -113,12 +112,18 @@ export default function GmailImport({ onChange }: Props) {
     const window = Math.max(1, Math.floor(days) || 1);
     if (
       !confirm(
-        `Re-scan imported emails from the last ${window} days? Existing expenses will not be duplicated, and dismissed emails stay hidden.`,
+        `Re-scan every matching email from the last ${window} days? Existing expenses will not be duplicated, and rejected emails will be checked again using the latest rules.`,
       )
     )
       return;
-    clearImportedMemory();
-    await runSync();
+    setGmailSettings({ syncDays: window });
+    try {
+      await GmailRepository.syncAndImport(window, { interactive: true, rescan: true });
+      setConnected(GmailRepository.isConnected());
+      onChange();
+    } catch {
+      /* error surfaced via sync state */
+    }
   }
 
   // Lists every email the sync fetches + how it's classified (fetch vs parse).
