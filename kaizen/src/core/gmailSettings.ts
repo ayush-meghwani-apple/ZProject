@@ -127,6 +127,15 @@ export function clearDismissedMemory(): void {
   }
 }
 
+/** Re-scan previously imported mail while keeping user/parser dismissals hidden. */
+export function clearImportedMemory(): void {
+  try {
+    localStorage.removeItem(IMPORTED_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Whether an id should be hidden from the review list (imported or dismissed). */
 export function isHandled(id: string): boolean {
   return isImported(id) || isDismissed(id);
@@ -135,7 +144,7 @@ export function isHandled(id: string): boolean {
 /** Forget which emails were imported/dismissed and reset the sync summary. */
 export function clearImportMemory(): void {
   try {
-    localStorage.removeItem(IMPORTED_KEY);
+    clearImportedMemory();
     localStorage.removeItem(DISMISSED_KEY);
   } catch {
     /* ignore */

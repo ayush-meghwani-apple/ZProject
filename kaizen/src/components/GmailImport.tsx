@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { GmailRepository, type SyncState } from '../repository/gmailRepository';
-import { getGmailSettings, setGmailSettings, clearImportMemory } from '../core/gmailSettings';
+import {
+  getGmailSettings,
+  setGmailSettings,
+  clearImportMemory,
+  clearImportedMemory,
+} from '../core/gmailSettings';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import CollapsibleCard from './CollapsibleCard';
@@ -104,6 +109,18 @@ export default function GmailImport({ onChange }: Props) {
     onChange();
   }
 
+  async function restoreDeletedImports() {
+    const window = Math.max(1, Math.floor(days) || 1);
+    if (
+      !confirm(
+        `Re-scan imported emails from the last ${window} days? Existing expenses will not be duplicated, and dismissed emails stay hidden.`,
+      )
+    )
+      return;
+    clearImportedMemory();
+    await runSync();
+  }
+
   // Lists every email the sync fetches + how it's classified (fetch vs parse).
   async function runDiagnose() {
     setDiagnosing(true);
@@ -203,6 +220,15 @@ export default function GmailImport({ onChange }: Props) {
             onClick={resetForTest}
           >
             Reset auto-imported
+          </button>
+
+          <button
+            className="btn btn--sm btn--ghost"
+            style={{ marginTop: 6, marginLeft: 8 }}
+            onClick={() => void restoreDeletedImports()}
+            disabled={syncing || !authReady}
+          >
+            Restore deleted imports
           </button>
 
           <button

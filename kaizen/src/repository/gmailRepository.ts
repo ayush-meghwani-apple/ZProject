@@ -504,6 +504,11 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
     ExpenseRepository.getExpenses(),
   ]);
   const methodId = new Map(methods.map((m) => [m.name.toLowerCase(), m.id]));
+  const knownMessageIds = new Set(
+    existingExpenses.flatMap((expense) =>
+      expense.gmailMessageId ? [expense.gmailMessageId] : [],
+    ),
+  );
   const knownExpenseKeys = new Set(
     existingExpenses
       .filter((expense) => expense.autoImported)
@@ -573,6 +578,10 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       }
       continue;
     }
+    if (knownMessageIds.has(c.id)) {
+      markImported(c.id);
+      continue;
+    }
     const pmId = await ensureMethod(sourceLabel(p.source));
     const guess = guessCategory(p.merchant, categories, subcategories, aliases);
     // Payment method already shows the card/account, so the note is just the payee.
@@ -595,10 +604,12 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       note,
       rawText: p.raw.subject,
       autoImported: true,
+      gmailMessageId: c.id,
       emailReceivedAt: c.email.receivedAt
         ? new Date(c.email.receivedAt).toISOString()
         : undefined,
     });
+    knownMessageIds.add(c.id);
     if (expenseKey) knownExpenseKeys.add(expenseKey);
     markImported(c.id);
     imported++;
