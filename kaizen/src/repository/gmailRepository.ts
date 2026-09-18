@@ -531,6 +531,7 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
           date: dateInputValue(expense.date),
           paymentMethodId: expense.paymentMethodId,
           merchant: expense.note,
+          storedKey: expense.gmailTransactionKey,
         }),
       )
       .filter((key): key is string => key !== null),
@@ -606,6 +607,9 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       date: p.date,
       paymentMethodId: pmId,
       merchant: note,
+      source: p.source,
+      accountLast4: p.accountLast4,
+      transactionTime: p.transactionTime,
     });
     if (expenseKey && knownExpenseKeys.has(expenseKey)) {
       markImported(c.id);
@@ -621,6 +625,7 @@ export async function importCandidates(candidates: Candidate[]): Promise<ImportR
       rawText: p.raw.subject,
       autoImported: true,
       gmailMessageId: c.id,
+      gmailTransactionKey: expenseKey ?? undefined,
       emailReceivedAt: c.email.receivedAt
         ? new Date(c.email.receivedAt).toISOString()
         : undefined,

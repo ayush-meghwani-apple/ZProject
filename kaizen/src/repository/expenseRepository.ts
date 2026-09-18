@@ -18,6 +18,7 @@ export type NewExpenseInput = {
   recurringId?: ID;
   autoImported?: boolean;
   gmailMessageId?: string;
+  gmailTransactionKey?: string;
   emailReceivedAt?: string;
 };
 
@@ -55,6 +56,7 @@ export const ExpenseRepository = {
       recurringId: input.recurringId,
       autoImported: input.autoImported,
       gmailMessageId: input.gmailMessageId,
+      gmailTransactionKey: input.gmailTransactionKey,
       emailReceivedAt: input.emailReceivedAt,
       createdAt: timestamp,
       updatedAt: timestamp,

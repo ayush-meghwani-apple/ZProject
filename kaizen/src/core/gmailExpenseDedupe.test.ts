@@ -40,4 +40,34 @@ describe('gmailExpenseKey', () => {
       }),
     ).toBeNull();
   });
+
+  it('matches AU duplicate alerts by card and transaction time despite merchant variation', () => {
+    const transaction = {
+      source: 'au-cc',
+      accountLast4: '7985',
+      amount: 1178.82,
+      date: '2026-09-03',
+      transactionTime: '22:49:23',
+      paymentMethodId: 'au-card',
+    };
+
+    expect(gmailExpenseKey({ ...transaction, merchant: 'UPI/KIWI SUBSCRIPTION' })).toBe(
+      gmailExpenseKey({ ...transaction, merchant: 'KIWI SUBSCRIPTION' }),
+    );
+  });
+
+  it('keeps same-card same-amount AU purchases at different times distinct', () => {
+    const transaction = {
+      source: 'au-cc',
+      accountLast4: '7985',
+      amount: 500,
+      date: '2026-09-03',
+      paymentMethodId: 'au-card',
+      merchant: 'CAFE',
+    };
+
+    expect(gmailExpenseKey({ ...transaction, transactionTime: '10:00:00' })).not.toBe(
+      gmailExpenseKey({ ...transaction, transactionTime: '10:01:00' }),
+    );
+  });
 });

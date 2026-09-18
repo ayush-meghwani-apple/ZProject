@@ -45,6 +45,8 @@ export interface ParsedTxnEmail {
   date: string | null;
   /** Last 4 digits of the card/account the email refers to. */
   accountLast4: string | null;
+  /** Normalized 24-hour transaction time when the alert includes one. */
+  transactionTime?: string | null;
   source: TxnSource;
   kind: TxnKind;
   /** 0..1 rough confidence that this is a real, importable transaction. */
@@ -63,7 +65,7 @@ const MONTHS: Record<string, number> = {
 const CURRENCY_RE = /(?:₹|rs\.?|inr)\s*([0-9](?:[0-9,]*)(?:\.\d{1,2})?)/gi;
 
 // Words that mean the number next to them is a balance/limit, NOT the txn.
-const NON_TXN_CONTEXT = /(available|avbl|avl|balance|limit|outstanding|remaining|total\s+due|min(?:imum)?\s+(?:amount\s+)?due)/i;
+const NON_TXN_CONTEXT = /\b(?:available|avbl|avl|balance|limit|outstanding|remaining|total\s+due|amount\s+due|min(?:imum)?\s+(?:amount\s+)?due)\b/i;
 
 const DEBIT_WORDS = /(spent|debited|debit|paid|purchase|withdrawn|used\s+for\s+a\s+transaction|transaction\s+of|txn\s+of|charged)/i;
 // Unambiguous spend words. Lets a clear credit win over weak/ambiguous debit
@@ -167,6 +169,16 @@ export function extractLast4(text: string): string | null {
     text.match(/(?:ending|end(?:ing)?\s+in|no\.?\s*[xX*]+|[xX*]{2,}|card\s+no\.?|a\/?c\s+no\.?)\s*[xX*\s-]*?(\d{4})\b/) ||
     text.match(/\b[xX*]{2,}(\d{4})\b/);
   return m ? m[1] : null;
+}
+
+/** Extract a transaction clock time such as "at 10:49:23 pm". */
+export function extractTransactionTime(text: string): string | null {
+  const matches = [...text.matchAll(/\bat\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)\b/gi)];
+  const match = matches[matches.length - 1];
+  if (!match) return null;
+  let hour = Number(match[1]) % 12;
+  if (match[4].toLowerCase() === 'pm') hour += 12;
+  return `${pad2(hour)}:${match[2]}:${match[3] ?? '00'}`;
 }
 
 /**
@@ -290,6 +302,7 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
     merchant,
     date,
     accountLast4: extractLast4(text),
+    transactionTime: extractTransactionTime(text),
     source,
     kind,
     confidence: Math.round(confidence * 100) / 100,

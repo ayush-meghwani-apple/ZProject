@@ -100,6 +100,7 @@ export interface Expense {
   reviewed?: boolean; // user acknowledged a ΓÇ£big spendΓÇ¥ so it stops drawing attention
   autoImported?: boolean; // created automatically from a Gmail bank/card alert
   gmailMessageId?: string; // exact source email, used for restore/re-scan deduplication
+  gmailTransactionKey?: string; // stable bank/card transaction identity across duplicate alerts
   emailReceivedAt?: ISODate; // Gmail arrival time, used to order same-day imports
   recurringId?: ID; // set when auto-created from a recurring template
   createdAt: ISODate;

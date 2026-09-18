@@ -4,6 +4,7 @@ import {
   extractAmount,
   extractDate,
   extractLast4,
+  extractTransactionTime,
   extractMerchant,
   detectSource,
   buildGmailQuery,
@@ -54,6 +55,12 @@ describe('extractLast4', () => {
   });
   it('reads "XX9876"', () => {
     expect(extractLast4('Credit Card XX9876 has been used')).toBe('9876');
+  });
+});
+
+describe('extractTransactionTime', () => {
+  it('normalizes a card transaction time to 24-hour precision', () => {
+    expect(extractTransactionTime('on 03-09-2026 at 10:49:23 pm.')).toBe('22:49:23');
   });
 });
 
@@ -257,6 +264,16 @@ describe('parseTransactionEmail', () => {
     expect(p.kind).toBe('card');
   });
 
+  it('reads the HSBC transaction amount when the merchant contains LIMITED', () => {
+    const p = parseTransactionEmail({
+      from: 'HSBC <hsbc@mail.hsbc.co.in>',
+      subject: 'Credit Card Transaction Alert',
+      body: "We're writing to confirm that your HSBC Credit Card xx6043 was used for a transaction of INR 86.09 at ETERNAL LIMITED on 17/09/26. Available limit: INR 449106.50 Amount due: INR 893.50",
+    });
+    expect(p.amount).toBe(86.09);
+    expect(p.merchant).toBe('ETERNAL LIMITED');
+  });
+
   it('skips an OTP notification even though it carries a transaction amount', () => {
     const p = parseTransactionEmail({
       from: 'HSBC <hsbc@mail.hsbc.co.in>',
@@ -318,6 +335,7 @@ describe('parseTransactionEmail', () => {
     expect(p.merchant).toBe('UPI/KIWI SUBSCRIPTION');
     expect(p.accountLast4).toBe('7985');
     expect(p.date).toBe('2026-09-03');
+    expect(p.transactionTime).toBe('22:49:23');
   });
 });
 
