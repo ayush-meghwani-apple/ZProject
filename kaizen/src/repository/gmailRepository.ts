@@ -47,9 +47,11 @@ interface TokenResponse {
   error?: string;
   error_description?: string;
 }
+interface TokenError {
+  type: 'popup_failed_to_open' | 'popup_closed' | 'unknown';
+}
 interface TokenClient {
   requestAccessToken: (opts?: { prompt?: string }) => void;
-  callback: (resp: TokenResponse) => void;
 }
 declare global {
   interface Window {
@@ -60,6 +62,7 @@ declare global {
             client_id: string;
             scope: string;
             callback: (resp: TokenResponse) => void;
+            error_callback?: (error: TokenError) => void;
           }) => TokenClient;
           revoke: (token: string, done?: () => void) => void;
         };
@@ -76,12 +79,9 @@ export interface Candidate {
 
 const TOKEN_KEY = 'gmail:token';
 
-let tokenClient: TokenClient | null = null;
-let tokenClientId = '';
 let accessToken = '';
 let tokenExpiry = 0; // epoch millis
 let connectPromise: Promise<void> | null = null;
-let connectIsInteractive = false;
 let gisScriptPromise: Promise<void> | null = null;
 
 // Restore a previously-granted token so a page reload (e.g. a new app version)
@@ -138,20 +138,15 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-async function ensureTokenClient(): Promise<TokenClient> {
+export async function prepareAuthorization(): Promise<void> {
   const { clientId } = getGmailSettings();
   if (!clientId) throw new Error('Add your Google OAuth client id in Settings first.');
   await loadScript(GIS_SRC);
   if (!window.google) throw new Error('Google sign-in failed to load.');
-  if (!tokenClient || tokenClientId !== clientId) {
-    tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: SCOPE,
-      callback: () => {}, // replaced per-request in connect()
-    });
-    tokenClientId = clientId;
-  }
-  return tokenClient;
+}
+
+export function isAuthorizationReady(): boolean {
+  return !!window.google;
 }
 
 /** True while a usable access token is still in memory. */
@@ -159,7 +154,7 @@ export function isConnected(): boolean {
   return !!accessToken && Date.now() < tokenExpiry - 30_000;
 }
 
-function requestToken(client: TokenClient, prompt: string): Promise<void> {
+function requestToken(): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     let settled = false;
     const finish = (fn: () => void) => {
@@ -170,22 +165,36 @@ function requestToken(client: TokenClient, prompt: string): Promise<void> {
     };
     const timeout = window.setTimeout(
       () => finish(() => reject(new Error('Gmail authorization timed out.'))),
-      prompt === 'none' ? 6000 : 60_000,
+      60_000,
     );
-    client.callback = (resp: TokenResponse) => {
-      if (resp.error || !resp.access_token) {
-        finish(() => reject(new Error(resp.error_description || resp.error || 'Authorization failed.')));
-        return;
-      }
-      finish(() => {
-        accessToken = resp.access_token as string;
-        tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000;
-        persistToken();
-        resolve();
-      });
-    };
     try {
-      client.requestAccessToken({ prompt });
+      const { clientId } = getGmailSettings();
+      const client = window.google?.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: SCOPE,
+        callback: (resp) => {
+          if (resp.error || !resp.access_token) {
+            finish(() => reject(new Error(resp.error_description || resp.error || 'Authorization failed.')));
+            return;
+          }
+          finish(() => {
+            accessToken = resp.access_token as string;
+            tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000;
+            persistToken();
+            resolve();
+          });
+        },
+        error_callback: (error) => {
+          const message = error.type === 'popup_failed_to_open'
+            ? 'Google sign-in popup was blocked. Allow popups and tap Sync now again.'
+            : error.type === 'popup_closed'
+              ? 'Google sign-in was closed before it finished.'
+              : 'Google sign-in could not open.';
+          finish(() => reject(new Error(message)));
+        },
+      });
+      if (!client) throw new Error('Google sign-in is still loading. Try again in a moment.');
+      client.requestAccessToken({ prompt: '' });
     } catch (e) {
       finish(() => reject(e instanceof Error ? e : new Error('Authorization failed.')));
     }
@@ -193,30 +202,20 @@ function requestToken(client: TokenClient, prompt: string): Promise<void> {
 }
 
 /**
- * Ensure a usable access token. Reuses the persisted token when still valid, so
- * reloads / new app versions never re-prompt. `interactive` uses prompt=''
- * (Google shows consent only the FIRST time, then refreshes silently — no
- * popup); `interactive=false` uses prompt='none' (background, never pops a
- * window).
+ * Ensure a usable access token. Google requires expired browser tokens to be
+ * renewed from a user gesture, so only an interactive call may request one.
  */
-async function runConnect(interactive: boolean): Promise<void> {
-  if (isConnected()) return;
-  const client = await ensureTokenClient();
-  await requestToken(client, interactive ? '' : 'none');
-}
-
 export function connect(interactive = true): Promise<void> {
   if (isConnected()) return Promise.resolve();
-  if (connectPromise) {
-    if (!interactive || connectIsInteractive) return connectPromise;
-    // A foreground tap must not inherit a startup prompt='none' failure. The
-    // silent request normally settles immediately; then retry interactively.
-    return connectPromise.catch(() => connect(true));
+  if (!interactive) return Promise.reject(new Error('Gmail access expired. Tap Sync now once to reconnect.'));
+  if (connectPromise) return connectPromise;
+  if (!isAuthorizationReady()) {
+    return Promise.reject(new Error('Google sign-in is still loading. Try again in a moment.'));
   }
-  connectIsInteractive = interactive;
-  connectPromise = runConnect(interactive).finally(() => {
+  // requestToken() initializes and opens GIS synchronously inside this call so
+  // iOS still recognizes the original button tap as the popup user gesture.
+  connectPromise = requestToken().finally(() => {
     connectPromise = null;
-    connectIsInteractive = false;
   });
   return connectPromise;
 }
@@ -229,12 +228,9 @@ export function signOut(): void {
   clearToken();
 }
 
-async function api<T>(path: string, retryAfterAuthFailure = true): Promise<T> {
+async function api<T>(path: string): Promise<T> {
   if (!isConnected()) {
-    // Try a silent refresh before giving up.
-    await connect(false).catch(() => {
-      throw new Error('Gmail reconnect required.');
-    });
+    throw new Error('Gmail access expired. Tap Sync now once to reconnect.');
   }
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
@@ -254,13 +250,7 @@ async function api<T>(path: string, retryAfterAuthFailure = true): Promise<T> {
   }
   if (res.status === 401) {
     clearToken();
-    if (retryAfterAuthFailure) {
-      await connect(false).catch(() => {
-        throw new Error('Gmail reconnect required. Tap Sync now to continue.');
-      });
-      return api<T>(path, false);
-    }
-    throw new Error('Gmail session expired. Reconnect from Settings.');
+    throw new Error('Gmail access expired. Tap Sync now once to reconnect.');
   }
   if (!res.ok) throw new Error(`Gmail API error ${res.status}.`);
   return res.json() as Promise<T>;
@@ -641,10 +631,9 @@ async function runAutoSync(): Promise<ImportResult> {
   const zero: ImportResult = { imported: 0, skipped: 0, salary: 0 };
   const settings = getGmailSettings();
   if (!settings.clientId) return zero;
-  try {
-    if (!isConnected()) await connect(false);
-  } catch {
-    emitSync({ phase: 'error', message: 'Gmail reconnect required.' });
+  if (!isConnected()) {
+    void prepareAuthorization().catch(() => undefined);
+    emitSync({ phase: 'error', message: 'Gmail access expired. Tap Sync now once to reconnect.' });
     return zero;
   }
   emitSync({ phase: 'syncing', message: 'Syncing…' });
@@ -674,6 +663,8 @@ export function autoSync(): Promise<ImportResult> {
 
 export const GmailRepository = {
   isConnected,
+  isAuthorizationReady,
+  prepareAuthorization,
   connect,
   signOut,
   sync,

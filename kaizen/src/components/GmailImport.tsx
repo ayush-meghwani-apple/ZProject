@@ -18,6 +18,8 @@ export default function GmailImport({ onChange }: Props) {
   const [sync, setSync] = useState<SyncState>(GmailRepository.getSyncState());
   const [diag, setDiag] = useState<string[]>([]);
   const [diagnosing, setDiagnosing] = useState(false);
+  const [authReady, setAuthReady] = useState(GmailRepository.isAuthorizationReady());
+  const [authLoadError, setAuthLoadError] = useState('');
 
   const last = getGmailSettings();
   const lastSyncLabel = last.lastSyncAt
@@ -39,6 +41,15 @@ export default function GmailImport({ onChange }: Props) {
     [],
   );
 
+  useEffect(() => {
+    if (!hasClientId) return;
+    setAuthLoadError('');
+    GmailRepository.prepareAuthorization().then(
+      () => setAuthReady(true),
+      (error) => setAuthLoadError(error instanceof Error ? error.message : 'Google sign-in failed to load.'),
+    );
+  }, [hasClientId]);
+
   // After a "done" pill has shown for a moment, fade the button back to normal.
   useEffect(() => {
     if (sync.phase !== 'done') return;
@@ -56,6 +67,7 @@ export default function GmailImport({ onChange }: Props) {
     const id = clientId.trim();
     setGmailSettings({ clientId: id });
     setClientId(id);
+    setAuthReady(GmailRepository.isAuthorizationReady());
     setHasClientId(!!id);
   }
 
@@ -156,10 +168,10 @@ export default function GmailImport({ onChange }: Props) {
               <button
                 className="btn btn--sm"
                 onClick={runSync}
-                disabled={syncing}
+                disabled={syncing || !authReady}
                 style={done ? { background: '#10b981', borderColor: '#10b981' } : undefined}
               >
-                {syncing ? 'Syncing…' : done ? '✓ Synced' : 'Sync now'}
+                {!authReady ? 'Loading Gmail…' : syncing ? 'Syncing…' : done ? '✓ Synced' : 'Sync now'}
               </button>
               <button
                 className="btn btn--sm btn--ghost"
@@ -197,7 +209,7 @@ export default function GmailImport({ onChange }: Props) {
             className="btn btn--sm btn--ghost"
             style={{ marginTop: 6, marginLeft: 8 }}
             onClick={() => void runDiagnose()}
-            disabled={diagnosing || syncing}
+            disabled={diagnosing || syncing || !authReady}
             title="List every email the sync fetches and how it's classified"
           >
             {diagnosing ? 'Diagnosing…' : 'Diagnose (list fetched)'}
@@ -240,6 +252,11 @@ export default function GmailImport({ onChange }: Props) {
       {sync.phase === 'error' && (
         <p className="muted" style={{ color: 'var(--danger, #ef4444)', marginBottom: 0 }}>
           {sync.message}
+        </p>
+      )}
+      {authLoadError && (
+        <p className="muted" style={{ color: 'var(--danger, #ef4444)', marginBottom: 0 }}>
+          {authLoadError}
         </p>
       )}
       {sync.phase === 'idle' && last.lastSyncAt && (
