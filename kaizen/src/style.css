@@ -150,6 +150,35 @@ body {
   border-left: 1px solid var(--border);
 }
 
+.gmailsync {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.gmailsync--syncing {
+  color: var(--accent);
+  cursor: wait;
+}
+
+.gmailsync--syncing svg {
+  animation: gmail-sync-spin 0.8s linear infinite;
+}
+
+.gmailsync--done {
+  color: var(--good);
+}
+
+.gmailsync--error {
+  color: var(--bad);
+}
+
+@keyframes gmail-sync-spin {
+  to { transform: rotate(360deg); }
+}
+
 .hamburger {
   appearance: none;
   border: none;
@@ -164,6 +193,28 @@ body {
 
 .hamburger:active {
   background: var(--surface-2, rgba(255, 255, 255, 0.06));
+}
+
+@media (max-width: 360px) {
+  .app__header {
+    padding-inline: 10px;
+    gap: 6px;
+  }
+
+  .app__icon {
+    display: none;
+  }
+
+  .app__title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .headeractions > button {
+    width: 34px;
+  }
 }
 
 /* ---- App drawer (left aside) ---- */

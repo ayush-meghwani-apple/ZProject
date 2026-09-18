@@ -11,6 +11,8 @@ interface Props {
   tabs: TabDef[];
   /** Optional id to open on first mount; defaults to the first tab. */
   initialId?: string;
+  /** Preserve visited tab trees so returning to them does not reload their data. */
+  keepMounted?: boolean;
   /** Externally-driven tab open: bump `nonce` to switch to `id`. */
   controlledOpen?: { id: string; nonce: number };
   /**
@@ -31,11 +33,13 @@ interface Props {
 export default function TabbedApp({
   tabs,
   initialId,
+  keepMounted = false,
   controlledOpen,
   swipeable = true,
   preserveEditorFocusOnActions = false,
 }: Props) {
   const [activeId, setActiveId] = useState<string>(initialId ?? tabs[0].id);
+  const [visitedIds, setVisitedIds] = useState(() => new Set([initialId ?? tabs[0].id]));
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const dirLock = useRef<'h' | 'v' | null>(null);
@@ -60,6 +64,14 @@ export default function TabbedApp({
     const to = tabs.findIndex((t) => t.id === id);
     if (to < 0 || to === tabIdx) return;
     setSlideDir(to > tabIdx ? 'next' : 'prev');
+    if (keepMounted) {
+      setVisitedIds((current) => {
+        if (current.has(id)) return current;
+        const next = new Set(current);
+        next.add(id);
+        return next;
+      });
+    }
     setActiveId(id);
   }
 
@@ -161,17 +173,23 @@ export default function TabbedApp({
             )}
           </div>
         )}
-        <div
-          key={activeId}
-          className={`app__view ${animate.current ? `app__view--${slideDir}` : ''}`}
-          style={
-            swipeX !== 0
-              ? { transform: `translateX(${swipeX * 0.18}px)`, transition: 'none' }
-              : undefined
-          }
-        >
-          {active.render()}
-        </div>
+        {(keepMounted ? tabs.filter((tab) => visitedIds.has(tab.id)) : [active]).map((tab) => {
+          const isActive = tab.id === activeId;
+          return (
+            <div
+              key={tab.id}
+              className={`app__view ${isActive && animate.current ? `app__view--${slideDir}` : ''}`}
+              hidden={!isActive}
+              style={
+                isActive && swipeX !== 0
+                  ? { transform: `translateX(${swipeX * 0.18}px)`, transition: 'none' }
+                  : undefined
+              }
+            >
+              {tab.render()}
+            </div>
+          );
+        })}
       </main>
 
       <nav className="tabbar">

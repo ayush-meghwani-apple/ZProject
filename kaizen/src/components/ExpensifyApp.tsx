@@ -71,6 +71,8 @@ export default function ExpensifyApp({ refreshNonce = 0, openReelsNonce = 0 }: P
   return (
     <TabbedApp
       tabs={tabs}
+      initialId="reels"
+      keepMounted
       preserveEditorFocusOnActions
       controlledOpen={openReelsNonce ? { id: 'reels', nonce: openReelsNonce } : undefined}
     />

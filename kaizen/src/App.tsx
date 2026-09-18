@@ -10,6 +10,8 @@ import { RemindersRepository } from './repository/remindersRepository';
 import { VaultRepository } from './repository/vaultRepository';
 import { GoalRepository } from './repository/goalRepository';
 import { MfGmailRepository } from './repository/mfGmailRepository';
+import { GmailRepository, type SyncState } from './repository/gmailRepository';
+import { getGmailSettings } from './core/gmailSettings';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
 import { isDemoMode, enterDemo, exitDemo } from './core/demoMode';
@@ -42,6 +44,7 @@ export default function App() {
   // Bumped to make Expensify reload / jump to Reels from the reminders inbox.
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [openReelsNonce, setOpenReelsNonce] = useState(0);
+  const [gmailSync, setGmailSync] = useState<SyncState>(GmailRepository.getSyncState());
 
   const current = APPS.find((a) => a.id === activeApp)!;
   const demo = isDemoMode();
@@ -53,7 +56,7 @@ export default function App() {
     }
     const ok = window.confirm(
       'Fill the app with DEMO sample data to show someone?\n\n' +
-        'Your real data and backups are NOT touched — turn this off any time and everything comes back exactly as it was.',
+        'Your real data and backups are NOT touched - turn this off any time and everything comes back exactly as it was.',
     );
     if (ok) enterDemo();
   }
@@ -84,8 +87,10 @@ export default function App() {
     if (!isDemoMode()) void MfGmailRepository.autoSync();
   }, []);
 
+  useEffect(() => GmailRepository.subscribeSync(setGmailSync), []);
+
   // The Vault sub-app was removed; purge its stored data once (the shared PIN
-  // in vaultLock stays — Fortuna's lock still uses it).
+  // in vaultLock stays - Fortuna's lock still uses it).
   useEffect(() => {
     if (localStorage.getItem('kaizen:vaultRemoved') === '1') return;
     VaultRepository.clearAll().finally(() => localStorage.setItem('kaizen:vaultRemoved', '1'));
@@ -109,6 +114,13 @@ export default function App() {
     setInboxOpen(false);
   }
 
+  function syncGmailNow() {
+    const days = getGmailSettings().syncDays;
+    void GmailRepository.syncAndImport(days, { interactive: true })
+      .then(() => setRefreshNonce((n) => n + 1))
+      .catch(() => undefined);
+  }
+
   // Sections in drawer order, de-duplicated.
   const sections = Array.from(
     new Set([...APPS.map((a) => a.section), ...SOON.map((s) => s.section)]),
@@ -125,6 +137,17 @@ export default function App() {
         </span>
         <span className="app__title">{current.name}</span>
         <div className="headeractions">
+          {!demo && (
+            <button
+              className={`gmailsync gmailsync--${gmailSync.phase}`}
+              onClick={syncGmailNow}
+              disabled={gmailSync.phase === 'syncing'}
+              aria-label={gmailSync.message || 'Sync Gmail transactions'}
+              title={gmailSync.message || 'Sync Gmail transactions'}
+            >
+              <AppIcon name="recurring" size={19} />
+            </button>
+          )}
           {activeApp === 'expensify' && (
             <button
               className="topswitch"
@@ -157,7 +180,7 @@ export default function App() {
       {demo && (
         <button className="demobanner" onClick={exitDemo} title="Exit demo mode">
           <AppIcon name="sparkle" size={14} />
-          <span><strong>Demo data</strong> — your real data is safe. Tap to exit.</span>
+          <span><strong>Demo data</strong> - your real data is safe. Tap to exit.</span>
         </button>
       )}
 
