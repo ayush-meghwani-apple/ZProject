@@ -8,6 +8,7 @@
 // category and across the whole MF portfolio.
 
 import type { MFCategory, MFTransaction, MutualFundHolding } from '../types/models';
+import { navOnOrBefore, type NavPoint } from './amfi';
 
 export interface Flow {
   date: Date;
@@ -26,6 +27,7 @@ export function xirr(flows: Flow[]): number | null {
   if (!flows.some((f) => f.amount > 0) || !flows.some((f) => f.amount < 0)) return null;
 
   const t0 = Math.min(...flows.map((f) => f.date.getTime()));
+  if (Math.max(...flows.map((f) => f.date.getTime())) <= t0) return null;
   const yearsOf = (t: number) => (t - t0) / MS_PER_YEAR;
 
   const npv = (r: number) =>
@@ -168,6 +170,124 @@ export function poolSummary(funds: MutualFundHolding[], asOf: Date = new Date())
   const txns = funds.flatMap((f) => f.transactions);
   const value = funds.reduce((s, f) => s + fundValue(f), 0);
   return summarize(txns, undefined, asOf, value);
+}
+
+function dayStart(time: number): number {
+  const date = new Date(time);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function fundValueAt(
+  fund: MutualFundHolding,
+  points: NavPoint[],
+  time: number,
+): number {
+  const settled = fund.transactions.filter(
+    (transaction) => !transaction.processing && new Date(transaction.date).getTime() <= time,
+  );
+  const units = settled.reduce((sum, transaction) => sum + (Number(transaction.units) || 0), 0);
+  if (units === 0) return 0;
+  const published = navOnOrBefore(points, new Date(time))?.nav;
+  const transactionNav = [...settled]
+    .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
+    .find((transaction) => Number(transaction.nav) > 0)?.nav;
+  const nav = Number(published) || Number(transactionNav) || 0;
+  return units * nav;
+}
+
+/** Value all selected funds at a historical instant using each fund's own NAV. */
+export function mfPortfolioValueAt(
+  funds: MutualFundHolding[],
+  navs: Record<number, NavPoint[]>,
+  time: number,
+): number {
+  return funds.reduce(
+    (sum, fund) => sum + fundValueAt(fund, navs[fund.schemeCode] ?? [], time),
+    0,
+  );
+}
+
+export interface ReturnSeries {
+  values: (number | null)[];
+  returnPct: number | null;
+}
+
+/**
+ * True time-weighted return for a fund or a pooled category/portfolio.
+ * Daily subperiod returns remove that day's net external cash flow before they
+ * are geometrically linked, so contribution timing cannot inflate performance.
+ */
+export function timeWeightedReturnSeries(
+  funds: MutualFundHolding[],
+  navs: Record<number, NavPoint[]>,
+  timestamps: number[],
+): ReturnSeries {
+  if (!funds.length || timestamps.length < 2) return { values: timestamps.map(() => null), returnPct: null };
+  const targets = timestamps.map(dayStart);
+  const firstDay = targets[0];
+  const lastDay = targets[targets.length - 1];
+  const flowsByDay = new Map<number, number>();
+  for (const fund of funds) {
+    for (const transaction of fund.transactions) {
+      if (transaction.processing) continue;
+      const time = new Date(transaction.date).getTime();
+      if (!Number.isFinite(time)) continue;
+      const day = dayStart(time);
+      flowsByDay.set(day, (flowsByDay.get(day) ?? 0) + (Number(transaction.amount) || 0));
+    }
+  }
+
+  let previousValue = mfPortfolioValueAt(funds, navs, firstDay);
+  let index = previousValue > 0 ? 100 : null;
+  const dailyIndex = new Map<number, number | null>([[firstDay, index]]);
+  for (let day = firstDay + 86_400_000; day <= lastDay; day += 86_400_000) {
+    const value = mfPortfolioValueAt(funds, navs, day);
+    const flow = flowsByDay.get(day) ?? 0;
+    if (previousValue > 0 && index != null) {
+      const factor = (value - flow) / previousValue;
+      index = Number.isFinite(factor) && factor >= 0 ? index * factor : null;
+    } else if (value > 0) {
+      index = 100;
+    }
+    dailyIndex.set(day, index);
+    previousValue = value;
+  }
+  const values = targets.map((target) => {
+    const value = dailyIndex.get(target);
+    return value == null ? null : value - 100;
+  });
+  const last = [...values].reverse().find((value): value is number => value != null);
+  return { values, returnPct: last ?? null };
+}
+
+/** Pooled XIRR at every graph timestamp; transactions/funds are never averaged. */
+export function moneyWeightedReturnSeries(
+  funds: MutualFundHolding[],
+  navs: Record<number, NavPoint[]>,
+  timestamps: number[],
+): ReturnSeries {
+  const periodStart = timestamps[0];
+  const openingValue = periodStart == null ? 0 : mfPortfolioValueAt(funds, navs, periodStart);
+  const values = timestamps.map((time) => {
+    const transactions = funds.flatMap((fund) =>
+      fund.transactions.filter(
+        (transaction) => {
+          const transactionTime = new Date(transaction.date).getTime();
+          return !transaction.processing && transactionTime > periodStart && transactionTime <= time;
+        },
+      ),
+    );
+    const currentValue = mfPortfolioValueAt(funds, navs, time);
+    const flows: Flow[] = transactions
+      .filter((transaction) => Number(transaction.amount) !== 0)
+      .map((transaction) => ({ date: new Date(transaction.date), amount: -Number(transaction.amount) }));
+    if (openingValue > 0) flows.unshift({ date: new Date(periodStart), amount: -openingValue });
+    if (currentValue > 0) flows.push({ date: new Date(time), amount: currentValue });
+    const result = xirr(flows);
+    return result != null && Number.isFinite(result) ? result * 100 : null;
+  });
+  const last = [...values].reverse().find((value): value is number => value != null);
+  return { values, returnPct: last ?? null };
 }
 
 /** Group funds by category and summarize each group (plus the pooled totals). */

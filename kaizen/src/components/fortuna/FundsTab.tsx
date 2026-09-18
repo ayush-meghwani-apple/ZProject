@@ -4,11 +4,18 @@ import type { MFCategory, MFTransaction, MutualFundHolding } from '../../types/m
 import { MF_CATEGORIES } from '../../types/models';
 import { dateInputToIso, dateInputValue, formatINR, newId, now } from '../../core/util';
 import { fetchNavHistoryWithMeta, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
-import { byCategory, fundSummary, type ReturnSummary } from '../../core/mfReturns';
+import {
+  byCategory,
+  fundSummary,
+  moneyWeightedReturnSeries,
+  timeWeightedReturnSeries,
+  type ReturnSummary,
+} from '../../core/mfReturns';
 import { mfValueSeries, type TrendRange } from '../../core/mfTrend';
 import { weightedNavIndex, weightedSeriesAverage } from '../../core/mfBenchmark';
 import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
 import { fetchCategoryBenchmark } from '../../repository/mfPeerRepository';
+import { fetchNifty500Tri } from '../../repository/mfTriRepository';
 import LineChart from './LineChart';
 import AmountInput from '../AmountInput';
 import AppIcon, { type IconName } from '../AppIcon';
@@ -124,12 +131,26 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const [navs, setNavs] = useState<Record<number, NavPoint[]>>(() => ({ ...NAV_CACHE }));
   const [perfRange, setPerfRange] = useState<TrendRange>('1M');
   const [perfScope, setPerfScope] = useState('portfolio');
+  const [perfMode, setPerfMode] = useState<'value' | 'returns'>('value');
   const [peerState, setPeerState] = useState<{
     status: 'idle' | 'loading' | 'ready' | 'error';
     values: (number | null)[];
     sampleSize: number;
     message?: string;
+    source?: string;
+    retrievedAt?: string;
+    periodStart?: string;
+    periodEnd?: string;
   }>({ status: 'idle', values: [], sampleSize: 0 });
+  const [triState, setTriState] = useState<{
+    status: 'idle' | 'loading' | 'ready' | 'error';
+    values: (number | null)[];
+    message?: string;
+    source?: string;
+    retrievedAt?: string;
+    periodStart?: string;
+    periodEnd?: string;
+  }>({ status: 'idle', values: [] });
 
   // A fund is "active" if it has a running SIP; otherwise it's held but not
   // being added to (inactive).
@@ -229,7 +250,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
     : perfScope.startsWith('category:')
       ? funds.filter((fund) => fund.category === perfScope.slice(9))
       : funds;
-  const comparisonTrend = perfScope === 'portfolio' ? [] : mfValueSeries(scopeFunds, navs, perfRange, asOf);
+  const comparisonTrend = mfValueSeries(scopeFunds, navs, perfRange, asOf);
   const comparisonTimestamps = comparisonTrend.map((point) => point.t);
   const holdingWeight = (fund: MutualFundHolding) => Math.max(1, fund.transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0));
   const ownIndex = weightedNavIndex(
@@ -239,6 +260,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const selectedFund = perfScope.startsWith('fund:') ? scopeFunds[0] : undefined;
   const comparisonLabel = selectedFund ? 'Fund' : `Your ${scopeFunds.length === 1 ? 'fund' : 'funds'}`;
   const comparisonDelta = ownIndex.values.length ? (ownIndex.values[ownIndex.values.length - 1] ?? 100) - 100 : 0;
+  const xirrSeries = moneyWeightedReturnSeries(scopeFunds, navs, comparisonTimestamps);
+  const twrrSeries = timeWeightedReturnSeries(scopeFunds, navs, comparisonTimestamps);
+  const peerReturnValues = peerState.values.map((value) => value == null ? null : value - 100);
+  const triReturnValues = triState.values.map((value) => value == null ? null : value - 100);
   const comparisonSignature = scopeFunds
     .map((fund) => `${fund.schemeCode}:${fund.schemeCategory ?? ''}:${holdingWeight(fund)}`)
     .sort()
@@ -276,6 +301,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
         status: 'ready',
         values: weightedSeriesAverage(results.map(({ benchmark, weight }) => ({ values: benchmark.values, weight }))),
         sampleSize: results.reduce((sum, result) => sum + result.benchmark.sampleSize, 0),
+        source: 'AMFI via MFAPI',
+        retrievedAt: results[0]?.benchmark.retrievedAt,
+        periodStart: results[0]?.benchmark.periodStart,
+        periodEnd: results[0]?.benchmark.periodEnd,
       });
     }).catch((error: unknown) => {
       if (cancelled) return;
@@ -293,6 +322,37 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
     // restarting a catalog request on unrelated plan updates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [perfScope, perfRange, navs, comparisonSignature]);
+
+  useEffect(() => {
+    if (perfScope !== 'portfolio' || comparisonTimestamps.length < 2) {
+      setTriState({ status: 'idle', values: [] });
+      return;
+    }
+    let cancelled = false;
+    setTriState({ status: 'loading', values: [] });
+    void fetchNifty500Tri(comparisonTimestamps).then((benchmark) => {
+      if (cancelled) return;
+      setTriState({
+        status: 'ready',
+        values: benchmark.values,
+        source: benchmark.source,
+        retrievedAt: benchmark.retrievedAt,
+        periodStart: benchmark.periodStart,
+        periodEnd: benchmark.periodEnd,
+      });
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      setTriState({
+        status: 'error',
+        values: [],
+        message: error instanceof Error ? error.message : 'NIFTY 500 TRI is unavailable right now.',
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perfScope, perfRange]);
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
     const id = newId();
@@ -388,22 +448,49 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
                   {funds.map((fund) => <option key={fund.id} value={`fund:${fund.id}`}>{fund.name}</option>)}
                 </optgroup>
               </select>
+              <div className="ft-trend__modes" aria-label="Performance metric">
+                <button className={perfMode === 'value' ? 'active' : ''} onClick={() => setPerfMode('value')}>Value</button>
+                <button className={perfMode === 'returns' ? 'active' : ''} onClick={() => setPerfMode('returns')}>Returns</button>
+              </div>
+              {perfMode === 'returns' && (
+                <div className="ft-trend__returns" aria-label="Selected-period returns">
+                  <span><b>XIRR</b> {fmtPct(xirrSeries.returnPct)}</span>
+                  <span><b>TWRR</b> {fmtPct(twrrSeries.returnPct)}</span>
+                  {perfScope === 'portfolio' && triState.status === 'ready' && (
+                    <span><b>Nifty 500 TRI</b> {fmtPct(triReturnValues[triReturnValues.length - 1] ?? null)}</span>
+                  )}
+                  {perfScope !== 'portfolio' && peerState.status === 'ready' && (
+                    <span><b>Peer proxy</b> {fmtPct(peerReturnValues[peerReturnValues.length - 1] ?? null)}</span>
+                  )}
+                </div>
+              )}
               <LineChart
-                key={perfScope}
-                labels={(perfScope === 'portfolio' ? perfTrend : comparisonTrend).map((p) => trendLabel(p.t))}
-                series={perfScope === 'portfolio'
-                  ? [
-                      { label: 'Value', color: '#6366f1', values: perfTrend.map((p) => p.value) },
-                      { label: 'Invested', color: '#94a3b8', values: perfTrend.map((p) => p.invested), dashed: true },
-                    ]
+                key={`${perfScope}:${perfMode}`}
+                labels={comparisonTrend.map((p) => trendLabel(p.t))}
+                series={perfMode === 'value'
+                  ? perfScope === 'portfolio'
+                    ? [
+                        { label: 'Value', color: '#6366f1', values: comparisonTrend.map((p) => p.value) },
+                        { label: 'Invested', color: '#94a3b8', values: comparisonTrend.map((p) => p.invested), dashed: true },
+                      ]
+                    : [
+                        { label: comparisonLabel, color: '#6366f1', values: ownIndex.values },
+                        ...(peerState.status === 'ready'
+                          ? [{ label: `AMFI peer proxy (${peerState.sampleSize})`, color: '#14b8a6', values: peerState.values, dashed: true }]
+                          : []),
+                      ]
                   : [
-                      { label: comparisonLabel, color: '#6366f1', values: ownIndex.values },
-                      ...(peerState.status === 'ready'
-                        ? [{ label: `Peer avg (${peerState.sampleSize})`, color: '#14b8a6', values: peerState.values, dashed: true }]
+                      { label: 'XIRR', color: '#6366f1', values: xirrSeries.values },
+                      { label: 'TWRR', color: '#f59e0b', values: twrrSeries.values, dashed: true },
+                      ...(perfScope === 'portfolio' && triState.status === 'ready'
+                        ? [{ label: 'Nifty 500 TRI', color: '#14b8a6', values: triReturnValues, dashed: true }]
+                        : []),
+                      ...(perfScope !== 'portfolio' && peerState.status === 'ready'
+                        ? [{ label: `AMFI peer proxy (${peerState.sampleSize})`, color: '#14b8a6', values: peerReturnValues, dashed: true }]
                         : []),
                     ]}
                 height={170}
-                valueFormat={perfScope === 'portfolio' ? 'inr' : 'index'}
+                valueFormat={perfMode === 'returns' ? 'percent' : perfScope === 'portfolio' ? 'inr' : 'index'}
                 emptyHint="Add a fund and its performance will chart here, back to your first transaction."
               />
               {perfScope !== 'portfolio' && peerState.status === 'loading' && (
@@ -411,6 +498,22 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               )}
               {perfScope !== 'portfolio' && peerState.status === 'error' && (
                 <p className="ft-trend__peerstatus ft-trend__peerstatus--error">{peerState.message}</p>
+              )}
+              {perfScope !== 'portfolio' && peerState.status === 'ready' && perfMode === 'returns' && (
+                <p className="ft-trend__source">
+                  Category peer proxy, not an official category index. Source: {peerState.source}; {fmtDate(peerState.periodStart)} to {fmtDate(peerState.periodEnd)}; retrieved {fmtDate(peerState.retrievedAt)}.
+                </p>
+              )}
+              {perfScope === 'portfolio' && perfMode === 'returns' && triState.status === 'loading' && (
+                <p className="ft-trend__peerstatus">Loading official NIFTY 500 TRI…</p>
+              )}
+              {perfScope === 'portfolio' && perfMode === 'returns' && triState.status === 'error' && (
+                <p className="ft-trend__peerstatus ft-trend__peerstatus--error">{triState.message}</p>
+              )}
+              {perfScope === 'portfolio' && perfMode === 'returns' && triState.status === 'ready' && (
+                <p className="ft-trend__source">
+                  Official total-return index. Source: {triState.source}; {fmtDate(triState.periodStart)} to {fmtDate(triState.periodEnd)}; retrieved {fmtDate(triState.retrievedAt)}.
+                </p>
               )}
               <div className="ft-trend__foot">
                 <div className="ft-trend__ranges">
@@ -426,7 +529,15 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
                   ))}
                 </div>
                 <span className="ft-trend__baseline">
-                  {perfScope === 'portfolio' ? '– – Invested' : peerState.status === 'ready' ? `– – ${peerState.sampleSize} peers · base 100` : 'Base 100'}
+                  {perfMode === 'value'
+                    ? perfScope === 'portfolio'
+                      ? '– – Invested'
+                      : peerState.status === 'ready'
+                        ? `– – AMFI peer proxy (${peerState.sampleSize}) · base 100`
+                        : 'Base 100'
+                    : perfScope === 'portfolio'
+                      ? '– – TWRR / Nifty 500 TRI'
+                      : '– – TWRR / peer proxy'}
                 </span>
               </div>
             </div>

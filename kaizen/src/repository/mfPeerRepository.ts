@@ -4,7 +4,7 @@ import { weightedNavIndex } from '../core/mfBenchmark';
 const LATEST_URL = 'https://api.mfapi.in/mf/latest';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CATALOG_KEY = 'kaizen:mf-peer-catalog:v1';
-const BENCHMARK_PREFIX = 'kaizen:mf-peer-benchmark:v1:';
+const BENCHMARK_PREFIX = 'kaizen:mf-peer-benchmark:v2:';
 const MAX_PEERS = 12;
 const MIN_PEERS = 3;
 
@@ -19,6 +19,11 @@ export interface PeerBenchmark {
   category: string;
   values: (number | null)[];
   sampleSize: number;
+  source: 'AMFI via MFAPI';
+  periodStart: string;
+  periodEnd: string;
+  retrievedAt: string;
+  comparisonType: 'category-peer-proxy';
 }
 
 interface CacheEnvelope<T> {
@@ -145,7 +150,16 @@ export async function fetchCategoryBenchmark(
     .map((history) => ({ points: history.points }));
   const indexed = weightedNavIndex(valid, timestamps);
   if (indexed.sampleSize < MIN_PEERS) throw new Error('Not enough peer histories cover the selected period.');
-  const benchmark = { category, values: indexed.values, sampleSize: indexed.sampleSize };
+  const benchmark: PeerBenchmark = {
+    category,
+    values: indexed.values,
+    sampleSize: indexed.sampleSize,
+    source: 'AMFI via MFAPI',
+    periodStart: new Date(timestamps[0]).toISOString(),
+    periodEnd: new Date(timestamps[timestamps.length - 1]).toISOString(),
+    retrievedAt: new Date().toISOString(),
+    comparisonType: 'category-peer-proxy',
+  };
   writeCache(key, benchmark);
   return benchmark;
 }

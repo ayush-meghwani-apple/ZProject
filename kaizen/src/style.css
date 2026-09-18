@@ -6783,6 +6783,45 @@ button.ft-settings__card {
   width: 100%;
   margin-top: 10px;
 }
+.ft-trend__modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin-top: 6px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.ft-trend__modes button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ft-trend__modes button.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.ft-trend__returns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ft-trend__returns span {
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 10.5px;
+}
+.ft-trend__returns b {
+  color: var(--text);
+}
 .ft-trend__peerstatus {
   margin: 2px 4px 6px;
   color: var(--muted);
@@ -6790,6 +6829,12 @@ button.ft-settings__card {
 }
 .ft-trend__peerstatus--error {
   color: var(--danger);
+}
+.ft-trend__source {
+  margin: 2px 4px 7px;
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.4;
 }
 .ft-spark {
   display: block;

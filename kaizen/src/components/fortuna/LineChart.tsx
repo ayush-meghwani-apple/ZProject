@@ -37,7 +37,7 @@ export default function LineChart({
   series: ChartSeries[];
   height?: number;
   emptyHint?: string;
-  valueFormat?: 'inr' | 'index';
+  valueFormat?: 'inr' | 'index' | 'percent';
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(320);
@@ -97,8 +97,16 @@ export default function LineChart({
 
   const yTicks = [max, (min + max) / 2, min];
   const xTickIdx = [0, Math.floor((n - 1) / 2), n - 1];
-  const formatTick = valueFormat === 'index' ? (value: number) => value.toFixed(0) : compactINR;
-  const formatValue = valueFormat === 'index' ? (value: number) => value.toFixed(1) : fullINR;
+  const formatTick = valueFormat === 'index'
+    ? (value: number) => value.toFixed(0)
+    : valueFormat === 'percent'
+      ? (value: number) => `${value.toFixed(0)}%`
+      : compactINR;
+  const formatValue = valueFormat === 'index'
+    ? (value: number) => value.toFixed(1)
+    : valueFormat === 'percent'
+      ? (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
+      : fullINR;
 
   function onMove(e: React.PointerEvent) {
     const rect = (e.currentTarget as SVGElement).getBoundingClientRect();

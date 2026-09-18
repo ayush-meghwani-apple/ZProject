@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import type { MFTransaction, MutualFundHolding } from '../types/models';
-import { xirr, summarize, byCategory, poolSummary, type Flow } from './mfReturns';
+import {
+  xirr,
+  summarize,
+  byCategory,
+  poolSummary,
+  moneyWeightedReturnSeries,
+  timeWeightedReturnSeries,
+  type Flow,
+} from './mfReturns';
+import type { NavPoint } from './amfi';
 
 // --- helpers ---------------------------------------------------------------
 
@@ -132,5 +141,86 @@ describe('byCategory / poolSummary', () => {
     expect(s.currentValue).toBeCloseTo(4000, 6);
     expect(s.xirrPct).not.toBeNull();
     expect(s.xirrPct!).toBeGreaterThan(0);
+  });
+});
+
+function navHistory(entries: [string, number][]): NavPoint[] {
+  return entries.map(([date, nav]) => ({
+    date: d(date),
+    iso: d(date).toISOString(),
+    nav,
+  })).sort((left, right) => right.date.getTime() - left.date.getTime());
+}
+
+describe('pooled XIRR and TWRR series', () => {
+  it('removes contribution timing from TWRR instead of averaging fund returns', () => {
+    const early = fund('largecap', 12.1, [txn('2024-01-01', 1000, 10)]);
+    const late = fund('largecap', 11, [txn('2024-07-01', 10000, 10)]);
+    const navs = {
+      [early.schemeCode]: navHistory([['2024-01-01', 10], ['2024-07-01', 11], ['2025-01-01', 12.1]]),
+      [late.schemeCode]: navHistory([['2024-07-01', 10], ['2025-01-01', 11]]),
+    };
+    const timestamps = [d('2024-01-01').getTime(), d('2024-07-01').getTime(), d('2025-01-01').getTime()];
+    const result = timeWeightedReturnSeries([early, late], navs, timestamps);
+    expect(result.values[0]).toBe(0);
+    expect(result.returnPct).toBeCloseTo(21, 6);
+  });
+
+  it('pools every cash flow into category/portfolio XIRR', () => {
+    const first = fund('largecap', 12, [txn('2024-01-01', 1000, 10)]);
+    const second = fund('midcap', 12, [txn('2024-07-01', 1000, 10)]);
+    const navs = {
+      [first.schemeCode]: navHistory([['2024-01-01', 10], ['2025-01-01', 12]]),
+      [second.schemeCode]: navHistory([['2024-07-01', 10], ['2025-01-01', 12]]),
+    };
+    const timestamps = [d('2024-01-01').getTime(), d('2024-07-01').getTime(), d('2025-01-01').getTime()];
+    const result = moneyWeightedReturnSeries([first, second], navs, timestamps);
+    expect(result.values[0]).toBeNull();
+    expect(result.returnPct).not.toBeNull();
+    expect(result.returnPct!).toBeGreaterThan(20);
+  });
+
+  it('uses the selected period opening value instead of inception cash flows', () => {
+    const holding = fund('largecap', 12, [txn('2023-01-01', 1000, 5)]);
+    const navs = {
+      [holding.schemeCode]: navHistory([['2024-01-01', 10], ['2025-01-01', 12]]),
+    };
+    const result = moneyWeightedReturnSeries(
+      [holding],
+      navs,
+      [d('2024-01-01').getTime(), d('2025-01-01').getTime()],
+    );
+    expect(result.returnPct).toBeCloseTo(19.94, 2);
+  });
+
+  it('handles redemptions as withdrawals without changing investment performance', () => {
+    const buy = txn('2024-01-01', 1000, 10);
+    const redeem = txn('2024-07-01', -550, 11, -50);
+    redeem.kind = 'redeem';
+    const holding = fund('largecap', 12.1, [buy, redeem]);
+    const navs = {
+      [holding.schemeCode]: navHistory([['2024-01-01', 10], ['2024-07-01', 11], ['2025-01-01', 12.1]]),
+    };
+    const result = timeWeightedReturnSeries(
+      [holding],
+      navs,
+      [d('2024-01-01').getTime(), d('2024-07-01').getTime(), d('2025-01-01').getTime()],
+    );
+    expect(result.returnPct).toBeCloseTo(21, 6);
+  });
+
+  it('excludes processing transactions from TWRR values and cash flows', () => {
+    const pending = txn('2024-07-01', 10000, 0, 0);
+    pending.processing = true;
+    const holding = fund('largecap', 11, [txn('2024-01-01', 1000, 10), pending]);
+    const navs = {
+      [holding.schemeCode]: navHistory([['2024-01-01', 10], ['2025-01-01', 11]]),
+    };
+    const result = timeWeightedReturnSeries(
+      [holding],
+      navs,
+      [d('2024-01-01').getTime(), d('2025-01-01').getTime()],
+    );
+    expect(result.returnPct).toBeCloseTo(10, 6);
   });
 });
