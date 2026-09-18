@@ -56,7 +56,7 @@ export default function App() {
     }
     const ok = window.confirm(
       'Fill the app with DEMO sample data to show someone?\n\n' +
-        'Your real data and backups are NOT touched - turn this off any time and everything comes back exactly as it was.',
+        'Your real data and backups are NOT touched — turn this off any time and everything comes back exactly as it was.',
     );
     if (ok) enterDemo();
   }
@@ -90,7 +90,7 @@ export default function App() {
   useEffect(() => GmailRepository.subscribeSync(setGmailSync), []);
 
   // The Vault sub-app was removed; purge its stored data once (the shared PIN
-  // in vaultLock stays - Fortuna's lock still uses it).
+  // in vaultLock stays — Fortuna's lock still uses it).
   useEffect(() => {
     if (localStorage.getItem('kaizen:vaultRemoved') === '1') return;
     VaultRepository.clearAll().finally(() => localStorage.setItem('kaizen:vaultRemoved', '1'));
@@ -180,7 +180,7 @@ export default function App() {
       {demo && (
         <button className="demobanner" onClick={exitDemo} title="Exit demo mode">
           <AppIcon name="sparkle" size={14} />
-          <span><strong>Demo data</strong> - your real data is safe. Tap to exit.</span>
+          <span><strong>Demo data</strong> — your real data is safe. Tap to exit.</span>
         </button>
       )}
 
