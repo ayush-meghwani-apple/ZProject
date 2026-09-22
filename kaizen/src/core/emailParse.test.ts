@@ -274,6 +274,19 @@ describe('parseTransactionEmail', () => {
     expect(p.merchant).toBe('ETERNAL LIMITED');
   });
 
+  it('accepts the newer HSBC completed-card-use wording', () => {
+    const p = parseTransactionEmail({
+      from: 'HSBC India <creditcards@notification.hsbc.co.in>',
+      subject: 'HSBC Credit Card Transaction Alert',
+      body: 'Your HSBC Credit Card xx6043 has been used for INR 1,249.00 at BLINKIT on 20/09/26. Available limit: INR 3,10,000.00.',
+    });
+    expect(p.source).toBe('hsbc-cc');
+    expect(p.kind).toBe('card');
+    expect(p.amount).toBe(1249);
+    expect(p.direction).toBe('debit');
+    expect(p.merchant).toBe('BLINKIT');
+  });
+
   it('skips an OTP notification even though it carries a transaction amount', () => {
     const p = parseTransactionEmail({
       from: 'HSBC <hsbc@mail.hsbc.co.in>',
@@ -348,6 +361,7 @@ describe('buildGmailQuery', () => {
     expect(q).toContain('from:icicibank.com');
     expect(q).toContain('from:icici.bank.in');
     expect(q).toContain('from:sbi.bank.in');
+    expect(q).toContain('from:hsbc');
     expect(q).not.toContain('subject:');
     expect(q).toContain('newer_than:60d');
   });

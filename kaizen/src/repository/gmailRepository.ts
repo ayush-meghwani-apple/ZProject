@@ -38,7 +38,7 @@ const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const PARSER_REVISION_KEY = 'gmail:parserRevision';
-const PARSER_REVISION = '5';
+const PARSER_REVISION = '6';
 const API_TIMEOUT_MS = 20_000;
 const FETCH_CONCURRENCY = 3;
 const API_RETRY_DELAYS_MS = [1_000, 2_000, 4_000];
@@ -395,11 +395,11 @@ export async function fetchRawEmails(
   });
 }
 
-async function prepareParserRevision(): Promise<void> {
+async function prepareParserRevision(): Promise<boolean> {
   try {
-    if (localStorage.getItem(PARSER_REVISION_KEY) === PARSER_REVISION) return;
+    if (localStorage.getItem(PARSER_REVISION_KEY) === PARSER_REVISION) return false;
   } catch {
-    return;
+    return false;
   }
 
   const expenses = await ExpenseRepository.getExpenses();
@@ -417,6 +417,7 @@ async function prepareParserRevision(): Promise<void> {
   } catch {
     /* ignore */
   }
+  return true;
 }
 
 /**
@@ -428,9 +429,13 @@ export async function sync(
   days?: number,
   opts: { rescan?: boolean } = {},
 ): Promise<Candidate[]> {
-  await prepareParserRevision();
+  const parserChanged = await prepareParserRevision();
   const settings = getGmailSettings();
-  const window = days ?? settings.syncDays;
+  // A parser/query update may make recently skipped mail importable. Search at
+  // least the user's configured window once, then return to incremental syncs.
+  const window = parserChanged
+    ? Math.max(days ?? settings.syncDays, settings.syncDays)
+    : days ?? settings.syncDays;
   const emails = await fetchRawEmails(
     buildGmailQuery(window),
     opts.rescan ? () => false : isHandled,

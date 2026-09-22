@@ -81,6 +81,10 @@ const PROMO_RE = /(convert\s+your\s+recent|flexipay|book\s+flexipay|processing\s
 // Phrases that only appear in a genuine transaction line — used to rescue a real
 // alert that also carries a promo footer.
 const REAL_TXN_RE = /(spent\s+on\s+your|debited|withdrawn|used\s+for\s+a\s+transaction|transaction\s+status\s*:?\s*success)/i;
+// HSBC also uses past-tense confirmation copy without the word "transaction",
+// for example "your Credit Card ... has been used for INR ...". Requiring a
+// completed-action phrase keeps future-tense rewards/offer copy excluded.
+const HSBC_CONFIRMED_SPEND_RE = /(?:we(?:'re|\s+are)\s+writing\s+to\s+confirm|(?:credit\s+)?card[^.\n]{0,80}\b(?:was|has\s+been)\s+used\b|thank\s+you\s+for\s+using\s+your\s+hsbc)/i;
 // A declined / failed transaction never actually moved money, so it must not be
 // imported (e.g. a first YONO attempt that failed OTP before a successful retry).
 const FAILED_RE = /\b(declined|failed|unsuccessful|not\s+successful|rejected)\b/i;
@@ -244,10 +248,12 @@ export function parseTransactionEmail(email: RawEmail): ParsedTxnEmail {
     STATEMENT_WORDS.test(text) && !DEBIT_WORDS.test(subject) && !isBobTransactionConfirmation;
   const isFailed = FAILED_RE.test(text);
   const needsVerifiedCardSpend = source === 'hsbc-cc' || source === 'icici-cc';
+  const hasVerifiedCardSpend = REAL_TXN_RE.test(text) ||
+    (source === 'hsbc-cc' && HSBC_CONFIRMED_SPEND_RE.test(text));
   const isPromo =
-    (PROMO_RE.test(text) && !REAL_TXN_RE.test(text)) ||
+    (PROMO_RE.test(text) && !hasVerifiedCardSpend) ||
     NOTICE_SUBJECT_RE.test(subject) ||
-    (needsVerifiedCardSpend && !isStatement && !REAL_TXN_RE.test(text));
+    (needsVerifiedCardSpend && !isStatement && !hasVerifiedCardSpend);
   const amount = extractAmount(text);
 
   let direction: TxnDirection | null = null;
@@ -336,6 +342,7 @@ export function buildGmailQuery(days: number): string {
     'from:hsbc.co.in',
     'from:mail.hsbc.co.in',
     'from:hsbc.com',
+    'from:hsbc',
     'from:icicibank.com',
     'from:icici.bank.in',
     'from:sbi.co.in',
