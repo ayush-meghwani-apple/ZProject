@@ -6,6 +6,7 @@ import { dateInputToIso, dateInputValue, formatINR, newId, now } from '../../cor
 import { fetchNavHistoryWithMeta, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
 import {
   byCategory,
+  filterFundsBySipScope,
   fundSummary,
   mfPortfolioValueAt,
   moneyWeightedReturnSeries,
@@ -236,12 +237,13 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
     .map(benchmarkCategoryForFund)
     .filter((category) => category != null)
     .map((category) => [category.id, category])).values()];
-  const isAggregateScope = perfScope === 'portfolio';
+  const sipScope = perfScope === 'cohort:sip' ? 'sip' : 'all';
+  const isAggregateScope = perfScope === 'portfolio' || perfScope === 'cohort:sip';
   const scopeFunds = perfScope.startsWith('fund:')
     ? funds.filter((fund) => fund.id === perfScope.slice(5))
     : perfScope.startsWith('category:')
       ? funds.filter((fund) => benchmarkCategoryForFund(fund)?.id === perfScope.slice(9))
-      : funds;
+      : filterFundsBySipScope(funds, sipScope);
   const portfolioBenchmark = getMfBenchmarkAllocation(scopeFunds);
   const portfolioBenchmarkSignature = portfolioBenchmark.allocations
     .map((allocation) => `${allocation.id}:${allocation.currentValue}`)
@@ -420,6 +422,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               >
                 <optgroup label="Portfolio">
                   <option value="portfolio">Overall</option>
+                  {activeCount > 0 && <option value="cohort:sip">Active SIP funds</option>}
                 </optgroup>
                 {categoryScopes.length > 0 && <optgroup label="Categories">
                   {categoryScopes.map((category) => (
@@ -451,6 +454,21 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
                   height={170}
                   valueFormat="inr"
                   emptyHint="Add a fund and its performance will chart here, back to your first transaction."
+                />
+              )}
+              {perfMode === 'returns' && (
+                <LineChart
+                  key={`${perfScope}:${perfMode}`}
+                  labels={comparisonTrend.map((point) => trendLabel(point.t))}
+                  series={[
+                    { label: 'Your XIRR', color: '#6366f1', values: xirrSeries.values },
+                    ...(triState.status === 'ready'
+                      ? [{ label: 'Benchmark XIRR', color: '#14b8a6', values: triState.values, dashed: true }]
+                      : []),
+                  ]}
+                  height={170}
+                  valueFormat="percent"
+                  emptyHint="Add transaction history to chart XIRR against the benchmark."
                 />
               )}
               {perfMode === 'returns' && triState.status === 'loading' && (
