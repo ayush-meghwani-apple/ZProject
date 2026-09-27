@@ -52,4 +52,14 @@ describe('weightedSeriesAverage', () => {
       { values: [100, 90], weight: 1 },
     ])).toEqual([100, 105]);
   });
+
+  it('reproduces the 40/30/30 blended benchmark return example', () => {
+    const blend = weightedSeriesAverage([
+      { values: [100, 112], weight: 0.4 },
+      { values: [100, 115], weight: 0.3 },
+      { values: [100, 118], weight: 0.3 },
+    ]);
+    expect(blend[1]).toBeCloseTo(114.7);
+    expect((blend[1] ?? 100) - 100).toBeCloseTo(14.7);
+  });
 });

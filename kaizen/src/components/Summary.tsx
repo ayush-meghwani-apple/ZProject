@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatINR, formatDate } from '../core/util';
 import { getCategorySummary, totalSpend } from '../core/reports';
+import { getCreditCardCycleSummaries } from '../core/creditCardBilling';
 import { INVESTMENTS_CATEGORY_ID } from '../core/flatCategories';
 import { ExpenseRepository } from '../repository/expenseRepository';
 import { CategoryRepository } from '../repository/categoryRepository';
+import { PaymentMethodRepository } from '../repository/paymentMethodRepository';
 import { SalaryCycleRepository } from '../repository/salaryCycleRepository';
 import CycleFilter, { filterByCycles, selectionLabel } from './CycleFilter';
 import AppIcon from './AppIcon';
-import type { Category, Expense, SalaryCycle } from '../types/models';
+import type { Category, Expense, PaymentMethod, SalaryCycle } from '../types/models';
 
 interface Props {
   version: number;
@@ -17,8 +19,10 @@ interface Props {
 export default function Summary({ version }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [cycles, setCycles] = useState<SalaryCycle[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [cardCyclesOpen, setCardCyclesOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [chipEdges, setChipEdges] = useState({ left: false, right: false });
   const initialized = useRef(false);
@@ -49,13 +53,15 @@ export default function Summary({ version }: Props) {
   }
 
   async function load() {
-    const [nextExpenses, nextCategories, nextCycles] = await Promise.all([
+    const [nextExpenses, nextCategories, nextPaymentMethods, nextCycles] = await Promise.all([
       ExpenseRepository.getExpensesSorted(),
       CategoryRepository.getCategories(),
+      PaymentMethodRepository.list(),
       SalaryCycleRepository.getCyclesSorted(),
     ]);
     setExpenses(nextExpenses);
     setCategories(nextCategories);
+    setPaymentMethods(nextPaymentMethods);
     setCycles(nextCycles);
     if (!initialized.current && nextCycles.length) {
       const current = nextCycles.find((cycle) => !cycle.endDate) ?? nextCycles[0];
@@ -76,6 +82,9 @@ export default function Summary({ version }: Props) {
   const investmentTotal = totalSpend(investments);
   const investmentCategory = categories.find((category) => category.id === INVESTMENTS_CATEGORY_ID);
   const categorySummary = getCategorySummary(spending, categories);
+  const cardCycles = getCreditCardCycleSummaries(expenses, paymentMethods);
+  const cardCycleTotal = cardCycles.reduce((sum, cycle) => sum + cycle.total, 0);
+  const cardCycleMonth = new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
   const topCategory = categorySummary[0];
   const ringCircumference = 2 * Math.PI * 45;
   let ringOffset = 0;
@@ -163,6 +172,50 @@ export default function Summary({ version }: Props) {
           </div>
         )}
       </div>
+
+      <section className={`card cardcycles${cardCyclesOpen ? ' cardcycles--open' : ''}`}>
+        <button
+          className="cardcycles__head"
+          type="button"
+          aria-expanded={cardCyclesOpen}
+          onClick={() => setCardCyclesOpen((open) => !open)}
+        >
+          <div className="cardcycles__title">
+            <span className="cardcycles__titleline">
+              <AppIcon name="creditcard" size={17} />
+              <h3>Card billing cycles</h3>
+            </span>
+            <span className="cardcycles__summary">{cardCycles.length} cards · {formatINR(cardCycleTotal)} spent</span>
+          </div>
+          <span className="cardcycles__headright">
+            <span className="cardcycles__month"><AppIcon name="calendar" size={16} /> {cardCycleMonth}</span>
+            <AppIcon name={cardCyclesOpen ? 'chevronUp' : 'chevronDown'} size={18} />
+          </span>
+        </button>
+        {cardCyclesOpen && (
+          <div className="cardcycles__list">
+            {cardCycles.map((cycle) => (
+              <div className={`cardcycles__row cardcycles__row--${cycle.id}`} key={cycle.id}>
+                <div className="cardcycles__identity">
+                  <strong>{cycle.label}</strong>
+                  <span>
+                    {cycle.start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    {' – '}
+                    {cycle.end.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    <i aria-hidden="true">·</i>
+                    <span className={cycle.linked ? '' : 'cardcycles__missing'}>
+                      {cycle.linked
+                        ? `${cycle.transactionCount} transaction${cycle.transactionCount === 1 ? '' : 's'}`
+                        : 'Not linked'}
+                    </span>
+                  </span>
+                </div>
+                <strong className="cardcycles__amount">{formatINR(cycle.total)}</strong>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {investmentTotal > 0 && (
         <div className={`card summarycat savingscat${expandedId === INVESTMENTS_CATEGORY_ID ? ' summarycat--open' : ''}`}>

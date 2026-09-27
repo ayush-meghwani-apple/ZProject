@@ -10,6 +10,18 @@
 import type { MFCategory, MFTransaction, MutualFundHolding } from '../types/models';
 import { navOnOrBefore, type NavPoint } from './amfi';
 
+export type MfSipScope = 'all' | 'sip' | 'non-sip';
+
+/** Match Fortuna's Active definition: a SIP fund has a currently running SIP. */
+export function filterFundsBySipScope(
+  funds: MutualFundHolding[],
+  scope: MfSipScope,
+): MutualFundHolding[] {
+  if (scope === 'sip') return funds.filter((fund) => fund.sip?.active);
+  if (scope === 'non-sip') return funds.filter((fund) => !fund.sip?.active);
+  return funds;
+}
+
 export interface Flow {
   date: Date;
   amount: number; // money OUT of pocket is negative; money/value IN is positive

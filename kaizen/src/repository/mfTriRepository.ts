@@ -1,8 +1,10 @@
 import { normalizedNavSeries } from '../core/mfBenchmark';
+import { MF_BENCHMARKS, type MfBenchmarkId } from '../core/mfCategoryBenchmark';
 import type { NavPoint } from '../core/amfi';
 
 export interface TriBenchmark {
-  indexName: 'Nifty 500 TRI';
+  benchmarkId: MfBenchmarkId;
+  indexName: string;
   values: (number | null)[];
   source: 'NSE Indices Limited';
   periodStart: string;
@@ -17,7 +19,7 @@ interface TriRow {
 }
 
 interface TriSnapshot {
-  indexName: 'Nifty 500 TRI';
+  indexName: string;
   source: 'NSE Indices Limited';
   sourceUrl: string;
   retrievedAt: string;
@@ -36,18 +38,27 @@ export function parseTriRows(rows: TriRow[]): NavPoint[] {
     .sort((left, right) => right.date.getTime() - left.date.getTime());
 }
 
-export async function fetchNifty500Tri(timestamps: number[]): Promise<TriBenchmark> {
-  if (timestamps.length < 2) throw new Error('NIFTY 500 TRI needs a valid date range.');
-  const response = await fetch(`${import.meta.env.BASE_URL}benchmarks/nifty-500-tri.json`);
-  if (!response.ok) throw new Error(`NIFTY 500 TRI snapshot failed (${response.status})`);
+export async function fetchTriBenchmark(
+  benchmarkId: MfBenchmarkId,
+  timestamps: number[],
+): Promise<TriBenchmark> {
+  const definition = MF_BENCHMARKS[benchmarkId];
+  if (timestamps.length < 2) throw new Error(`${definition.indexName} needs a valid date range.`);
+  const response = await fetch(`${import.meta.env.BASE_URL}benchmarks/${definition.fileName}`);
+  if (!response.ok) throw new Error(`${definition.indexName} snapshot failed (${response.status})`);
   const snapshot = await response.json() as TriSnapshot;
-  if (snapshot.source !== 'NSE Indices Limited' || !Array.isArray(snapshot.rows)) {
-    throw new Error('NIFTY 500 TRI snapshot is invalid.');
+  if (
+    snapshot.indexName !== definition.indexName ||
+    snapshot.source !== 'NSE Indices Limited' ||
+    !Array.isArray(snapshot.rows)
+  ) {
+    throw new Error(`${definition.indexName} snapshot is invalid.`);
   }
   const values = normalizedNavSeries(parseTriRows(snapshot.rows), timestamps);
-  if (!values.some((value) => value != null)) throw new Error('NIFTY 500 TRI has no data for this period.');
+  if (!values.some((value) => value != null)) throw new Error(`${definition.indexName} has no data for this period.`);
   return {
-    indexName: 'Nifty 500 TRI',
+    benchmarkId,
+    indexName: definition.indexName,
     values,
     source: snapshot.source,
     periodStart: new Date(timestamps[0]).toISOString(),
@@ -55,4 +66,8 @@ export async function fetchNifty500Tri(timestamps: number[]): Promise<TriBenchma
     retrievedAt: snapshot.retrievedAt,
     comparisonType: 'official-tri',
   };
+}
+
+export function fetchNifty500Tri(timestamps: number[]): Promise<TriBenchmark> {
+  return fetchTriBenchmark('nifty-500', timestamps);
 }

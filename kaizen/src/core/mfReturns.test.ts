@@ -4,6 +4,7 @@ import {
   xirr,
   summarize,
   byCategory,
+  filterFundsBySipScope,
   poolSummary,
   moneyWeightedReturnSeries,
   timeWeightedReturnSeries,
@@ -123,6 +124,18 @@ describe('summarize', () => {
 // --- aggregation -----------------------------------------------------------
 
 describe('byCategory / poolSummary', () => {
+  it('separates active SIP funds from non-SIP and paused-SIP funds', () => {
+    const active = fund('largecap', 20, []);
+    active.sip = { amount: 1000, dayOfMonth: 5, startDate: d('2025-01-01').toISOString(), active: true };
+    const paused = fund('midcap', 20, []);
+    paused.sip = { amount: 1000, dayOfMonth: 5, startDate: d('2025-01-01').toISOString(), active: false };
+    const lumpsum = fund('smallcap', 20, []);
+
+    expect(filterFundsBySipScope([active, paused, lumpsum], 'all')).toEqual([active, paused, lumpsum]);
+    expect(filterFundsBySipScope([active, paused, lumpsum], 'sip')).toEqual([active]);
+    expect(filterFundsBySipScope([active, paused, lumpsum], 'non-sip')).toEqual([paused, lumpsum]);
+  });
+
   it('groups funds by category and totals across the portfolio', () => {
     const large = fund('largecap', 20, [txn('2024-01-01', 1000, 10)]); // 100u -> 2000
     const mid = fund('midcap', 30, [txn('2024-01-01', 1000, 15)]); // ~66.67u -> 2000
