@@ -256,7 +256,9 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const perfFirst = comparisonTrend[0];
   const perfLast = comparisonTrend[comparisonTrend.length - 1];
   const perfDelta = comparisonTrend.length >= 2 ? perfLast.value - perfFirst.value : 0;
-  const perfPct = comparisonTrend.length >= 2 && perfFirst.value > 0 ? (perfDelta / perfFirst.value) * 100 : 0;
+  const perfPct = comparisonTrend.length >= 2 && perfFirst.value > 0
+    ? (perfDelta / perfFirst.value) * 100
+    : null;
   const comparisonTimestamps = comparisonTrend.map((point) => point.t);
   const selectedFund = perfScope.startsWith('fund:') ? scopeFunds[0] : undefined;
   const selectedCategory = perfScope.startsWith('category:')
@@ -409,10 +411,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
             <div className="ft-trend">
               <div className="ft-trend__head">
                 <span className="ft-trend__title">Performance</span>
-                {comparisonTrend.length >= 2 && (
+                {perfMode === 'value' && comparisonTrend.length >= 2 && (
                   <span className={`ft-trend__delta ${perfDelta > 0 ? 'ft-mf__pos' : perfDelta < 0 ? 'ft-mf__neg' : ''}`}>
                     {perfDelta > 0 ? '\u25b2' : perfDelta < 0 ? '\u25bc' : '\u25a0'} {formatINR(Math.abs(perfDelta))}{' '}
-                    <small>({perfPct >= 0 ? '+' : ''}{perfPct.toFixed(1)}%)</small>
+                    {perfPct != null && <small>({perfPct >= 0 ? '+' : ''}{perfPct.toFixed(1)}%)</small>}
                   </span>
                 )}
               </div>
