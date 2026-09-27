@@ -28,6 +28,10 @@ export interface Flow {
 
 const MS_PER_YEAR = 365 * 24 * 60 * 60 * 1000;
 
+function cashFlowDay(date: Date): number {
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 /**
  * XIRR — the annualized internal rate of return for irregular, dated cash flows.
  * Returns a decimal (0.12 = 12%/yr), or null if it can't be solved (e.g. all
@@ -37,15 +41,15 @@ export function xirr(flows: Flow[]): number | null {
   if (flows.length < 2) return null;
   if (!flows.some((f) => f.amount > 0) || !flows.some((f) => f.amount < 0)) return null;
 
-  const t0 = Math.min(...flows.map((f) => f.date.getTime()));
-  if (Math.max(...flows.map((f) => f.date.getTime())) <= t0) return null;
-  const yearsOf = (t: number) => (t - t0) / MS_PER_YEAR;
+  const t0 = Math.min(...flows.map((f) => cashFlowDay(f.date)));
+  if (Math.max(...flows.map((f) => cashFlowDay(f.date))) <= t0) return null;
+  const yearsOf = (date: Date) => (cashFlowDay(date) - t0) / MS_PER_YEAR;
 
   const npv = (r: number) =>
-    flows.reduce((s, f) => s + f.amount / Math.pow(1 + r, yearsOf(f.date.getTime())), 0);
+    flows.reduce((s, f) => s + f.amount / Math.pow(1 + r, yearsOf(f.date)), 0);
   const dNpv = (r: number) =>
     flows.reduce((s, f) => {
-      const y = yearsOf(f.date.getTime());
+      const y = yearsOf(f.date);
       return s - (y * f.amount) / Math.pow(1 + r, y + 1);
     }, 0);
 

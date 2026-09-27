@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchTriBenchmark, parseTriRows } from './mfTriRepository';
+import { clearTriBenchmarkCache, fetchTriBenchmark, parseTriRows } from './mfTriRepository';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  clearTriBenchmarkCache();
+  vi.unstubAllGlobals();
+});
 
 describe('parseTriRows', () => {
   it('parses official TRI rows, rejects invalid values, and sorts newest first', () => {
@@ -13,6 +16,7 @@ describe('parseTriRows', () => {
     expect(points).toHaveLength(2);
     expect(points[0].nav).toBe(34100.5);
     expect(points[1].nav).toBe(34000.25);
+    expect(points[1].date.getHours()).toBe(0);
   });
 
   it('loads the selected official TRI snapshot and preserves its audit metadata', async () => {
@@ -37,7 +41,9 @@ describe('parseTriRows', () => {
       Date.UTC(2026, 8, 2),
     ]);
 
-    expect(fetchMock).toHaveBeenCalledWith('/benchmarks/nifty-midcap-150-tri.json');
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(
+      /^\/benchmarks\/nifty-midcap-150-tri\.json\?date=\d{4}-\d{2}-\d{2}$/,
+    ));
     expect(benchmark).toMatchObject({
       benchmarkId: 'nifty-midcap-150',
       indexName: 'Nifty Midcap 150 TRI',
@@ -45,6 +51,30 @@ describe('parseTriRows', () => {
       values: [100, 101],
     });
     expect(benchmark.points.map((point) => point.nav)).toEqual([202, 200]);
+  });
+
+  it('reuses a loaded snapshot across timeline changes', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        indexName: 'Nifty 50 TRI',
+        source: 'NSE Indices Limited',
+        sourceUrl: 'https://www.niftyindices.com/reports/historical-data',
+        retrievedAt: '2026-09-27T00:00:00.000Z',
+        requestNumbers: ['123'],
+        rows: [
+          { date: '2026-09-01', value: 200 },
+          { date: '2026-09-02', value: 202 },
+          { date: '2026-09-03', value: 204 },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchTriBenchmark('nifty-50', [Date.UTC(2026, 8, 1), Date.UTC(2026, 8, 2)]);
+    await fetchTriBenchmark('nifty-50', [Date.UTC(2026, 8, 1), Date.UTC(2026, 8, 3)]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a snapshot whose index identity does not match the requested benchmark', async () => {

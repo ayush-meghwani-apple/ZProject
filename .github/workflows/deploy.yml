@@ -59,7 +59,9 @@ jobs:
               cd "$name"
               npm ci
               # Each project is served from /<repo>/<subpath>/ on GitHub Pages.
-              VITE_BASE="/$REPO/$subpath/" npm run build
+              VITE_BASE="/$REPO/$subpath/" \
+              VITE_TRI_DATA_BASE_URL="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/$name/public/benchmarks/" \
+              npm run build
             )
             mkdir -p "_site/$subpath"
             cp -r "$name/dist/." "_site/$subpath/"

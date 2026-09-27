@@ -104,7 +104,7 @@ describe('simulatedBenchmarkXirrSeries', () => {
       [new Date('2024-01-01T00:00:00').getTime(), new Date('2025-01-01T00:00:00').getTime()],
     );
 
-    expect(result.returnPct).toBeCloseTo(15.01, 2);
+    expect(result.returnPct).toBeCloseTo(15, 2);
   });
 
   it('sells simulated units for a redemption and treats it as money returned', () => {

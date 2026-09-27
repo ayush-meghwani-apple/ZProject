@@ -15,6 +15,7 @@ import { getGmailSettings } from './core/gmailSettings';
 import { getPrefs } from './core/preferences';
 import { fireLocalNotification } from './core/notify';
 import { isDemoMode, enterDemo, exitDemo } from './core/demoMode';
+import { refreshTriBenchmarkCacheOnceDaily } from './repository/mfTriRepository';
 
 type AppId = 'expensify' | 'goals' | 'notes' | 'fortuna';
 
@@ -35,9 +36,20 @@ const APPS: AppDef[] = [
 // Listed in the drawer but not yet built.
 const SOON: { name: string; icon: IconName; section: string }[] = [];
 
+const ACTIVE_APP_KEY = 'kaizen:activeApp';
+
+function initialApp(): AppId {
+  try {
+    const saved = localStorage.getItem(ACTIVE_APP_KEY);
+    if (APPS.some((app) => app.id === saved)) return saved as AppId;
+  } catch {
+    // Storage can be unavailable in private browsing.
+  }
+  return 'expensify';
+}
+
 export default function App() {
-  // Not persisted on purpose: the app always opens on Expensify.
-  const [activeApp, setActiveApp] = useState<AppId>('expensify');
+  const [activeApp, setActiveApp] = useState<AppId>(initialApp);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [dueCount, setDueCount] = useState(0);
@@ -52,6 +64,14 @@ export default function App() {
 
   const current = APPS.find((a) => a.id === activeApp)!;
   const demo = isDemoMode();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_APP_KEY, activeApp);
+    } catch {
+      // The in-memory selection still works when storage is unavailable.
+    }
+  }, [activeApp]);
 
   function handleDemoToggle() {
     if (isDemoMode()) {
@@ -120,7 +140,12 @@ export default function App() {
     const days = getGmailSettings().syncDays;
     void GmailRepository.syncAndImport(days, { interactive: true })
       .then(() => setRefreshNonce((n) => n + 1))
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (refreshTriBenchmarkCacheOnceDaily()) {
+          window.dispatchEvent(new Event('kaizen:refresh-tri-benchmarks'));
+        }
+      });
   }
 
   // Sections in drawer order, de-duplicated.

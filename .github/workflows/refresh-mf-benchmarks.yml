@@ -1,0 +1,38 @@
+name: Refresh mutual fund benchmarks
+
+on:
+  schedule:
+    # 10:00 PM IST, Monday-Friday (GitHub Actions cron uses UTC).
+    - cron: '30 16 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-mf-benchmarks
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch missing NSE TRI values
+        shell: pwsh
+        run: ./kaizen/scripts/fetch-nifty-tri.ps1
+
+      - name: Commit updated snapshots
+        shell: bash
+        run: |
+          if git diff --quiet -- kaizen/public/benchmarks; then
+            echo "No new benchmark values were published."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kaizen/public/benchmarks
+          git commit -m "Update mutual fund benchmarks" \
+            -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+          git push

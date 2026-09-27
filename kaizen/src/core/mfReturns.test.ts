@@ -47,6 +47,19 @@ describe('xirr', () => {
     expect(r!).toBeCloseTo(0.1, 3);
   });
 
+  it('uses calendar dates rather than time-of-day offsets', () => {
+    const midnight = xirr([
+      { date: new Date(2024, 0, 1), amount: -1000 },
+      { date: new Date(2025, 0, 1), amount: 1100 },
+    ]);
+    const shifted = xirr([
+      { date: new Date(2024, 0, 1, 18, 30), amount: -1000 },
+      { date: new Date(2025, 0, 1, 1, 15), amount: 1100 },
+    ]);
+
+    expect(shifted).toBeCloseTo(midnight!, 10);
+  });
+
   it('returns ~0 when value equals money in', () => {
     const flows: Flow[] = [
       { date: d('2024-01-01'), amount: -1000 },

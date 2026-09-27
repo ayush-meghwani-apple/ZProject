@@ -90,20 +90,28 @@ export interface MfBenchmarkCategory {
 
 /** Group holdings for category-level XIRR without merging Flexi and Multi Cap. */
 export function benchmarkCategoryForFund(fund: FundIdentity): MfBenchmarkCategory | null {
+  const designated = designatedBenchmarkForFund(fund);
   if (fund.category === 'largecap') {
-    return { id: 'largecap', label: 'Large cap', benchmark: MF_BENCHMARKS['nifty-50'] };
+    return designated?.id === 'nifty-50' || designated?.id === 'nifty-50-equal-weight'
+      ? { id: 'largecap', label: 'Large cap', benchmark: MF_BENCHMARKS['nifty-50'] }
+      : null;
   }
   if (fund.category === 'midcap') {
-    return { id: 'midcap', label: 'Mid cap', benchmark: MF_BENCHMARKS['nifty-midcap-150'] };
+    return designated?.id === 'nifty-midcap-150'
+      ? { id: 'midcap', label: 'Mid cap', benchmark: designated }
+      : null;
   }
   if (fund.category === 'smallcap') {
-    return { id: 'smallcap', label: 'Small cap', benchmark: MF_BENCHMARKS['nifty-smallcap-250'] };
+    return designated?.id === 'nifty-smallcap-250'
+      ? { id: 'smallcap', label: 'Small cap', benchmark: designated }
+      : null;
   }
   if (fund.category === 'flexicap') {
-    const designated = designatedBenchmarkForFund(fund);
     return designated?.id === 'nifty-500-multicap-50-25-25'
       ? { id: 'multicap', label: 'Multi cap', benchmark: designated }
-      : { id: 'flexicap', label: 'Flexi cap', benchmark: MF_BENCHMARKS['nifty-500'] };
+      : designated?.id === 'nifty-500'
+        ? { id: 'flexicap', label: 'Flexi cap', benchmark: designated }
+        : null;
   }
   return null;
 }

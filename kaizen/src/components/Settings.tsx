@@ -7,6 +7,10 @@ import PaymentMethodsManager from './PaymentMethodsManager';
 import GmailImport from './GmailImport';
 import DataBackupCard from './DataBackupCard';
 
+type UpdateStatus = 'idle' | 'checking' | 'current' | 'updated' | 'error';
+
+const UPDATE_VERSION_KEY = 'kaizen:updateVersion';
+
 interface Props {
   version: number;
   onChange: () => void;
@@ -32,16 +36,70 @@ function fmtDayTime(d: Date): string {
   });
 }
 
-/** Force the service worker to check for a new version, then reload. */
-async function checkForUpdates(): Promise<void> {
+function updateStatusAfterReload(): UpdateStatus {
   try {
-    const reg = await navigator.serviceWorker?.getRegistration();
-    await reg?.update();
-    reg?.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    const previousVersion = sessionStorage.getItem(UPDATE_VERSION_KEY);
+    sessionStorage.removeItem(UPDATE_VERSION_KEY);
+    if (!previousVersion) return 'idle';
+    return previousVersion === __APP_VERSION__ ? 'current' : 'updated';
   } catch {
-    /* ignore */
+    return 'idle';
   }
-  window.setTimeout(() => window.location.reload(), 1200);
+}
+
+/** Check for a new worker without reloading when this build is already current. */
+async function checkForUpdates(onStatus: (status: UpdateStatus) => void): Promise<void> {
+  if (!('serviceWorker' in navigator)) {
+    onStatus('current');
+    return;
+  }
+
+  onStatus('checking');
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      onStatus('current');
+      return;
+    }
+
+    let completed = false;
+    const activate = (worker: ServiceWorker) => {
+      if (completed) return;
+      completed = true;
+      try {
+        sessionStorage.setItem(UPDATE_VERSION_KEY, __APP_VERSION__);
+      } catch {
+        // Reload still applies the update even if status cannot be persisted.
+      }
+      worker.postMessage({ type: 'SKIP_WAITING' });
+      window.setTimeout(() => window.location.reload(), 1200);
+    };
+    const watchInstalling = () => {
+      const worker = registration.installing;
+      if (!worker) return;
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed') activate(registration.waiting ?? worker);
+      });
+    };
+
+    registration.addEventListener('updatefound', watchInstalling);
+    await registration.update();
+    if (registration.waiting) {
+      registration.removeEventListener('updatefound', watchInstalling);
+      activate(registration.waiting);
+      return;
+    }
+    watchInstalling();
+    window.setTimeout(() => {
+      if (!completed) {
+        completed = true;
+        registration.removeEventListener('updatefound', watchInstalling);
+        onStatus('current');
+      }
+    }, 2500);
+  } catch {
+    onStatus('error');
+  }
 }
 
 export default function Settings({
@@ -53,6 +111,7 @@ export default function Settings({
   beforeExport,
 }: Props) {
   const [soundOn, setSoundOn] = useState(true);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>(updateStatusAfterReload);
 
   async function load() {
     setSoundOn(getPrefs().soundEnabled);
@@ -146,7 +205,13 @@ export default function Settings({
           <span>Version</span>
           <span>
             <span
-              className="pill pill--good"
+              className={`pill ${
+                updateStatus === 'updated'
+                  ? 'pill--updated'
+                  : updateStatus === 'error'
+                    ? 'pill--warn'
+                    : 'pill--good'
+              }`}
               onClick={bumpVersionTap}
               style={{ cursor: 'default' }}
             >
@@ -157,9 +222,24 @@ export default function Settings({
         </div>
         <div className="row">
           <span>App update</span>
-          <button className="btn btn--sm" onClick={checkForUpdates}>
-            Check for updates
-          </button>
+          <span className="settings-update">
+            <button
+              className="btn btn--sm"
+              disabled={updateStatus === 'checking'}
+              onClick={() => void checkForUpdates(setUpdateStatus)}
+            >
+              {updateStatus === 'checking' ? 'Checking…' : 'Check for updates'}
+            </button>
+            <small className={`settings-update__status settings-update__status--${updateStatus}`} aria-live="polite">
+              {updateStatus === 'current'
+                ? 'Already up to date'
+                : updateStatus === 'updated'
+                  ? 'Updated successfully'
+                  : updateStatus === 'error'
+                    ? 'Could not check'
+                    : ''}
+            </small>
+          </span>
         </div>
       </div>
     </div>

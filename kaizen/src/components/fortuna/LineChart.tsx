@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 export interface ChartSeries {
   label: string;
@@ -26,7 +26,7 @@ function fullINR(n: number): string {
  * point's date (x) and each series' value (y). Renders at the container's pixel
  * width so text stays crisp.
  */
-export default function LineChart({
+function LineChart({
   labels,
   series,
   height = 180,
@@ -210,3 +210,5 @@ export default function LineChart({
     </div>
   );
 }
+
+export default memo(LineChart);

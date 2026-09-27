@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { FortunaTabProps } from '../FortunaApp';
 import type { MFCategory, MFTransaction, MutualFundHolding } from '../../types/models';
 import { MF_CATEGORIES } from '../../types/models';
@@ -27,6 +27,14 @@ import AppIcon, { type IconName } from '../AppIcon';
 import { FortunaSheet } from './shared';
 
 const catLabel = (c: MFCategory) => MF_CATEGORIES.find((x) => x.value === c)?.label ?? 'Other';
+const PERF_RANGES: { value: TrendRange; label: string }[] = [
+  { value: '7D', label: '7D' },
+  { value: '1M', label: '1M' },
+  { value: '6M', label: '6M' },
+  { value: '1Y', label: '1Y' },
+  { value: '3Y', label: '3Y' },
+  { value: 'MAX', label: 'Max' },
+];
 
 /** Colour a fund's badge by its return level: high / medium / low profit, or a
  *  loss (red, down glyph). Uses XIRR (money-weighted) when available. */
@@ -114,7 +122,7 @@ function ReturnPills({ s }: { s: ReturnSummary }) {
 const NAV_CACHE: Record<number, NavPoint[]> = {};
 
 export default function FundsTab({ plan, update }: FortunaTabProps) {
-  const funds = plan.mutualFunds ?? [];
+  const funds = useMemo(() => plan.mutualFunds ?? [], [plan.mutualFunds]);
   const [status, setStatus] = useState<'idle' | 'syncing' | 'ok' | 'partial'>('idle');
   const [note, setNote] = useState('');
   // Brief colour flash on the refresh button after a manual refresh: green ok,
@@ -131,6 +139,9 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const [perfRange, setPerfRange] = useState<TrendRange>('3Y');
   const [perfScope, setPerfScope] = useState('portfolio');
   const [perfMode, setPerfMode] = useState<'value' | 'returns'>('value');
+  const deferredPerfRange = useDeferredValue(perfRange);
+  const deferredPerfScope = useDeferredValue(perfScope);
+  const [benchmarkRefreshNonce, setBenchmarkRefreshNonce] = useState(0);
   const [triState, setTriState] = useState<{
     status: 'idle' | 'loading' | 'ready' | 'error';
     values: (number | null)[];
@@ -150,8 +161,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const isActive = (f: MutualFundHolding) => !!f.sip?.active;
   const activeCount = funds.filter(isActive).length;
   const inactiveCount = funds.length - activeCount;
-  const shownFunds =
-    view === 'active' ? funds.filter(isActive) : view === 'inactive' ? funds.filter((f) => !isActive(f)) : funds;
+  const shownFunds = useMemo(
+    () => view === 'active' ? funds.filter(isActive) : view === 'inactive' ? funds.filter((f) => !isActive(f)) : funds,
+    [funds, view],
+  );
 
   // Always read the freshest funds inside async callbacks.
   const planRef = useRef(plan);
@@ -219,57 +232,62 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
     }
   }, [funds.length, syncAll]);
 
-  const asOf = new Date();
-  asOf.setHours(0, 0, 0, 0);
-  const { groups, total } = byCategory(shownFunds, asOf);
+  useEffect(() => {
+    const refresh = () => setBenchmarkRefreshNonce((value) => value + 1);
+    window.addEventListener('kaizen:refresh-tri-benchmarks', refresh);
+    return () => window.removeEventListener('kaizen:refresh-tri-benchmarks', refresh);
+  }, []);
+
+  const asOfTime = new Date().setHours(0, 0, 0, 0);
+  const asOf = useMemo(() => new Date(asOfTime), [asOfTime]);
+  const { groups, total } = useMemo(() => byCategory(shownFunds, asOf), [shownFunds, asOf]);
 
   // Reconstruct the selected period from dated transactions and historical NAVs.
   const trendLabel = (timestamp: number) => new Date(timestamp).toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
-    year: perfRange === '3Y' || perfRange === 'MAX' ? '2-digit' : undefined,
+    year: deferredPerfRange === '3Y' || deferredPerfRange === 'MAX' ? '2-digit' : undefined,
   });
-  const PERF_RANGES: { value: TrendRange; label: string }[] = [
-    { value: '7D', label: '7D' }, { value: '1M', label: '1M' }, { value: '6M', label: '6M' },
-    { value: '1Y', label: '1Y' }, { value: '3Y', label: '3Y' }, { value: 'MAX', label: 'Max' },
-  ];
-  const categoryScopes = [...new Map(funds
+  const categoryScopes = useMemo(() => [...new Map(funds
     .map(benchmarkCategoryForFund)
     .filter((category) => category != null)
-    .map((category) => [category.id, category])).values()];
-  const sipScope = perfScope === 'cohort:sip' ? 'sip' : 'all';
-  const isAggregateScope = perfScope === 'portfolio' || perfScope === 'cohort:sip';
-  const scopeFunds = perfScope.startsWith('fund:')
-    ? funds.filter((fund) => fund.id === perfScope.slice(5))
-    : perfScope.startsWith('category:')
-      ? funds.filter((fund) => benchmarkCategoryForFund(fund)?.id === perfScope.slice(9))
-      : filterFundsBySipScope(funds, sipScope);
-  const portfolioBenchmark = getMfBenchmarkAllocation(scopeFunds);
-  const portfolioBenchmarkSignature = portfolioBenchmark.allocations
-    .map((allocation) => `${allocation.id}:${allocation.currentValue}`)
-    .join('|');
-  const comparisonTrend = mfValueSeries(scopeFunds, navs, perfRange, asOf);
+    .map((category) => [category.id, category])).values()], [funds]);
+  const sipScope = deferredPerfScope === 'cohort:sip' ? 'sip' : 'all';
+  const isAggregateScope = deferredPerfScope === 'portfolio' || deferredPerfScope === 'cohort:sip';
+  const scopeFunds = useMemo(() => deferredPerfScope.startsWith('fund:')
+    ? funds.filter((fund) => fund.id === deferredPerfScope.slice(5))
+    : deferredPerfScope.startsWith('category:')
+      ? funds.filter((fund) => benchmarkCategoryForFund(fund)?.id === deferredPerfScope.slice(9))
+      : filterFundsBySipScope(funds, sipScope), [deferredPerfScope, funds, sipScope]);
+  const portfolioBenchmark = useMemo(() => getMfBenchmarkAllocation(scopeFunds), [scopeFunds]);
+  const comparisonTrend = useMemo(
+    () => mfValueSeries(scopeFunds, navs, deferredPerfRange, asOf),
+    [asOf, deferredPerfRange, navs, scopeFunds],
+  );
   const perfFirst = comparisonTrend[0];
   const perfLast = comparisonTrend[comparisonTrend.length - 1];
   const perfDelta = comparisonTrend.length >= 2 ? perfLast.value - perfFirst.value : 0;
   const perfPct = comparisonTrend.length >= 2 && perfFirst.value > 0
     ? (perfDelta / perfFirst.value) * 100
     : null;
-  const comparisonTimestamps = comparisonTrend.map((point) => point.t);
-  const selectedFund = perfScope.startsWith('fund:') ? scopeFunds[0] : undefined;
-  const selectedCategory = perfScope.startsWith('category:')
-    ? categoryScopes.find((category) => category.id === perfScope.slice(9))
+  const comparisonTimestamps = useMemo(() => comparisonTrend.map((point) => point.t), [comparisonTrend]);
+  const selectedFund = deferredPerfScope.startsWith('fund:') ? scopeFunds[0] : undefined;
+  const selectedCategory = deferredPerfScope.startsWith('category:')
+    ? categoryScopes.find((category) => category.id === deferredPerfScope.slice(9))
     : undefined;
   const selectedBenchmark = selectedCategory
     ? selectedCategory.benchmark
     : selectedFund
       ? designatedBenchmarkForFund(selectedFund)
       : null;
-  const xirrSeries = moneyWeightedReturnSeries(scopeFunds, navs, comparisonTimestamps);
-  const openingValue = comparisonTimestamps.length
+  const xirrSeries = useMemo(
+    () => moneyWeightedReturnSeries(scopeFunds, navs, comparisonTimestamps),
+    [comparisonTimestamps, navs, scopeFunds],
+  );
+  const openingValue = useMemo(() => comparisonTimestamps.length
     ? mfPortfolioValueAt(scopeFunds, navs, comparisonTimestamps[0])
-    : 0;
-  const benchmarkWeights = isAggregateScope
+    : 0, [comparisonTimestamps, navs, scopeFunds]);
+  const benchmarkWeights = useMemo(() => isAggregateScope
     ? portfolioBenchmark.allocations.map((allocation) => ({
         id: allocation.id,
         weight: allocation.blendWeight,
@@ -277,11 +295,11 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
       }))
     : selectedBenchmark
       ? [{ id: selectedBenchmark.id, weight: 1, label: selectedBenchmark.categoryLabel }]
-      : [];
-  const comparisonSignature = scopeFunds
+      : [], [isAggregateScope, portfolioBenchmark.allocations, selectedBenchmark]);
+  const comparisonSignature = useMemo(() => scopeFunds
     .map((fund) => `${fund.schemeCode}:${fund.schemeCategory ?? ''}:${designatedBenchmarkForFund(fund)?.id ?? ''}:${fund.transactions.map((transaction) => `${transaction.date}:${transaction.amount}:${transaction.processing ?? false}`).join(',')}`)
     .sort()
-    .join('|');
+    .join('|'), [scopeFunds]);
 
   useEffect(() => {
     if (comparisonTimestamps.length < 2) {
@@ -339,7 +357,17 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perfScope, perfRange, portfolioBenchmarkSignature, isAggregateScope, comparisonSignature, navs, selectedBenchmark?.id]);
+  }, [
+    benchmarkWeights,
+    benchmarkRefreshNonce,
+    comparisonSignature,
+    comparisonTimestamps,
+    isAggregateScope,
+    openingValue,
+    portfolioBenchmark.coveragePct,
+    scopeFunds,
+    selectedBenchmark,
+  ]);
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
     const id = newId();
@@ -445,7 +473,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               )}
               {perfMode === 'value' && (
                 <LineChart
-                  key={`${perfScope}:${perfMode}`}
+                  key={`${deferredPerfScope}:${perfMode}`}
                   labels={comparisonTrend.map((p) => trendLabel(p.t))}
                   series={[
                     { label: 'Value', color: '#6366f1', values: comparisonTrend.map((p) => p.value) },
@@ -458,7 +486,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               )}
               {perfMode === 'returns' && (
                 <LineChart
-                  key={`${perfScope}:${perfMode}`}
+                  key={`${deferredPerfScope}:${perfMode}`}
                   labels={comparisonTrend.map((point) => trendLabel(point.t))}
                   series={[
                     { label: 'Your XIRR', color: '#6366f1', values: xirrSeries.values },

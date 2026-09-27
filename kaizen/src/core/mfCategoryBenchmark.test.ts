@@ -57,6 +57,12 @@ describe('benchmarkCategoryForFund', () => {
     expect([standard?.id, standard?.benchmark.id]).toEqual(['largecap', 'nifty-50']);
     expect([equalWeight?.id, equalWeight?.benchmark.id]).toEqual(['largecap', 'nifty-50']);
   });
+
+  it('does not place a thematic fund in the large-cap benchmark category from its legacy bucket', () => {
+    expect(benchmarkCategoryForFund(
+      fund('Tata Digital India Fund', 'largecap', 'Equity Scheme - Sectoral/ Thematic'),
+    )).toBeNull();
+  });
 });
 
 describe('getMfBenchmarkAllocation', () => {
