@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildMfMonthQuery, parseEtMoneySipEmail } from './mfEmailParse';
+import { buildMfMonthQuery, parseEtMoneyInvestmentEmail } from './mfEmailParse';
 
-describe('parseEtMoneySipEmail', () => {
+describe('parseEtMoneyInvestmentEmail', () => {
   it('parses an ET Money SIP confirmation', () => {
-    const parsed = parseEtMoneySipEmail({
+    const parsed = parseEtMoneyInvestmentEmail({
       from: 'ET Money <help@etmoneycare.com>',
       subject: 'Your savings just went up',
       body: `
@@ -27,12 +27,37 @@ describe('parseEtMoneySipEmail', () => {
       folio: '5102963484',
       investmentDate: '2026-09-01',
       orderNumber: '101-0100455-0060687',
+      kind: 'sip',
     });
   });
 
-  it('rejects non-ET Money and non-SIP mail', () => {
-    expect(parseEtMoneySipEmail({ from: 'Bank <alerts@example.com>', subject: '', body: '' })).toBeNull();
-    expect(parseEtMoneySipEmail({ from: 'ET Money <help@etmoneycare.com>', subject: 'Statement', body: 'Statement ready' })).toBeNull();
+  it('parses a one-time ET Money investment without marking it as SIP', () => {
+    const parsed = parseEtMoneyInvestmentEmail({
+      from: 'ET Money <help@etmoneycare.com>',
+      subject: 'Your savings just went up',
+      body: `
+        Investment of ₹23,000 is processed
+        Scheme name UTI Arbitrage Fund Direct-Growth
+        Amount ₹23,000
+        Units 607.3350
+        Price(NAV) ₹37.87
+        Folio No. 509382960481
+        Date of Investment Oct. 5th, 2025
+        Order Number 101-0240169-0028619
+        EOP Code CAT-1-EOP-0002
+      `,
+    });
+
+    expect(parsed).toMatchObject({
+      schemeName: 'UTI Arbitrage Fund Direct-Growth',
+      amount: 23000,
+      kind: 'lumpsum',
+    });
+  });
+
+  it('rejects non-ET Money and unrelated mail', () => {
+    expect(parseEtMoneyInvestmentEmail({ from: 'Bank <alerts@example.com>', subject: '', body: '' })).toBeNull();
+    expect(parseEtMoneyInvestmentEmail({ from: 'ET Money <help@etmoneycare.com>', subject: 'Statement', body: 'Statement ready' })).toBeNull();
   });
 });
 

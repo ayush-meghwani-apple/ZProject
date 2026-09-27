@@ -1,11 +1,11 @@
 import type { MFCategory, MutualFundHolding } from '../types/models';
 import { dateInputToIso, newId, now } from './util';
 import { MF_EMAIL_IMPORT_START } from './mfGmailSettings';
-import type { ParsedMfSipEmail } from './mfEmailParse';
+import type { ParsedMfInvestmentEmail } from './mfEmailParse';
 
 export interface MfEmailCandidate {
   messageId: string;
-  parsed: ParsedMfSipEmail;
+  parsed: ParsedMfInvestmentEmail;
 }
 
 export interface MfSchemeResolution {
@@ -60,7 +60,10 @@ export function mergeMfEmailCandidates(
   for (const fund of funds) {
     const confirmedMonths = new Set(
       fund.transactions
-        .filter((transaction) => transaction.importSource === 'etmoney' && !!transaction.sourceId)
+        .filter((transaction) =>
+          transaction.kind === 'sip'
+          && transaction.importSource === 'etmoney'
+          && !!transaction.sourceId)
         .map((transaction) => localMonth(transaction.date))
         .filter((month) => month >= MF_EMAIL_IMPORT_START.slice(0, 7)),
     );
@@ -110,7 +113,7 @@ export function mergeMfEmailCandidates(
     }
 
     const investmentMonth = candidate.parsed.investmentDate.slice(0, 7);
-    if (candidate.parsed.investmentDate >= MF_EMAIL_IMPORT_START) {
+    if (candidate.parsed.kind === 'sip' && candidate.parsed.investmentDate >= MF_EMAIL_IMPORT_START) {
       fund.transactions = fund.transactions.filter((transaction) => {
         const replace =
           transaction.kind === 'sip' &&
@@ -122,22 +125,65 @@ export function mergeMfEmailCandidates(
       });
     }
 
+    const transactionDate = localIso(candidate.parsed.investmentDate);
     fund.transactions.push({
       id: newId(),
-      date: localIso(candidate.parsed.investmentDate),
+      date: transactionDate,
       amount: candidate.parsed.amount,
       units: candidate.parsed.units,
       nav: candidate.parsed.nav,
-      kind: 'sip',
+      kind: candidate.parsed.kind,
       auto: true,
       reviewed: false,
       importSource: 'etmoney',
       sourceId,
     });
+    if (candidate.parsed.kind === 'sip') {
+      fund.sip = {
+        amount: candidate.parsed.amount,
+        dayOfMonth: Math.min(28, Math.max(1, Number(candidate.parsed.investmentDate.slice(8, 10)))),
+        startDate: fund.sip?.startDate ?? transactionDate,
+        active: true,
+      };
+    }
     fund.updatedAt = now();
     knownSources.add(sourceId);
     imported++;
   }
 
   return { imported, duplicates, removedGenerated, createdFunds };
+}
+
+/** Reconcile current-month SIP status after importing all confirmations seen so far. */
+export function reconcileMfSipActivity(
+  funds: MutualFundHolding[],
+  year: number,
+  month: number,
+  asOf = new Date(),
+): void {
+  if (asOf.getFullYear() !== year || asOf.getMonth() + 1 !== month) return;
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+  const today = asOf.getDate();
+
+  for (const fund of funds) {
+    const confirmed = fund.transactions
+      .filter((transaction) =>
+        transaction.kind === 'sip'
+        && transaction.importSource === 'etmoney'
+        && !!transaction.sourceId
+        && localMonth(transaction.date) === monthKey)
+      .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime());
+    const latest = confirmed[0];
+    if (latest) {
+      const investmentDay = new Date(latest.date).getDate();
+      fund.sip = {
+        amount: latest.amount,
+        dayOfMonth: Math.min(28, Math.max(1, investmentDay)),
+        startDate: fund.sip?.startDate ?? latest.date,
+        active: true,
+      };
+      continue;
+    }
+    if (fund.sip?.active && today >= fund.sip.dayOfMonth) fund.sip.active = false;
+  }
 }

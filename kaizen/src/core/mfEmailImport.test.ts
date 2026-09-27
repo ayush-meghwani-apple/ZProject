@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MutualFundHolding } from '../types/models';
-import { mergeMfEmailCandidates } from './mfEmailImport';
+import { mergeMfEmailCandidates, reconcileMfSipActivity } from './mfEmailImport';
 
 function fund(): MutualFundHolding {
   return {
@@ -28,6 +28,7 @@ const candidate = {
     folio: '5102963484',
     investmentDate: '2026-09-01',
     orderNumber: '101-0100455-0060687',
+    kind: 'sip' as const,
   },
 };
 
@@ -85,6 +86,67 @@ describe('mergeMfEmailCandidates', () => {
       schemeName: 'Quant Mid Cap Fund - Direct Plan - Growth',
     }]);
     expect(result.createdFunds).toBe(1);
-    expect(funds[0]).toMatchObject({ schemeCode: 999, category: 'midcap' });
+    expect(funds[0]).toMatchObject({
+      schemeCode: 999,
+      category: 'midcap',
+      sip: { amount: 5100, dayOfMonth: 1, active: true },
+    });
+  });
+
+  it('imports a one-time investment without activating a SIP', () => {
+    const funds = [fund()];
+    funds[0].sip = undefined;
+    const result = mergeMfEmailCandidates(funds, [{
+      ...candidate,
+      messageId: 'gmail-lumpsum',
+      parsed: {
+        ...candidate.parsed,
+        kind: 'lumpsum',
+        orderNumber: 'lumpsum-order',
+      },
+    }], []);
+
+    expect(result.imported).toBe(1);
+    expect(funds[0].transactions[funds[0].transactions.length - 1]?.kind).toBe('lumpsum');
+    expect(funds[0].sip).toBeUndefined();
+  });
+});
+
+describe('reconcileMfSipActivity', () => {
+  it('keeps confirmed SIPs active and updates their amount and day', () => {
+    const funds = [fund()];
+    funds[0].sip = { amount: 1000, dayOfMonth: 5, startDate: '2026-01-05T00:00:00.000Z', active: true };
+    funds[0].transactions.push({
+      id: 'confirmed',
+      date: new Date(2026, 8, 12).toISOString(),
+      amount: 7500,
+      units: 30,
+      nav: 250,
+      kind: 'sip',
+      importSource: 'etmoney',
+      sourceId: 'etmoney:new-order',
+    });
+
+    reconcileMfSipActivity(funds, 2026, 9, new Date(2026, 8, 27));
+
+    expect(funds[0].sip).toMatchObject({ amount: 7500, dayOfMonth: 12, active: true });
+  });
+
+  it('pauses a previously active SIP after its expected day passes without confirmation', () => {
+    const funds = [fund()];
+    funds[0].sip = { amount: 5100, dayOfMonth: 5, startDate: '2026-01-05T00:00:00.000Z', active: true };
+
+    reconcileMfSipActivity(funds, 2026, 9, new Date(2026, 8, 27));
+
+    expect(funds[0].sip.active).toBe(false);
+  });
+
+  it('does not pause a SIP before its expected day', () => {
+    const funds = [fund()];
+    funds[0].sip = { amount: 5100, dayOfMonth: 20, startDate: '2026-01-20T00:00:00.000Z', active: true };
+
+    reconcileMfSipActivity(funds, 2026, 9, new Date(2026, 8, 10));
+
+    expect(funds[0].sip.active).toBe(true);
   });
 });

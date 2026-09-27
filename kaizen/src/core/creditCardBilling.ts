@@ -31,14 +31,14 @@ function normalizeName(name: string): string {
   return name.toLocaleLowerCase('en-IN').replace(/[^a-z0-9]/g, '');
 }
 
-/** The active period starts the day after the previous bill and includes the next bill date. */
+/** The active period starts on statement day and ends the day before the next statement. */
 export function currentCreditCardCycle(billDay: number, referenceDate = new Date()): { start: Date; end: Date } {
   const reference = localMidnight(referenceDate);
   const thisMonthBill = new Date(reference.getFullYear(), reference.getMonth(), billDay);
-  const end = reference.getTime() <= thisMonthBill.getTime()
+  const start = reference.getTime() >= thisMonthBill.getTime()
     ? thisMonthBill
-    : new Date(reference.getFullYear(), reference.getMonth() + 1, billDay);
-  const start = new Date(end.getFullYear(), end.getMonth() - 1, billDay + 1);
+    : new Date(reference.getFullYear(), reference.getMonth() - 1, billDay);
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, billDay - 1);
   return { start, end };
 }
 

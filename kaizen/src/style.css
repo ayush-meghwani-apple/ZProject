@@ -6950,14 +6950,14 @@ button.ft-settings__card {
 /* Inline readout row shown ABOVE the plot (never covers the line). */
 .ft-chart__readout {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px 8px;
   min-height: 20px;
   margin-bottom: 4px;
   font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
+  line-height: 1.35;
+  overflow: visible;
 }
 .ft-chart__rodate {
   font-weight: 700;
@@ -6970,6 +6970,7 @@ button.ft-settings__card {
   gap: 4px;
   color: var(--muted);
   flex: 0 0 auto;
+  white-space: nowrap;
 }
 .ft-chart__roitem b {
   color: var(--text);

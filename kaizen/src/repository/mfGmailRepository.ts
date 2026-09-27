@@ -4,8 +4,9 @@ import {
   type MfSchemeResolution,
   mergeMfEmailCandidates,
   normalizeMfSchemeName,
+  reconcileMfSipActivity,
 } from '../core/mfEmailImport';
-import { buildMfMonthQuery, parseEtMoneySipEmail } from '../core/mfEmailParse';
+import { buildMfMonthQuery, parseEtMoneyInvestmentEmail } from '../core/mfEmailParse';
 import {
   getMfGmailSettings,
   isMfEmailHandled,
@@ -76,8 +77,8 @@ async function resolveScheme(emailSchemeName: string): Promise<MfSchemeResolutio
 }
 
 function summary(result: MfImportResult): string {
-  if (!result.imported && !result.removedGenerated) return 'No new SIP investments found.';
-  const parts = [`Imported ${result.imported} SIP${result.imported === 1 ? '' : 's'}`];
+  if (!result.imported && !result.removedGenerated) return 'No new mutual fund investments found.';
+  const parts = [`Imported ${result.imported} investment${result.imported === 1 ? '' : 's'}`];
   if (result.createdFunds) parts.push(`created ${result.createdFunds} fund${result.createdFunds === 1 ? '' : 's'}`);
   if (result.removedGenerated) parts.push(`replaced ${result.removedGenerated} generated entr${result.removedGenerated === 1 ? 'y' : 'ies'}`);
   return parts.join(' · ');
@@ -96,7 +97,7 @@ async function runMonthSync(year: number, month: number, interactive: boolean): 
       isMfEmailHandled,
     );
     const candidates: MfEmailCandidate[] = emails.flatMap((email) => {
-      const parsed = parseEtMoneySipEmail(email);
+      const parsed = parseEtMoneyInvestmentEmail(email);
       return parsed && monthOf(parsed.investmentDate) === key
         ? [{ messageId: email.id as string, parsed }]
         : [];
@@ -112,6 +113,7 @@ async function runMonthSync(year: number, month: number, interactive: boolean): 
     }
 
     const result = mergeMfEmailCandidates((plan.mutualFunds ??= []), candidates, resolutions);
+    reconcileMfSipActivity(plan.mutualFunds, year, month);
     if (result.imported > 0 || result.removedGenerated > 0) captureDailySnapshot(plan);
     await PlannerRepository.save(plan);
     markMfEmailsHandled(candidates.map((candidate) => candidate.messageId));

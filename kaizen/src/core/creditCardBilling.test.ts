@@ -15,16 +15,22 @@ function expense(id: string, date: string, paymentMethodId: string, amount: numb
 }
 
 describe('currentCreditCardCycle', () => {
-  it('runs from the day after the previous bill through the upcoming bill date', () => {
+  it('runs from the statement date through the day before the next statement', () => {
     const cycle = currentCreditCardCycle(18, new Date(2026, 8, 27));
-    expect([cycle.start.getFullYear(), cycle.start.getMonth(), cycle.start.getDate()]).toEqual([2026, 8, 19]);
-    expect([cycle.end.getFullYear(), cycle.end.getMonth(), cycle.end.getDate()]).toEqual([2026, 9, 18]);
+    expect([cycle.start.getFullYear(), cycle.start.getMonth(), cycle.start.getDate()]).toEqual([2026, 8, 18]);
+    expect([cycle.end.getFullYear(), cycle.end.getMonth(), cycle.end.getDate()]).toEqual([2026, 9, 17]);
   });
 
-  it('keeps the bill date in the cycle that closes that day', () => {
+  it('starts the new cycle on the statement date itself', () => {
     const cycle = currentCreditCardCycle(9, new Date(2026, 8, 9));
-    expect([cycle.start.getFullYear(), cycle.start.getMonth(), cycle.start.getDate()]).toEqual([2026, 7, 10]);
-    expect([cycle.end.getFullYear(), cycle.end.getMonth(), cycle.end.getDate()]).toEqual([2026, 8, 9]);
+    expect([cycle.start.getFullYear(), cycle.start.getMonth(), cycle.start.getDate()]).toEqual([2026, 8, 9]);
+    expect([cycle.end.getFullYear(), cycle.end.getMonth(), cycle.end.getDate()]).toEqual([2026, 9, 8]);
+  });
+
+  it('uses the previous statement when the next statement date has not arrived', () => {
+    const cycle = currentCreditCardCycle(18, new Date(2026, 8, 17));
+    expect([cycle.start.getFullYear(), cycle.start.getMonth(), cycle.start.getDate()]).toEqual([2026, 7, 18]);
+    expect([cycle.end.getFullYear(), cycle.end.getMonth(), cycle.end.getDate()]).toEqual([2026, 8, 17]);
   });
 });
 
@@ -35,13 +41,13 @@ describe('getCreditCardCycleSummaries', () => {
       { id: 'hsbc-card', name: 'HSBC Credit Card' },
     ];
     const expenses = [
-      expense('before-au', '2026-09-18', 'au-card', 100, 'old-salary-cycle'),
+      expense('statement-day-au', '2026-09-18', 'au-card', 100, 'old-salary-cycle'),
       expense('in-au', '2026-09-19', 'au-card', 250, 'different-salary-cycle'),
-      expense('in-hsbc', '2026-09-10', 'hsbc-card', 400, 'another-salary-cycle'),
+      expense('statement-day-hsbc', '2026-09-09', 'hsbc-card', 400, 'another-salary-cycle'),
     ];
 
     const summaries = getCreditCardCycleSummaries(expenses, methods, new Date(2026, 8, 27));
-    expect(summaries.find((row) => row.id === 'au')).toMatchObject({ total: 250, transactionCount: 1, linked: true });
+    expect(summaries.find((row) => row.id === 'au')).toMatchObject({ total: 350, transactionCount: 2, linked: true });
     expect(summaries.find((row) => row.id === 'hsbc')).toMatchObject({ total: 400, transactionCount: 1, linked: true });
     expect(summaries.find((row) => row.id === 'bob')).toMatchObject({ total: 0, transactionCount: 0, linked: false });
   });

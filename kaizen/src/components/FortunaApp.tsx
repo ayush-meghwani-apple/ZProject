@@ -215,6 +215,22 @@ function Fortuna({ onLock }: { onLock: () => void }) {
     setPlan(p);
   }, []);
 
+  useEffect(() => {
+    const prepareImport = (event: Event) => {
+      const custom = event as CustomEvent<{ promise: Promise<void> }>;
+      custom.detail.promise = flushPending();
+    };
+    const refreshImportedData = () => {
+      void reload();
+    };
+    window.addEventListener('kaizen:before-mf-import', prepareImport);
+    window.addEventListener('kaizen:mf-imported', refreshImportedData);
+    return () => {
+      window.removeEventListener('kaizen:before-mf-import', prepareImport);
+      window.removeEventListener('kaizen:mf-imported', refreshImportedData);
+    };
+  }, [flushPending, reload]);
+
   if (!plan) {
     return (
       <main className="app__body">

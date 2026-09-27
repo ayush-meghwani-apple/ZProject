@@ -56,11 +56,13 @@ export default function App() {
   // Bumped to make Expensify reload / jump to Reels from the reminders inbox.
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [openReelsNonce, setOpenReelsNonce] = useState(0);
+  const [combinedSync, setCombinedSync] = useState<SyncState | null>(null);
   const gmailSync = useSyncExternalStore(
     GmailRepository.subscribeSync,
     GmailRepository.getSyncState,
     GmailRepository.getSyncState,
   ) as SyncState;
+  const visibleSync = combinedSync ?? gmailSync;
 
   const current = APPS.find((a) => a.id === activeApp)!;
   const demo = isDemoMode();
@@ -138,9 +140,34 @@ export default function App() {
 
   function syncGmailNow() {
     const days = getGmailSettings().syncDays;
+    setCombinedSync({ phase: 'syncing', message: 'Syncing expenses and investments…' });
     void GmailRepository.syncAndImport(days, { interactive: true })
-      .then(() => setRefreshNonce((n) => n + 1))
-      .catch(() => undefined)
+      .then(async () => {
+        const expenseMessage = GmailRepository.getSyncState().message;
+        setRefreshNonce((n) => n + 1);
+        setCombinedSync({ phase: 'syncing', message: 'Syncing mutual fund investments…' });
+        const detail: { promise: Promise<void> } = { promise: Promise.resolve() };
+        window.dispatchEvent(new CustomEvent('kaizen:before-mf-import', { detail }));
+        await detail.promise;
+        const today = new Date();
+        await MfGmailRepository.syncMonth(
+          today.getFullYear(),
+          today.getMonth() + 1,
+          false,
+        );
+        window.dispatchEvent(new Event('kaizen:mf-imported'));
+        const investmentMessage = MfGmailRepository.getSyncState().message;
+        setCombinedSync({
+          phase: 'done',
+          message: `${expenseMessage} ${investmentMessage}`,
+        });
+      })
+      .catch((error) => {
+        setCombinedSync({
+          phase: 'error',
+          message: error instanceof Error ? error.message : 'Gmail sync failed.',
+        });
+      })
       .finally(() => {
         if (refreshTriBenchmarkCacheOnceDaily()) {
           window.dispatchEvent(new Event('kaizen:refresh-tri-benchmarks'));
@@ -166,11 +193,11 @@ export default function App() {
         <div className="headeractions">
           {!demo && (
             <button
-              className={`gmailsync gmailsync--${gmailSync.phase}`}
+              className={`gmailsync gmailsync--${visibleSync.phase}`}
               onClick={syncGmailNow}
-              disabled={gmailSync.phase === 'syncing'}
-              aria-label={gmailSync.message || 'Sync Gmail transactions'}
-              title={gmailSync.message || 'Sync Gmail transactions'}
+              disabled={visibleSync.phase === 'syncing'}
+              aria-label={visibleSync.message || 'Sync Gmail transactions'}
+              title={visibleSync.message || 'Sync Gmail transactions'}
             >
               <AppIcon name="recurring" size={19} />
             </button>

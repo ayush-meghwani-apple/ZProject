@@ -1,6 +1,6 @@
 import type { RawEmail } from './emailParse';
 
-export interface ParsedMfSipEmail {
+export interface ParsedMfInvestmentEmail {
   schemeName: string;
   amount: number;
   units: number;
@@ -8,6 +8,7 @@ export interface ParsedMfSipEmail {
   folio: string;
   investmentDate: string;
   orderNumber: string;
+  kind: 'sip' | 'lumpsum';
 }
 
 const MONTHS: Record<string, number> = {
@@ -43,11 +44,16 @@ function isoDate(value: string): string | null {
   return `${match[3]}-${String(month).padStart(2, '0')}-${String(Number(match[2])).padStart(2, '0')}`;
 }
 
-export function parseEtMoneySipEmail(email: RawEmail): ParsedMfSipEmail | null {
+export function parseEtMoneyInvestmentEmail(email: RawEmail): ParsedMfInvestmentEmail | null {
   if (!/@etmoneycare\.com\b/i.test(email.from)) return null;
-  if (!/\bSIP\s+of\s+₹?[\d,]+(?:\.\d+)?\s+added\s+to\s+your\s+savings\b/i.test(`${email.subject}\n${email.body}`)) {
-    return null;
-  }
+  const content = `${email.subject}\n${email.body}`;
+  const kind = /\bSIP\s+of\s+₹?[\d,]+(?:\.\d+)?\s+added\s+to\s+your\s+savings\b/i.test(content)
+    || /\byour\s+monthly\s+SIP\s+amount\s+has\s+been\s+invested\b/i.test(content)
+    ? 'sip'
+    : /\bInvestment\s+of\s+₹?[\d,]+(?:\.\d+)?\s+is\s+processed\b/i.test(content)
+      ? 'lumpsum'
+      : null;
+  if (!kind) return null;
 
   const text = email.body.replace(/\s+/g, ' ').trim();
   const schemeName = field(text, 'Scheme name', 'Amount');
@@ -68,7 +74,7 @@ export function parseEtMoneySipEmail(email: RawEmail): ParsedMfSipEmail | null {
   const nav = numberFrom(navText);
   if (!(amount > 0) || !(units > 0) || !(nav > 0)) return null;
 
-  return { schemeName, amount, units, nav, folio, investmentDate, orderNumber };
+  return { schemeName, amount, units, nav, folio, investmentDate, orderNumber, kind };
 }
 
 export function buildMfMonthQuery(year: number, month: number, after?: Date): string {
