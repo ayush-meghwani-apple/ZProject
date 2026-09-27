@@ -74,10 +74,37 @@ function normalized(value: string | undefined): string {
   return (value ?? '').toLocaleLowerCase('en-IN').replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
-function benchmarkFromCategory(category: MFCategory): MfBenchmarkDefinition | null {
+export function benchmarkForMfCategory(category: MFCategory): MfBenchmarkDefinition | null {
+  if (category === 'largecap') return MF_BENCHMARKS['nifty-50'];
   if (category === 'flexicap') return MF_BENCHMARKS['nifty-500'];
   if (category === 'midcap') return MF_BENCHMARKS['nifty-midcap-150'];
   if (category === 'smallcap') return MF_BENCHMARKS['nifty-smallcap-250'];
+  return null;
+}
+
+export interface MfBenchmarkCategory {
+  id: 'largecap' | 'midcap' | 'smallcap' | 'flexicap' | 'multicap';
+  label: string;
+  benchmark: MfBenchmarkDefinition;
+}
+
+/** Group holdings for category-level XIRR without merging Flexi and Multi Cap. */
+export function benchmarkCategoryForFund(fund: FundIdentity): MfBenchmarkCategory | null {
+  if (fund.category === 'largecap') {
+    return { id: 'largecap', label: 'Large cap', benchmark: MF_BENCHMARKS['nifty-50'] };
+  }
+  if (fund.category === 'midcap') {
+    return { id: 'midcap', label: 'Mid cap', benchmark: MF_BENCHMARKS['nifty-midcap-150'] };
+  }
+  if (fund.category === 'smallcap') {
+    return { id: 'smallcap', label: 'Small cap', benchmark: MF_BENCHMARKS['nifty-smallcap-250'] };
+  }
+  if (fund.category === 'flexicap') {
+    const designated = designatedBenchmarkForFund(fund);
+    return designated?.id === 'nifty-500-multicap-50-25-25'
+      ? { id: 'multicap', label: 'Multi cap', benchmark: designated }
+      : { id: 'flexicap', label: 'Flexi cap', benchmark: MF_BENCHMARKS['nifty-500'] };
+  }
   return null;
 }
 
@@ -95,10 +122,11 @@ export function designatedBenchmarkForFund(fund: FundIdentity): MfBenchmarkDefin
   if (/\bflexi\s*cap\b/.test(identity)) return MF_BENCHMARKS['nifty-500'];
   if (/\bmid\s*cap\b|\bmidcap\b/.test(identity)) return MF_BENCHMARKS['nifty-midcap-150'];
   if (/\bsmall\s*cap\b|\bsmallcap\b/.test(identity)) return MF_BENCHMARKS['nifty-smallcap-250'];
+  if (/\blarge\s*cap\b/.test(officialCategory)) return MF_BENCHMARKS['nifty-50'];
 
   // AMFI's official category is more precise than the legacy user bucket. If
   // it exists but does not match this table, keep the existing peer fallback.
-  return officialCategory ? null : benchmarkFromCategory(fund.category);
+  return officialCategory ? null : benchmarkForMfCategory(fund.category);
 }
 
 function currentFundValue(fund: MutualFundHolding): number {

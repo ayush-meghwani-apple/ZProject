@@ -8,20 +8,18 @@ import {
   byCategory,
   filterFundsBySipScope,
   fundSummary,
+  mfPortfolioValueAt,
   moneyWeightedReturnSeries,
-  timeWeightedReturnSeries,
   type ReturnSummary,
 } from '../../core/mfReturns';
 import { mfValueSeries, type TrendRange } from '../../core/mfTrend';
-import { weightedNavIndex, weightedSeriesAverage } from '../../core/mfBenchmark';
+import { simulatedBenchmarkXirrSeries } from '../../core/mfBenchmark';
 import {
+  benchmarkCategoryForFund,
   designatedBenchmarkForFund,
   getMfBenchmarkAllocation,
-  MF_BENCHMARKS,
-  type MfBenchmarkId,
 } from '../../core/mfCategoryBenchmark';
 import { computeHarvest, LTCG_EXEMPTION } from '../../core/taxHarvest';
-import { fetchCategoryBenchmark } from '../../repository/mfPeerRepository';
 import { fetchTriBenchmark } from '../../repository/mfTriRepository';
 import LineChart from './LineChart';
 import AmountInput from '../AmountInput';
@@ -98,19 +96,13 @@ function DecimalInput({
   );
 }
 
-/** The XIRR / CAGR / absolute-return chips shown on a fund or a group. */
+/** The single return metric used consistently at fund, category and portfolio level. */
 function ReturnPills({ s }: { s: ReturnSummary }) {
   const tone = (n: number | null) => (n == null ? '' : n >= 0 ? 'ft-mf__pos' : 'ft-mf__neg');
   return (
     <div className="ft-mf__returns">
       <span className={`ft-mf__pill ${tone(s.xirrPct)}`}>
         <b>XIRR</b> {fmtPct(s.xirrPct)}
-      </span>
-      <span className={`ft-mf__pill ${tone(s.cagrPct)}`}>
-        <b>CAGR</b> {fmtPct(s.cagrPct)}
-      </span>
-      <span className={`ft-mf__pill ${tone(s.absReturnPct)}`}>
-        <b>Abs</b> {fmtPct(s.absReturnPct)}
       </span>
     </div>
   );
@@ -136,24 +128,13 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   // from a module-level cache so switching back to Pulse redraws the same curve
   // instantly instead of flickering from a fallback shape while NAVs refetch.
   const [navs, setNavs] = useState<Record<number, NavPoint[]>>(() => ({ ...NAV_CACHE }));
-  const [perfRange, setPerfRange] = useState<TrendRange>('1M');
+  const [perfRange, setPerfRange] = useState<TrendRange>('3Y');
   const [perfScope, setPerfScope] = useState('portfolio');
   const [perfMode, setPerfMode] = useState<'value' | 'returns'>('value');
-  const [peerState, setPeerState] = useState<{
-    status: 'idle' | 'loading' | 'ready' | 'error';
-    values: (number | null)[];
-    sampleSize: number;
-    message?: string;
-    source?: string;
-    retrievedAt?: string;
-    periodStart?: string;
-    periodEnd?: string;
-    label?: string;
-    comparisonType?: 'official-tri' | 'peer-proxy';
-  }>({ status: 'idle', values: [], sampleSize: 0 });
   const [triState, setTriState] = useState<{
     status: 'idle' | 'loading' | 'ready' | 'error';
     values: (number | null)[];
+    returnPct?: number | null;
     message?: string;
     source?: string;
     retrievedAt?: string;
@@ -252,12 +233,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
     { value: '7D', label: '7D' }, { value: '1M', label: '1M' }, { value: '6M', label: '6M' },
     { value: '1Y', label: '1Y' }, { value: '3Y', label: '3Y' }, { value: 'MAX', label: 'Max' },
   ];
-  const benchmarkScopes = (Object.keys(MF_BENCHMARKS) as MfBenchmarkId[]).filter((benchmarkId) =>
-    funds.some((fund) => designatedBenchmarkForFund(fund)?.id === benchmarkId),
-  );
-  const fallbackCategories = MF_CATEGORIES.filter((category) =>
-    funds.some((fund) => fund.category === category.value && !designatedBenchmarkForFund(fund)),
-  );
+  const categoryScopes = [...new Map(funds
+    .map(benchmarkCategoryForFund)
+    .filter((category) => category != null)
+    .map((category) => [category.id, category])).values()];
   const sipScope = perfScope === 'cohort:sip'
     ? 'sip'
     : perfScope === 'cohort:non-sip'
@@ -266,10 +245,8 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const isAggregateScope = perfScope === 'portfolio' || perfScope.startsWith('cohort:');
   const scopeFunds = perfScope.startsWith('fund:')
     ? funds.filter((fund) => fund.id === perfScope.slice(5))
-    : perfScope.startsWith('benchmark:')
-      ? funds.filter((fund) => designatedBenchmarkForFund(fund)?.id === perfScope.slice(10))
     : perfScope.startsWith('category:')
-      ? funds.filter((fund) => fund.category === perfScope.slice(9))
+      ? funds.filter((fund) => benchmarkCategoryForFund(fund)?.id === perfScope.slice(9))
       : filterFundsBySipScope(funds, sipScope);
   const portfolioBenchmark = getMfBenchmarkAllocation(scopeFunds);
   const portfolioBenchmarkSignature = portfolioBenchmark.allocations
@@ -281,166 +258,71 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
   const perfDelta = comparisonTrend.length >= 2 ? perfLast.value - perfFirst.value : 0;
   const perfPct = comparisonTrend.length >= 2 && perfFirst.value > 0 ? (perfDelta / perfFirst.value) * 100 : 0;
   const comparisonTimestamps = comparisonTrend.map((point) => point.t);
-  const holdingWeight = (fund: MutualFundHolding) => Math.max(1, fund.transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0));
-  const ownIndex = weightedNavIndex(
-    scopeFunds.map((fund) => ({ points: navs[fund.schemeCode] ?? [], weight: holdingWeight(fund) })),
-    comparisonTimestamps,
-  );
   const selectedFund = perfScope.startsWith('fund:') ? scopeFunds[0] : undefined;
-  const selectedBenchmark = perfScope.startsWith('benchmark:')
-    ? MF_BENCHMARKS[perfScope.slice(10) as MfBenchmarkId]
+  const selectedCategory = perfScope.startsWith('category:')
+    ? categoryScopes.find((category) => category.id === perfScope.slice(9))
+    : undefined;
+  const selectedBenchmark = selectedCategory
+    ? selectedCategory.benchmark
     : selectedFund
       ? designatedBenchmarkForFund(selectedFund)
       : null;
-  const comparisonLabel = selectedFund
-    ? 'Fund'
-    : perfScope === 'cohort:sip'
-      ? 'Your SIP funds'
-      : perfScope === 'cohort:non-sip'
-        ? 'Your non-SIP funds'
-        : `Your ${scopeFunds.length === 1 ? 'fund' : 'funds'}`;
-  const comparisonDelta = ownIndex.values.length ? (ownIndex.values[ownIndex.values.length - 1] ?? 100) - 100 : 0;
   const xirrSeries = moneyWeightedReturnSeries(scopeFunds, navs, comparisonTimestamps);
-  const twrrSeries = timeWeightedReturnSeries(scopeFunds, navs, comparisonTimestamps);
-  const peerReturnValues = peerState.values.map((value) => value == null ? null : value - 100);
-  const triReturnValues = triState.values.map((value) => value == null ? null : value - 100);
-  const blendedReturn = [...triReturnValues].reverse().find((value): value is number => value != null) ?? null;
-  const alpha = twrrSeries.returnPct != null && blendedReturn != null
-    ? twrrSeries.returnPct - blendedReturn
-    : null;
+  const openingValue = comparisonTimestamps.length
+    ? mfPortfolioValueAt(scopeFunds, navs, comparisonTimestamps[0])
+    : 0;
+  const benchmarkWeights = isAggregateScope
+    ? portfolioBenchmark.allocations.map((allocation) => ({
+        id: allocation.id,
+        weight: allocation.blendWeight,
+        label: allocation.categoryLabel,
+      }))
+    : selectedBenchmark
+      ? [{ id: selectedBenchmark.id, weight: 1, label: selectedBenchmark.categoryLabel }]
+      : [];
   const comparisonSignature = scopeFunds
-    .map((fund) => `${fund.schemeCode}:${fund.schemeCategory ?? ''}:${designatedBenchmarkForFund(fund)?.id ?? ''}:${holdingWeight(fund)}`)
+    .map((fund) => `${fund.schemeCode}:${fund.schemeCategory ?? ''}:${designatedBenchmarkForFund(fund)?.id ?? ''}:${fund.transactions.map((transaction) => `${transaction.date}:${transaction.amount}:${transaction.processing ?? false}`).join(',')}`)
     .sort()
     .join('|');
 
   useEffect(() => {
-    if (isAggregateScope) {
-      setPeerState({ status: 'idle', values: [], sampleSize: 0 });
-      return;
-    }
     if (comparisonTimestamps.length < 2) {
-      setPeerState({ status: 'error', values: [], sampleSize: 0, message: 'Add transaction history to compare this selection.' });
+      setTriState({ status: 'error', values: [], message: 'Add transaction history to compare this selection.' });
       return;
     }
-    if (selectedBenchmark) {
-      let cancelled = false;
-      setPeerState({
-        status: 'loading',
-        values: [],
-        sampleSize: 0,
-        label: selectedBenchmark.indexName,
-        comparisonType: 'official-tri',
-        message: `Loading official ${selectedBenchmark.indexName}…`,
-      });
-      void fetchTriBenchmark(selectedBenchmark.id, comparisonTimestamps).then((benchmark) => {
-        if (cancelled) return;
-        setPeerState({
-          status: 'ready',
-          values: benchmark.values,
-          sampleSize: 0,
-          label: benchmark.indexName,
-          comparisonType: benchmark.comparisonType,
-          source: benchmark.source,
-          retrievedAt: benchmark.retrievedAt,
-          periodStart: benchmark.periodStart,
-          periodEnd: benchmark.periodEnd,
-        });
-      }).catch((error: unknown) => {
-        if (cancelled) return;
-        setPeerState({
-          status: 'error',
-          values: [],
-          sampleSize: 0,
-          label: selectedBenchmark.indexName,
-          comparisonType: 'official-tri',
-          message: error instanceof Error ? error.message : `${selectedBenchmark.indexName} is unavailable right now.`,
-        });
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
-    if (scopeFunds.some((fund) => !fund.schemeCategory)) {
-      setPeerState({ status: 'loading', values: [], sampleSize: 0, message: 'Reading official fund categories…' });
-      return;
-    }
-
-    const weights = new Map<string, number>();
-    for (const fund of scopeFunds) {
-      const category = fund.schemeCategory as string;
-      weights.set(category, (weights.get(category) ?? 0) + holdingWeight(fund));
-    }
-    let cancelled = false;
-    setPeerState({ status: 'loading', values: [], sampleSize: 0 });
-    void Promise.all(
-      [...weights].map(async ([category, weight]) => ({
-        benchmark: await fetchCategoryBenchmark(category, comparisonTimestamps, funds.map((fund) => fund.schemeCode)),
-        weight,
-      })),
-    ).then((results) => {
-      if (cancelled) return;
-      setPeerState({
-        status: 'ready',
-        values: weightedSeriesAverage(results.map(({ benchmark, weight }) => ({ values: benchmark.values, weight }))),
-        sampleSize: results.reduce((sum, result) => sum + result.benchmark.sampleSize, 0),
-        label: `AMFI peer proxy (${results.reduce((sum, result) => sum + result.benchmark.sampleSize, 0)})`,
-        comparisonType: 'peer-proxy',
-        source: 'AMFI via MFAPI',
-        retrievedAt: results[0]?.benchmark.retrievedAt,
-        periodStart: results[0]?.benchmark.periodStart,
-        periodEnd: results[0]?.benchmark.periodEnd,
-      });
-    }).catch((error: unknown) => {
-      if (cancelled) return;
-      setPeerState({
-        status: 'error',
-        values: [],
-        sampleSize: 0,
-        message: error instanceof Error ? error.message : 'Peer comparison is unavailable right now.',
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-    // comparisonSignature captures category and allocation changes without
-    // restarting a catalog request on unrelated plan updates.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perfScope, perfRange, navs, comparisonSignature, selectedBenchmark?.id, isAggregateScope]);
-
-  useEffect(() => {
-    if (!isAggregateScope || comparisonTimestamps.length < 2) {
-      setTriState({ status: 'idle', values: [] });
-      return;
-    }
-    if (!portfolioBenchmark.allocations.length) {
+    if (!benchmarkWeights.length) {
       setTriState({
         status: 'error',
         values: [],
-        message: 'No holdings match a designated benchmark yet.',
+        message: 'No designated TRI benchmark is available for this selection.',
       });
       return;
     }
     let cancelled = false;
-    setTriState({ status: 'loading', values: [], label: 'Blended TRI benchmark' });
-    void Promise.all(portfolioBenchmark.allocations.map(async (allocation) => ({
-      allocation,
-      benchmark: await fetchTriBenchmark(allocation.id, comparisonTimestamps),
+    setTriState({ status: 'loading', values: [], label: isAggregateScope ? 'Custom blended benchmark' : selectedBenchmark?.indexName });
+    void Promise.all(benchmarkWeights.map(async (weight) => ({
+      weight,
+      benchmark: await fetchTriBenchmark(weight.id, comparisonTimestamps),
     }))).then((results) => {
       if (cancelled) return;
+      const simulated = simulatedBenchmarkXirrSeries(
+        scopeFunds.flatMap((fund) => fund.transactions),
+        results.map(({ weight, benchmark }) => ({ points: benchmark.points, weight: weight.weight })),
+        comparisonTimestamps,
+        openingValue,
+      );
       const retrievedAt = results
         .map(({ benchmark }) => benchmark.retrievedAt)
         .sort()[0];
       setTriState({
         status: 'ready',
-        values: weightedSeriesAverage(results.map(({ allocation, benchmark }) => ({
-          values: benchmark.values,
-          weight: allocation.currentValue,
-        }))),
-        label: 'Blended TRI benchmark',
-        allocationLabel: results
-          .map(({ allocation }) => `${allocation.categoryLabel} ${(allocation.blendWeight * 100).toFixed(1)}%`)
-          .join(' · '),
-        coveragePct: portfolioBenchmark.coveragePct,
+        values: simulated.values,
+        returnPct: simulated.returnPct,
+        label: isAggregateScope ? 'Custom blended benchmark' : selectedBenchmark?.indexName,
+        allocationLabel: isAggregateScope
+          ? results.map(({ weight }) => `${weight.label} ${(weight.weight * 100).toFixed(1)}%`).join(' · ')
+          : undefined,
+        coveragePct: isAggregateScope ? portfolioBenchmark.coveragePct : 100,
         source: 'NSE Indices Limited',
         retrievedAt,
         periodStart: new Date(comparisonTimestamps[0]).toISOString(),
@@ -451,15 +333,15 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
       setTriState({
         status: 'error',
         values: [],
-        label: 'Blended TRI benchmark',
-        message: error instanceof Error ? error.message : 'The blended TRI benchmark is unavailable right now.',
+        label: isAggregateScope ? 'Custom blended benchmark' : selectedBenchmark?.indexName,
+        message: error instanceof Error ? error.message : 'The simulated benchmark is unavailable right now.',
       });
     });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perfScope, perfRange, portfolioBenchmarkSignature, isAggregateScope]);
+  }, [perfScope, perfRange, portfolioBenchmarkSignature, isAggregateScope, comparisonSignature, navs, selectedBenchmark?.id]);
 
   function addFund(match: SchemeMatch, category: MFCategory, sip?: { amount: number; dayOfMonth: number; startDate: string }) {
     const id = newId();
@@ -527,15 +409,10 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
             <div className="ft-trend">
               <div className="ft-trend__head">
                 <span className="ft-trend__title">Performance</span>
-                {isAggregateScope && comparisonTrend.length >= 2 && (
+                {comparisonTrend.length >= 2 && (
                   <span className={`ft-trend__delta ${perfDelta > 0 ? 'ft-mf__pos' : perfDelta < 0 ? 'ft-mf__neg' : ''}`}>
                     {perfDelta > 0 ? '\u25b2' : perfDelta < 0 ? '\u25bc' : '\u25a0'} {formatINR(Math.abs(perfDelta))}{' '}
                     <small>({perfPct >= 0 ? '+' : ''}{perfPct.toFixed(1)}%)</small>
-                  </span>
-                )}
-                {!isAggregateScope && ownIndex.sampleSize > 0 && (
-                  <span className={`ft-trend__delta ${comparisonDelta > 0 ? 'ft-mf__pos' : comparisonDelta < 0 ? 'ft-mf__neg' : ''}`}>
-                    {comparisonDelta >= 0 ? '+' : ''}{comparisonDelta.toFixed(1)}%
                   </span>
                 )}
               </div>
@@ -550,16 +427,9 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
                   {activeCount > 0 && <option value="cohort:sip">SIP funds</option>}
                   {inactiveCount > 0 && <option value="cohort:non-sip">Non-SIP funds</option>}
                 </optgroup>
-                {benchmarkScopes.length > 0 && <optgroup label="Benchmark categories">
-                  {benchmarkScopes.map((benchmarkId) => (
-                    <option key={benchmarkId} value={`benchmark:${benchmarkId}`}>
-                      {MF_BENCHMARKS[benchmarkId].categoryLabel}
-                    </option>
-                  ))}
-                </optgroup>}
-                {fallbackCategories.length > 0 && <optgroup label="Other categories">
-                  {fallbackCategories.map((category) => (
-                    <option key={category.value} value={`category:${category.value}`}>{category.label}</option>
+                {categoryScopes.length > 0 && <optgroup label="Categories">
+                  {categoryScopes.map((category) => (
+                    <option key={category.id} value={`category:${category.id}`}>{category.label}</option>
                   ))}
                 </optgroup>}
                 <optgroup label="Funds">
@@ -572,75 +442,38 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               </div>
               {perfMode === 'returns' && (
                 <div className="ft-trend__returns" aria-label="Selected-period returns">
-                  <span><b>XIRR</b> {fmtPct(xirrSeries.returnPct)}</span>
-                  <span><b>TWRR</b> {fmtPct(twrrSeries.returnPct)}</span>
-                  {isAggregateScope && triState.status === 'ready' && (
-                    <>
-                      <span><b>Blended TRI</b> {fmtPct(blendedReturn)}</span>
-                      <span><b>Alpha (TWRR)</b> {fmtPct(alpha)}</span>
-                    </>
-                  )}
-                  {!isAggregateScope && peerState.status === 'ready' && (
-                    <span><b>{peerState.label ?? 'Peer proxy'}</b> {fmtPct(peerReturnValues[peerReturnValues.length - 1] ?? null)}</span>
-                  )}
+                  <span><b>Your XIRR</b> {fmtPct(xirrSeries.returnPct)}</span>
+                  <span><b>Benchmark XIRR</b> {fmtPct(triState.status === 'ready' ? triState.returnPct ?? null : null)}</span>
                 </div>
               )}
-              <LineChart
-                key={`${perfScope}:${perfMode}`}
-                labels={comparisonTrend.map((p) => trendLabel(p.t))}
-                series={perfMode === 'value'
-                  ? isAggregateScope
-                    ? [
-                        { label: 'Value', color: '#6366f1', values: comparisonTrend.map((p) => p.value) },
-                        { label: 'Invested', color: '#94a3b8', values: comparisonTrend.map((p) => p.invested), dashed: true },
-                      ]
-                    : [
-                        { label: comparisonLabel, color: '#6366f1', values: ownIndex.values },
-                        ...(peerState.status === 'ready'
-                          ? [{ label: peerState.label ?? `AMFI peer proxy (${peerState.sampleSize})`, color: '#14b8a6', values: peerState.values, dashed: true }]
-                          : []),
-                      ]
-                  : [
-                      { label: 'XIRR', color: '#6366f1', values: xirrSeries.values },
-                      { label: 'TWRR', color: '#f59e0b', values: twrrSeries.values, dashed: true },
-                      ...(isAggregateScope && triState.status === 'ready'
-                        ? [{ label: 'Blended TRI', color: '#14b8a6', values: triReturnValues, dashed: true }]
-                        : []),
-                      ...(!isAggregateScope && peerState.status === 'ready'
-                        ? [{ label: peerState.label ?? `AMFI peer proxy (${peerState.sampleSize})`, color: '#14b8a6', values: peerReturnValues, dashed: true }]
-                        : []),
-                    ]}
-                height={170}
-                valueFormat={perfMode === 'returns' ? 'percent' : isAggregateScope ? 'inr' : 'index'}
-                emptyHint="Add a fund and its performance will chart here, back to your first transaction."
-              />
-              {!isAggregateScope && peerState.status === 'loading' && (
-                <p className="ft-trend__peerstatus">{peerState.message ?? 'Loading comparison…'}</p>
+              {perfMode === 'value' && (
+                <LineChart
+                  key={`${perfScope}:${perfMode}`}
+                  labels={comparisonTrend.map((p) => trendLabel(p.t))}
+                  series={[
+                    { label: 'Value', color: '#6366f1', values: comparisonTrend.map((p) => p.value) },
+                    { label: 'Invested', color: '#94a3b8', values: comparisonTrend.map((p) => p.invested), dashed: true },
+                  ]}
+                  height={170}
+                  valueFormat="inr"
+                  emptyHint="Add a fund and its performance will chart here, back to your first transaction."
+                />
               )}
-              {!isAggregateScope && peerState.status === 'error' && (
-                <p className="ft-trend__peerstatus ft-trend__peerstatus--error">{peerState.message}</p>
+              {perfMode === 'returns' && triState.status === 'loading' && (
+                <p className="ft-trend__peerstatus">Simulating the same cash flows in the benchmark…</p>
               )}
-              {!isAggregateScope && peerState.status === 'ready' && perfMode === 'returns' && (
-                <p className="ft-trend__source">
-                  {peerState.comparisonType === 'official-tri'
-                    ? `Designated benchmark: ${peerState.label}.`
-                    : 'Category peer proxy, not an official category index.'}
-                  {' '}Source: {peerState.source}; {fmtDate(peerState.periodStart)} to {fmtDate(peerState.periodEnd)}; retrieved {fmtDate(peerState.retrievedAt)}.
-                </p>
-              )}
-              {isAggregateScope && perfMode === 'returns' && triState.status === 'loading' && (
-                <p className="ft-trend__peerstatus">Building your current-value-weighted benchmark…</p>
-              )}
-              {isAggregateScope && perfMode === 'returns' && triState.status === 'error' && (
+              {perfMode === 'returns' && triState.status === 'error' && (
                 <p className="ft-trend__peerstatus ft-trend__peerstatus--error">{triState.message}</p>
               )}
-              {isAggregateScope && perfMode === 'returns' && triState.status === 'ready' && (
+              {perfMode === 'returns' && triState.status === 'ready' && (
                 <p className="ft-trend__source">
-                  Current-value weights: {triState.allocationLabel}.{' '}
+                  {isAggregateScope
+                    ? `Custom benchmark weights: ${triState.allocationLabel}. `
+                    : `Designated benchmark: ${triState.label}. `}
                   {(triState.coveragePct ?? 0) < 99.95
-                    ? `Mapped coverage ${(triState.coveragePct ?? 0).toFixed(1)}%; unsupported holdings are excluded from the blend. `
+                    ? `Mapped coverage ${(triState.coveragePct ?? 0).toFixed(1)}%. `
                     : ''}
-                  Source: {triState.source}; {fmtDate(triState.periodStart)} to {fmtDate(triState.periodEnd)}; snapshots retrieved {fmtDate(triState.retrievedAt)}.
+                  Same dated cash flows simulated in TRI. Source: {triState.source}; {fmtDate(triState.periodStart)} to {fmtDate(triState.periodEnd)}.
                 </p>
               )}
               <div className="ft-trend__foot">
@@ -658,14 +491,8 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
                 </div>
                 <span className="ft-trend__baseline">
                   {perfMode === 'value'
-                    ? isAggregateScope
-                      ? '– – Invested'
-                      : peerState.status === 'ready'
-                        ? `– – ${peerState.label ?? `AMFI peer proxy (${peerState.sampleSize})`} · base 100`
-                        : 'Base 100'
-                    : isAggregateScope
-                      ? '– – TWRR / blended TRI'
-                      : `– – TWRR / ${peerState.label ?? 'comparison'}`}
+                    ? '– – Invested'
+                    : 'Annualized · same dated cash flows'}
                 </span>
               </div>
             </div>

@@ -44,6 +44,7 @@ describe('parseTriRows', () => {
       source: 'NSE Indices Limited',
       values: [100, 101],
     });
+    expect(benchmark.points.map((point) => point.nav)).toEqual([202, 200]);
   });
 
   it('rejects a snapshot whose index identity does not match the requested benchmark', async () => {

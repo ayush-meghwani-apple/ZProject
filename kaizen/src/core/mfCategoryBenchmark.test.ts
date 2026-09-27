@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { designatedBenchmarkForFund, getMfBenchmarkAllocation } from './mfCategoryBenchmark';
+import { benchmarkCategoryForFund, designatedBenchmarkForFund, getMfBenchmarkAllocation } from './mfCategoryBenchmark';
 import type { MFCategory, MutualFundHolding } from '../types/models';
 
 function fund(name: string, category: MFCategory, schemeCategory?: string): MutualFundHolding {
@@ -28,8 +28,8 @@ describe('designatedBenchmarkForFund', () => {
     expect(designatedBenchmarkForFund(fund(name, category, schemeCategory))?.id).toBe(expected);
   });
 
-  it('does not classify an active large-cap fund as a Nifty 50 index fund', () => {
-    expect(designatedBenchmarkForFund(fund('Example Large Cap Fund', 'largecap', 'Equity Scheme - Large Cap Fund'))).toBeNull();
+  it('uses Nifty 50 TRI for a standard active large-cap fund', () => {
+    expect(designatedBenchmarkForFund(fund('Example Large Cap Fund', 'largecap', 'Equity Scheme - Large Cap Fund'))?.id).toBe('nifty-50');
   });
 
   it('does not classify a Nifty 50 factor index as the standard Nifty 50 index', () => {
@@ -38,6 +38,24 @@ describe('designatedBenchmarkForFund', () => {
 
   it('does not let a legacy user bucket override an unrelated official category', () => {
     expect(designatedBenchmarkForFund(fund('Franklin US Opportunities Fund', 'midcap', 'Other Scheme - FoF Overseas'))).toBeNull();
+  });
+});
+
+describe('benchmarkCategoryForFund', () => {
+  it('keeps Flexi and Multi Cap in separate benchmark categories', () => {
+    const flexi = benchmarkCategoryForFund(fund('Parag Parikh Flexi Cap Fund', 'flexicap', 'Equity Scheme - Flexi Cap Fund'));
+    const multi = benchmarkCategoryForFund(fund('Quant Multi Cap Fund', 'flexicap', 'Equity Scheme - Multi Cap Fund'));
+
+    expect([flexi?.id, flexi?.benchmark.id]).toEqual(['flexicap', 'nifty-500']);
+    expect([multi?.id, multi?.benchmark.id]).toEqual(['multicap', 'nifty-500-multicap-50-25-25']);
+  });
+
+  it('groups standard and equal-weight funds into the Nifty 50 large-cap segment', () => {
+    const standard = benchmarkCategoryForFund(fund('Example Large Cap Fund', 'largecap', 'Equity Scheme - Large Cap Fund'));
+    const equalWeight = benchmarkCategoryForFund(fund('DSP Nifty 50 Equal Weight Index Fund', 'largecap', 'Other Scheme - Index Funds'));
+
+    expect([standard?.id, standard?.benchmark.id]).toEqual(['largecap', 'nifty-50']);
+    expect([equalWeight?.id, equalWeight?.benchmark.id]).toEqual(['largecap', 'nifty-50']);
   });
 });
 

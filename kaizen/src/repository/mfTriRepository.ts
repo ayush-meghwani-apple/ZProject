@@ -5,6 +5,7 @@ import type { NavPoint } from '../core/amfi';
 export interface TriBenchmark {
   benchmarkId: MfBenchmarkId;
   indexName: string;
+  points: NavPoint[];
   values: (number | null)[];
   source: 'NSE Indices Limited';
   periodStart: string;
@@ -54,11 +55,13 @@ export async function fetchTriBenchmark(
   ) {
     throw new Error(`${definition.indexName} snapshot is invalid.`);
   }
-  const values = normalizedNavSeries(parseTriRows(snapshot.rows), timestamps);
+  const points = parseTriRows(snapshot.rows);
+  const values = normalizedNavSeries(points, timestamps);
   if (!values.some((value) => value != null)) throw new Error(`${definition.indexName} has no data for this period.`);
   return {
     benchmarkId,
     indexName: definition.indexName,
+    points,
     values,
     source: snapshot.source,
     periodStart: new Date(timestamps[0]).toISOString(),
