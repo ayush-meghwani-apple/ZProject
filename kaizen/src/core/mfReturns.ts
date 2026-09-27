@@ -3,9 +3,8 @@
 //
 // The right way to measure the return of a fund you drip money into (a SIP) is
 // XIRR: the single annualized rate that makes all your dated cash flows net to
-// zero. We also expose CAGR (annualized over the money-weighted average holding
-// period) and the plain absolute return, and aggregate all three per fund, per
-// category and across the whole MF portfolio.
+// zero. The UI uses this consistently per fund, per category and across the
+// whole MF portfolio.
 
 import type { MFCategory, MFTransaction, MutualFundHolding } from '../types/models';
 import { navOnOrBefore, type NavPoint } from './amfi';
@@ -177,7 +176,7 @@ export interface GroupSummary<K> {
 
 /** Pool several funds into one summary. Each fund's current value uses its OWN
  *  NAV (funds have different NAVs), so we pass the summed value as an override
- *  while pooling every transaction for the XIRR/CAGR cash-flow timeline. */
+ *  while pooling every transaction for the XIRR cash-flow timeline. */
 export function poolSummary(funds: MutualFundHolding[], asOf: Date = new Date()): ReturnSummary {
   const txns = funds.flatMap((f) => f.transactions);
   const value = funds.reduce((s, f) => s + fundValue(f), 0);

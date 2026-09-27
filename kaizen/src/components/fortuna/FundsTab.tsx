@@ -6,7 +6,6 @@ import { dateInputToIso, dateInputValue, formatINR, newId, now } from '../../cor
 import { fetchNavHistoryWithMeta, latestNav, searchSchemes, type SchemeMatch, type NavPoint } from '../../core/amfi';
 import {
   byCategory,
-  filterFundsBySipScope,
   fundSummary,
   mfPortfolioValueAt,
   moneyWeightedReturnSeries,
@@ -237,17 +236,12 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
     .map(benchmarkCategoryForFund)
     .filter((category) => category != null)
     .map((category) => [category.id, category])).values()];
-  const sipScope = perfScope === 'cohort:sip'
-    ? 'sip'
-    : perfScope === 'cohort:non-sip'
-      ? 'non-sip'
-      : 'all';
-  const isAggregateScope = perfScope === 'portfolio' || perfScope.startsWith('cohort:');
+  const isAggregateScope = perfScope === 'portfolio';
   const scopeFunds = perfScope.startsWith('fund:')
     ? funds.filter((fund) => fund.id === perfScope.slice(5))
     : perfScope.startsWith('category:')
       ? funds.filter((fund) => benchmarkCategoryForFund(fund)?.id === perfScope.slice(9))
-      : filterFundsBySipScope(funds, sipScope);
+      : funds;
   const portfolioBenchmark = getMfBenchmarkAllocation(scopeFunds);
   const portfolioBenchmarkSignature = portfolioBenchmark.allocations
     .map((allocation) => `${allocation.id}:${allocation.currentValue}`)
@@ -426,8 +420,6 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
               >
                 <optgroup label="Portfolio">
                   <option value="portfolio">Overall</option>
-                  {activeCount > 0 && <option value="cohort:sip">SIP funds</option>}
-                  {inactiveCount > 0 && <option value="cohort:non-sip">Non-SIP funds</option>}
                 </optgroup>
                 {categoryScopes.length > 0 && <optgroup label="Categories">
                   {categoryScopes.map((category) => (
@@ -522,7 +514,7 @@ export default function FundsTab({ plan, update }: FortunaTabProps) {
         {funds.length === 0 && !adding && (
           <div className="ft-mf__empty">
             <AppIcon name="investments" size={30} />
-            <p>Track mutual funds with live NAVs and true XIRR/CAGR returns. Confirmed ET Money SIPs import from Gmail with their exact units and NAV.</p>
+            <p>Track mutual funds with live NAVs and compare XIRR at the fund, category, and overall portfolio levels. Confirmed ET Money SIPs import from Gmail with their exact units and NAV.</p>
           </div>
         )}
 

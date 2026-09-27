@@ -94,7 +94,7 @@ export interface ValuePoint {
 export function mfValueSeries(
   funds: MutualFundHolding[],
   navs: Record<number, NavPoint[]>,
-  range: TrendRange = '1Y',
+  range: TrendRange = '3Y',
   asOf: Date = new Date(),
   maxPoints = 48,
 ): ValuePoint[] {

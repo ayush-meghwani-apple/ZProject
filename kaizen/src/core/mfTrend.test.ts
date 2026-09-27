@@ -60,6 +60,17 @@ describe('mfMonthlyTrend', () => {
 });
 
 describe('mfValueSeries', () => {
+  it('uses a three-year range by default', () => {
+    const f = fund({
+      transactions: [
+        { id: 'old', date: '2020-01-01T00:00:00.000Z', amount: 1000, units: 100, nav: 10, kind: 'lumpsum' },
+      ],
+    });
+    const points = mfValueSeries([f], {}, undefined, new Date('2026-09-06T00:00:00.000Z'), 2);
+
+    expect(points[0]?.t).toBe(new Date('2023-09-06T00:00:00.000Z').getTime());
+  });
+
   it('shows a newly confirmed SIP on its real date in the seven-day range', () => {
     const f = fund({
       transactions: [
