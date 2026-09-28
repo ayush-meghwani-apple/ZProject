@@ -6952,8 +6952,9 @@ button.ft-settings__card {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  align-content: flex-start;
   gap: 2px 8px;
-  min-height: 20px;
+  height: 32px;
   margin-bottom: 4px;
   font-size: 11px;
   line-height: 1.35;
