@@ -211,6 +211,17 @@ describe('reconcileMfSipActivity', () => {
 describe('selectMfSchemeMatch', () => {
   it.each([
     [
+      'Edelweiss Mid Cap Direct Plan-Growth',
+      140228,
+      [
+        { schemeCode: 140172, schemeName: 'Edelweiss Large & Mid Cap Fund - Regular Plan - Growth' },
+        { schemeCode: 140175, schemeName: 'Edelweiss Large & Mid Cap Fund - Direct Plan - Growth' },
+        { schemeCode: 140225, schemeName: 'Edelweiss Mid Cap Fund - Regular Plan - Growth' },
+        { schemeCode: 140227, schemeName: 'Edelweiss Mid Cap Fund - Direct Plan - IDCW' },
+        { schemeCode: 140228, schemeName: 'Edelweiss Mid Cap Fund - Direct Plan - Growth' },
+      ],
+    ],
+    [
       'Invesco India Small Cap Fund Direct-Growth',
       145137,
       [

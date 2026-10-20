@@ -2,6 +2,7 @@ import { searchSchemes } from '../core/amfi';
 import {
   type MfEmailCandidate,
   type MfSchemeResolution,
+  findExistingMfFund,
   mergeMfEmailCandidates,
   normalizeMfSchemeName,
   reconcileMfSipActivity,
@@ -90,15 +91,18 @@ async function runMonthSync(year: number, month: number, interactive: boolean): 
     });
 
     const plan = await PlannerRepository.load();
-    const existingNames = new Set((plan.mutualFunds ?? []).map((fund) => normalizeMfSchemeName(fund.name)));
+    const funds = (plan.mutualFunds ??= []);
     const resolutions: MfSchemeResolution[] = [];
     for (const candidate of candidates) {
       const normalized = normalizeMfSchemeName(candidate.parsed.schemeName);
-      if (existingNames.has(normalized) || resolutions.some((item) => normalizeMfSchemeName(item.emailSchemeName) === normalized)) continue;
+      if (
+        findExistingMfFund(candidate.parsed.schemeName, funds)
+        || resolutions.some((item) => normalizeMfSchemeName(item.emailSchemeName) === normalized)
+      ) continue;
       resolutions.push(await resolveScheme(candidate.parsed.schemeName));
     }
 
-    const result = mergeMfEmailCandidates((plan.mutualFunds ??= []), candidates, resolutions);
+    const result = mergeMfEmailCandidates(funds, candidates, resolutions);
     reconcileMfSipActivity(plan.mutualFunds, year, month);
     if (result.imported > 0 || result.removedGenerated > 0) captureDailySnapshot(plan);
     await PlannerRepository.save(plan);

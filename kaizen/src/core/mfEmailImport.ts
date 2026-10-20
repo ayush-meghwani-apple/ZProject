@@ -42,7 +42,8 @@ function schemeMatchScore(query: string, match: MfSchemeMatch): number {
   wanted.forEach((token) => {
     if (actual.has(token)) shared++;
   });
-  return wanted.size ? shared / wanted.size : 0;
+  const union = new Set([...wanted, ...actual]).size;
+  return union ? shared / union : 0;
 }
 
 function matchesEmailVariant(emailSchemeName: string, candidateName: string): boolean {
@@ -73,7 +74,7 @@ export function selectMfSchemeMatch(
   return best.match;
 }
 
-function findExistingFund(
+export function findExistingMfFund(
   emailSchemeName: string,
   funds: MutualFundHolding[],
 ): MutualFundHolding | undefined {
@@ -151,7 +152,7 @@ export function mergeMfEmailCandidates(
 
     const normalized = normalizeMfSchemeName(candidate.parsed.schemeName);
     let fund = funds.find((item) => normalizeMfSchemeName(item.name) === normalized)
-      ?? findExistingFund(candidate.parsed.schemeName, funds);
+      ?? findExistingMfFund(candidate.parsed.schemeName, funds);
     if (!fund) {
       const resolution = resolutionMap.get(normalized);
       if (!resolution) throw new Error(`No AMFI match found for ${candidate.parsed.schemeName}.`);
