@@ -26,7 +26,7 @@ import {
 } from '../core/gmailSettings';
 import { guessCategory } from '../core/merchantCategory';
 import { detectSalary, SALARY_MIN_AMOUNT } from '../core/salaryDetect';
-import { gmailApiFailure } from '../core/gmailApiError';
+import { gmailApiFailure, isGmailRateLimit, retryAfterMs } from '../core/gmailApiError';
 import { duplicateGmailExpenseIds, gmailExpenseKey } from '../core/gmailExpenseDedupe';
 import { dateInputValue } from '../core/util';
 import { ExpenseRepository } from './expenseRepository';
@@ -40,8 +40,10 @@ const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const PARSER_REVISION_KEY = 'gmail:parserRevision';
 const PARSER_REVISION = '7';
 const API_TIMEOUT_MS = 20_000;
-const FETCH_CONCURRENCY = 3;
+const FETCH_CONCURRENCY = 2;
 const API_RETRY_DELAYS_MS = [1_000, 2_000, 4_000];
+const RATE_LIMIT_RETRY_DELAYS_MS = [15_000, 30_000, 60_000];
+let gmailQuotaPausedUntil = 0;
 
 // Minimal shape of the GIS token client we rely on (the library is loaded at
 // runtime from Google, so we declare only what we use).
@@ -236,10 +238,16 @@ function retryDelay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms + Math.random() * 250));
 }
 
+async function waitForGmailQuota(): Promise<void> {
+  const waitMs = gmailQuotaPausedUntil - Date.now();
+  if (waitMs > 0) await retryDelay(waitMs);
+}
+
 async function api<T>(path: string, attempt = 0): Promise<T> {
   if (!isConnected()) {
     throw new Error('Gmail access expired. Tap Sync now once to reconnect.');
   }
+  await waitForGmailQuota();
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   let res: Response;
@@ -269,8 +277,20 @@ async function api<T>(path: string, attempt = 0): Promise<T> {
     }
     const failure = gmailApiFailure(res.status, body);
     if (failure.retryable && attempt < API_RETRY_DELAYS_MS.length) {
-      await retryDelay(API_RETRY_DELAYS_MS[attempt]);
+      if (isGmailRateLimit(res.status, failure.reason)) {
+        const delay = Math.max(
+          RATE_LIMIT_RETRY_DELAYS_MS[attempt],
+          retryAfterMs(res.headers.get('Retry-After')),
+        );
+        gmailQuotaPausedUntil = Math.max(gmailQuotaPausedUntil, Date.now() + delay);
+        await waitForGmailQuota();
+      } else {
+        await retryDelay(API_RETRY_DELAYS_MS[attempt]);
+      }
       return api<T>(path, attempt + 1);
+    }
+    if (isGmailRateLimit(res.status, failure.reason)) {
+      throw new Error("Gmail's per-minute query quota is still busy. Wait one minute and sync again.");
     }
     const reason = failure.reason ? ` (${failure.reason})` : '';
     throw new Error(`Gmail: ${failure.message}${reason}.`);
