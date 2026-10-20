@@ -55,6 +55,46 @@ describe('parseEtMoneyInvestmentEmail', () => {
     });
   });
 
+  it.each([
+    ['Edelweiss Mid Cap Direct Plan-Growth', '₹18,000', '147.0550', '₹122.40', '91026243894', '101-0220461-0083506', 18000],
+    ['Invesco India Small Cap Fund Direct-Growth', '₹15,000', '287.0120', '₹52.26', '31053109112', '101-0220461-0083306', 15000],
+    ['Quant Flexi Cap Fund Direct-Growth', '₹12,000', '102.3370', '₹117.25', '5102963484', '101-0220461-0083461', 12000],
+    ['DSP Nifty 50 Equal Weight Index Fund Direct-Growth', '₹15,000', '583.2200', '₹25.72', '11520806/40', '101-0220461-0083365', 15000],
+  ])('parses the October SIP confirmation for %s', (
+    schemeName,
+    amount,
+    units,
+    nav,
+    folio,
+    orderNumber,
+    expectedAmount,
+  ) => {
+    const parsed = parseEtMoneyInvestmentEmail({
+      from: 'ET Money <help@etmoneycare.com>',
+      subject: 'Your savings just went up',
+      body: `
+        SIP of ${amount} added to your savings
+        Your monthly SIP amount has been invested.
+        Scheme name ${schemeName}
+        Amount ${amount}
+        Units ${units}
+        Price(NAV) ${nav}
+        Folio No. ${folio}
+        Date of Investment Oct. 1st, 2026
+        Order Number ${orderNumber}
+        EOP Code EOP-0002
+      `,
+    });
+
+    expect(parsed).toMatchObject({
+      schemeName,
+      amount: expectedAmount,
+      investmentDate: '2026-10-01',
+      orderNumber,
+      kind: 'sip',
+    });
+  });
+
   it('rejects non-ET Money and unrelated mail', () => {
     expect(parseEtMoneyInvestmentEmail({ from: 'Bank <alerts@example.com>', subject: '', body: '' })).toBeNull();
     expect(parseEtMoneyInvestmentEmail({ from: 'ET Money <help@etmoneycare.com>', subject: 'Statement', body: 'Statement ready' })).toBeNull();

@@ -27,7 +27,7 @@ import {
 import { guessCategory } from '../core/merchantCategory';
 import { detectSalary, SALARY_MIN_AMOUNT } from '../core/salaryDetect';
 import { gmailApiFailure } from '../core/gmailApiError';
-import { gmailExpenseKey } from '../core/gmailExpenseDedupe';
+import { duplicateGmailExpenseIds, gmailExpenseKey } from '../core/gmailExpenseDedupe';
 import { dateInputValue } from '../core/util';
 import { ExpenseRepository } from './expenseRepository';
 import { CategoryRepository } from './categoryRepository';
@@ -38,7 +38,7 @@ const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const PARSER_REVISION_KEY = 'gmail:parserRevision';
-const PARSER_REVISION = '6';
+const PARSER_REVISION = '7';
 const API_TIMEOUT_MS = 20_000;
 const FETCH_CONCURRENCY = 3;
 const API_RETRY_DELAYS_MS = [1_000, 2_000, 4_000];
@@ -406,7 +406,7 @@ async function prepareParserRevision(): Promise<boolean> {
   const falsePositives = expenses.filter(
     (expense) =>
       expense.autoImported &&
-      /no\s+further\s+cibil\s+check\s+required|pre[-\s]?approved\s+personal\s+loan/i.test(
+      /no\s+further\s+cibil\s+check\s+required|pre[-\s]?approved\s+personal\s+loan|upi\s+payments\s+made\s+simpler\s+with\s+biometric\s+authentication/i.test(
         expense.rawText ?? '',
       ),
   );
@@ -475,6 +475,7 @@ export interface SyncState {
 }
 let syncState: SyncState = { phase: 'idle', message: '' };
 let autoSyncPromise: Promise<ImportResult> | null = null;
+let importQueue: Promise<void> = Promise.resolve();
 const syncListeners = new Set<(s: SyncState) => void>();
 function emitSync(next: SyncState) {
   syncState = next;
@@ -488,6 +489,12 @@ export function subscribeSync(fn: (s: SyncState) => void): () => void {
   return () => {
     syncListeners.delete(fn);
   };
+}
+
+function serializeImport<T>(work: () => Promise<T>): Promise<T> {
+  const result = importQueue.then(work, work);
+  importQueue = result.then(() => undefined, () => undefined);
+  return result;
 }
 function summarize(r: ImportResult): string {
   if (r.imported === 0 && r.salary === 0) {
@@ -520,13 +527,17 @@ export async function importCandidates(
   candidates: Candidate[],
   opts: { repairExisting?: boolean } = {},
 ): Promise<ImportResult> {
-  const [categories, subcategories, aliases, methods, existingExpenses] = await Promise.all([
+  const [categories, subcategories, aliases, methods, loadedExpenses] = await Promise.all([
     CategoryRepository.getCategories(),
     CategoryRepository.getSubcategories(),
     CategoryRepository.getAliases(),
     PaymentMethodRepository.list(),
     ExpenseRepository.getExpenses(),
   ]);
+  const duplicateExpenseIds = duplicateGmailExpenseIds(loadedExpenses);
+  for (const id of duplicateExpenseIds) await ExpenseRepository.deleteExpense(id);
+  const duplicateIdSet = new Set(duplicateExpenseIds);
+  const existingExpenses = loadedExpenses.filter((expense) => !duplicateIdSet.has(expense.id));
   const methodId = new Map(methods.map((m) => [m.name.toLowerCase(), m.id]));
   const expenseByMessageId = new Map(
     existingExpenses.flatMap((expense) =>
@@ -564,7 +575,7 @@ export async function importCandidates(
 
   let imported = 0;
   let skipped = 0;
-  let duplicates = 0;
+  let duplicates = duplicateExpenseIds.length;
   let repaired = 0;
   for (const c of candidates) {
     const p = c.parsed;
@@ -657,6 +668,11 @@ export async function importCandidates(
       markImported(c.id);
       continue;
     }
+    if (knownMessageIds.has(c.id)) {
+      markImported(c.id);
+      duplicates++;
+      continue;
+    }
     if (expenseKey && knownExpenseKeys.has(expenseKey)) {
       markImported(c.id);
       duplicates++;
@@ -721,22 +737,24 @@ export async function syncAndImport(
   days?: number,
   opts: { interactive?: boolean; rescan?: boolean } = {},
 ): Promise<ImportResult> {
-  emitSync({ phase: 'syncing', message: 'Reading emails…' });
-  try {
-    if (!isConnected()) await connect(opts.interactive ?? true);
-    const candidates = await sync(days, { rescan: opts.rescan });
-    const result = await importCandidates(candidates, { repairExisting: opts.rescan });
-    setGmailSettings({ lastSyncAt: new Date().toISOString() });
-    emitSync({
-      phase: 'done',
-      message: opts.rescan ? summarizeRestore(result) : summarize(result),
-      result,
-    });
-    return result;
-  } catch (e) {
-    emitSync({ phase: 'error', message: e instanceof Error ? e.message : 'Sync failed.' });
-    throw e;
-  }
+  return serializeImport(async () => {
+    emitSync({ phase: 'syncing', message: 'Reading emails…' });
+    try {
+      if (!isConnected()) await connect(opts.interactive ?? true);
+      const candidates = await sync(days, { rescan: opts.rescan });
+      const result = await importCandidates(candidates, { repairExisting: opts.rescan });
+      setGmailSettings({ lastSyncAt: new Date().toISOString() });
+      emitSync({
+        phase: 'done',
+        message: opts.rescan ? summarizeRestore(result) : summarize(result),
+        result,
+      });
+      return result;
+    } catch (e) {
+      emitSync({ phase: 'error', message: e instanceof Error ? e.message : 'Sync failed.' });
+      throw e;
+    }
+  });
 }
 
 /**
@@ -801,7 +819,7 @@ async function runAutoSync(): Promise<ImportResult> {
 
 export function autoSync(): Promise<ImportResult> {
   if (autoSyncPromise) return autoSyncPromise;
-  autoSyncPromise = runAutoSync().finally(() => {
+  autoSyncPromise = serializeImport(runAutoSync).finally(() => {
     autoSyncPromise = null;
   });
   return autoSyncPromise;

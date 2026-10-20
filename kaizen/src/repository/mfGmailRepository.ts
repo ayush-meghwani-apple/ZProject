@@ -1,10 +1,11 @@
-import { searchSchemes, type SchemeMatch } from '../core/amfi';
+import { searchSchemes } from '../core/amfi';
 import {
   type MfEmailCandidate,
   type MfSchemeResolution,
   mergeMfEmailCandidates,
   normalizeMfSchemeName,
   reconcileMfSipActivity,
+  selectMfSchemeMatch,
 } from '../core/mfEmailImport';
 import { buildMfMonthQuery, parseEtMoneyInvestmentEmail } from '../core/mfEmailParse';
 import {
@@ -13,6 +14,7 @@ import {
   markMfEmailsHandled,
   setMfGmailSettings,
   MF_EMAIL_IMPORT_START,
+  MF_EMAIL_PARSER_REVISION,
 } from '../core/mfGmailSettings';
 import { getGmailSettings } from '../core/gmailSettings';
 import { captureDailySnapshot } from '../core/planSnapshot';
@@ -50,27 +52,10 @@ function monthOf(date: string): string {
   return date.slice(0, 7);
 }
 
-function scoreMatch(query: string, match: SchemeMatch): number {
-  const wanted = new Set(normalizeMfSchemeName(query).split(' '));
-  const actual = new Set(normalizeMfSchemeName(match.schemeName).split(' '));
-  let shared = 0;
-  wanted.forEach((token) => {
-    if (actual.has(token)) shared++;
-  });
-  return wanted.size ? shared / wanted.size : 0;
-}
-
 async function resolveScheme(emailSchemeName: string): Promise<MfSchemeResolution> {
-  const matches = await searchSchemes(emailSchemeName);
-  const normalized = normalizeMfSchemeName(emailSchemeName);
-  const exact = matches.filter((match) => normalizeMfSchemeName(match.schemeName) === normalized);
-  if (exact.length > 1) throw new Error(`Multiple AMFI matches found for ${emailSchemeName}.`);
-  const ranked = matches
-    .map((match) => ({ match, score: scoreMatch(emailSchemeName, match) }))
-    .sort((a, b) => b.score - a.score || a.match.schemeCode - b.match.schemeCode);
-  const best = exact[0] ?? ranked[0]?.match;
-  const bestScore = best ? scoreMatch(emailSchemeName, best) : 0;
-  if (!best || bestScore < 0.75 || (!exact.length && ranked[1]?.score === bestScore)) {
+  const matches = await searchSchemes(normalizeMfSchemeName(emailSchemeName));
+  const best = selectMfSchemeMatch(emailSchemeName, matches);
+  if (!best) {
     throw new Error(`No confident AMFI match found for ${emailSchemeName}.`);
   }
   return { emailSchemeName, schemeCode: best.schemeCode, schemeName: best.schemeName };
@@ -91,10 +76,11 @@ async function runMonthSync(year: number, month: number, interactive: boolean): 
   try {
     if (!GmailRepository.isConnected()) await GmailRepository.connect(interactive);
     const settings = getMfGmailSettings();
-    const checkpoint = settings.monthCheckpoints[key];
+    const parserChanged = settings.parserRevision !== MF_EMAIL_PARSER_REVISION;
+    const checkpoint = parserChanged ? undefined : settings.monthCheckpoints[key];
     const emails = await GmailRepository.fetchRawEmails(
       buildMfMonthQuery(year, month, checkpoint ? new Date(checkpoint) : undefined),
-      isMfEmailHandled,
+      parserChanged ? () => false : isMfEmailHandled,
     );
     const candidates: MfEmailCandidate[] = emails.flatMap((email) => {
       const parsed = parseEtMoneyInvestmentEmail(email);
@@ -123,6 +109,7 @@ async function runMonthSync(year: number, month: number, interactive: boolean): 
       lastSyncAt: completedAt,
       lastImported: result.imported,
       lastCreatedFunds: result.createdFunds,
+      parserRevision: MF_EMAIL_PARSER_REVISION,
     });
     emit({ phase: 'done', message: summary(result), result });
     return result;

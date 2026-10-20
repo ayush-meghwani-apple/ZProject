@@ -189,6 +189,25 @@ describe('parseTransactionEmail', () => {
     expect(p.kind).toBe('promo');
   });
 
+  it('rejects an SBI biometric UPI promotion that mentions the ₹10,000 limit', () => {
+    const p = parseTransactionEmail({
+      from: 'SBI Card <communication@sbicard.com>',
+      subject: 'UPI Payments made simpler with Biometric Authentication',
+      body: `
+        SKIP THE PIN!
+        Enjoy easier UPI payments with biometric authentication.
+        Authorise transactions of up to ₹10,000 using Face ID or fingerprint,
+        without the need for your UPI PIN.
+        Activate Biometric Authentication in 5 easy steps.
+      `,
+    });
+
+    expect(p.source).toBe('sbicard');
+    expect(p.amount).toBe(10000);
+    expect(p.kind).toBe('promo');
+    expect(p.merchant).toBeNull();
+  });
+
   it('parses an ICICI credit-card alert from icici.bank.in', () => {
     const p = parseTransactionEmail({
       from: 'ICICI Bank <credit_cards@icici.bank.in>',

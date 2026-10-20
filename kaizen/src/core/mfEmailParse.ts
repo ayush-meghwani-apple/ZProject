@@ -56,13 +56,16 @@ export function parseEtMoneyInvestmentEmail(email: RawEmail): ParsedMfInvestment
   if (!kind) return null;
 
   const text = email.body.replace(/\s+/g, ' ').trim();
-  const schemeName = field(text, 'Scheme name', 'Amount');
-  const amountText = field(text, 'Amount', 'Units');
-  const unitsText = field(text, 'Units', 'Price\\s*\\(NAV\\)');
-  const navText = field(text, 'Price\\s*\\(NAV\\)', 'Folio No\\.?');
-  const folio = field(text, 'Folio No\\.?', 'Date of Investment');
-  const dateText = field(text, 'Date of Investment', 'Order Number');
-  const orderNumber = field(text, 'Order Number', 'EOP Code');
+  const detailsStart = text.search(/\bScheme name\s*:?/i);
+  if (detailsStart < 0) return null;
+  const details = text.slice(detailsStart);
+  const schemeName = field(details, 'Scheme name', 'Amount');
+  const amountText = field(details, 'Amount', 'Units');
+  const unitsText = field(details, 'Units', 'Price\\s*\\(NAV\\)');
+  const navText = field(details, 'Price\\s*\\(NAV\\)', 'Folio No\\.?');
+  const folio = field(details, 'Folio No\\.?', 'Date of Investment');
+  const dateText = field(details, 'Date of Investment', 'Order Number');
+  const orderNumber = field(details, 'Order Number', 'EOP Code');
   const investmentDate = dateText ? isoDate(dateText) : null;
 
   if (!schemeName || !amountText || !unitsText || !navText || !folio || !investmentDate || !orderNumber) {

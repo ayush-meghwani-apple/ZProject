@@ -14,6 +14,11 @@ export interface MfSchemeResolution {
   schemeName: string;
 }
 
+export interface MfSchemeMatch {
+  schemeCode: number;
+  schemeName: string;
+}
+
 export interface MfEmailMergeResult {
   imported: number;
   duplicates: number;
@@ -28,6 +33,58 @@ export function normalizeMfSchemeName(name: string): string {
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+function schemeMatchScore(query: string, match: MfSchemeMatch): number {
+  const wanted = new Set(normalizeMfSchemeName(query).split(' '));
+  const actual = new Set(normalizeMfSchemeName(match.schemeName).split(' '));
+  let shared = 0;
+  wanted.forEach((token) => {
+    if (actual.has(token)) shared++;
+  });
+  return wanted.size ? shared / wanted.size : 0;
+}
+
+function matchesEmailVariant(emailSchemeName: string, candidateName: string): boolean {
+  const email = emailSchemeName.toLowerCase();
+  const candidate = candidateName.toLowerCase();
+  if (/\bdirect\b/.test(email) && /\bregular\b/.test(candidate)) return false;
+  if (/\bregular\b/.test(email) && /\bdirect\b/.test(candidate)) return false;
+  if (/\bgrowth\b/.test(email) && /\b(?:idcw|dividend)\b/.test(candidate)) return false;
+  if (/\b(?:idcw|dividend)\b/.test(email) && /\bgrowth\b/.test(candidate)) return false;
+  return true;
+}
+
+export function selectMfSchemeMatch(
+  emailSchemeName: string,
+  matches: MfSchemeMatch[],
+): MfSchemeMatch | null {
+  const compatible = matches.filter((match) => matchesEmailVariant(emailSchemeName, match.schemeName));
+  const normalized = normalizeMfSchemeName(emailSchemeName);
+  const exact = compatible.filter((match) => normalizeMfSchemeName(match.schemeName) === normalized);
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) return null;
+
+  const ranked = compatible
+    .map((match) => ({ match, score: schemeMatchScore(emailSchemeName, match) }))
+    .sort((left, right) => right.score - left.score || left.match.schemeCode - right.match.schemeCode);
+  const best = ranked[0];
+  if (!best || best.score < 0.75 || ranked[1]?.score === best.score) return null;
+  return best.match;
+}
+
+function findExistingFund(
+  emailSchemeName: string,
+  funds: MutualFundHolding[],
+): MutualFundHolding | undefined {
+  const emailTokens = new Set(normalizeMfSchemeName(emailSchemeName).split(' '));
+  const candidates = funds.filter((fund) => {
+    const fundTokens = new Set(normalizeMfSchemeName(fund.name).split(' '));
+    const emailContainsFund = [...fundTokens].every((token) => emailTokens.has(token));
+    const fundContainsEmail = [...emailTokens].every((token) => fundTokens.has(token));
+    return emailContainsFund || fundContainsEmail;
+  });
+  return candidates.length === 1 ? candidates[0] : undefined;
 }
 
 export function inferMfCategory(name: string): MFCategory {
@@ -93,7 +150,8 @@ export function mergeMfEmailCandidates(
     }
 
     const normalized = normalizeMfSchemeName(candidate.parsed.schemeName);
-    let fund = funds.find((item) => normalizeMfSchemeName(item.name) === normalized);
+    let fund = funds.find((item) => normalizeMfSchemeName(item.name) === normalized)
+      ?? findExistingFund(candidate.parsed.schemeName, funds);
     if (!fund) {
       const resolution = resolutionMap.get(normalized);
       if (!resolution) throw new Error(`No AMFI match found for ${candidate.parsed.schemeName}.`);

@@ -2,12 +2,14 @@ const SETTINGS_KEY = 'fortuna:gmail:settings';
 const HANDLED_KEY = 'fortuna:gmail:handledIds';
 
 export const MF_EMAIL_IMPORT_START = '2026-09-01';
+export const MF_EMAIL_PARSER_REVISION = '2';
 
 export interface MfGmailSettings {
   monthCheckpoints: Record<string, string>;
   lastSyncAt: string;
   lastImported: number;
   lastCreatedFunds: number;
+  parserRevision: string;
 }
 
 const DEFAULTS: MfGmailSettings = {
@@ -15,6 +17,7 @@ const DEFAULTS: MfGmailSettings = {
   lastSyncAt: '',
   lastImported: 0,
   lastCreatedFunds: 0,
+  parserRevision: '',
 };
 
 export function getMfGmailSettings(): MfGmailSettings {

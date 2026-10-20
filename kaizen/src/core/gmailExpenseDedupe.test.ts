@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gmailExpenseKey } from './gmailExpenseDedupe';
+import { duplicateGmailExpenseIds, gmailExpenseKey } from './gmailExpenseDedupe';
 
 describe('gmailExpenseKey', () => {
   it('matches identical alerts despite merchant case and spacing differences', () => {
@@ -8,6 +8,45 @@ describe('gmailExpenseKey', () => {
       date: '2026-08-29',
       paymentMethodId: 'icici-card',
       merchant: 'HAPPYBELLYBAKES',
+    });
+
+    describe('duplicateGmailExpenseIds', () => {
+      const base = {
+        amount: 500,
+        date: '2026-10-20T00:00:00.000Z',
+        paymentMethodId: 'sbi-card',
+        note: 'CAFE',
+        autoImported: true,
+        createdAt: '2026-10-20T10:00:00.000Z',
+      };
+
+      it('removes a second row created from the same Gmail message', () => {
+        expect(duplicateGmailExpenseIds([
+          { ...base, id: 'first', gmailMessageId: 'gmail-1' },
+          { ...base, id: 'second', gmailMessageId: 'gmail-1', createdAt: '2026-10-20T10:00:01.000Z' },
+        ])).toEqual(['second']);
+      });
+
+      it('removes an overlapping-sync duplicate with a different message id but the same transaction key', () => {
+        expect(duplicateGmailExpenseIds([
+          { ...base, id: 'first', gmailMessageId: 'gmail-1', gmailTransactionKey: 'sbi|1234|2026-10-20|10:00:00|500.00' },
+          { ...base, id: 'second', gmailMessageId: 'gmail-2', gmailTransactionKey: 'sbi|1234|2026-10-20|10:00:00|500.00' },
+        ])).toEqual(['second']);
+      });
+
+      it('never removes a manually entered expense', () => {
+        expect(duplicateGmailExpenseIds([
+          { ...base, id: 'manual', autoImported: false, gmailMessageId: 'gmail-1' },
+          { ...base, id: 'imported', gmailMessageId: 'gmail-1' },
+        ])).toEqual([]);
+      });
+
+      it('keeps the reviewed copy when duplicate imported rows exist', () => {
+        expect(duplicateGmailExpenseIds([
+          { ...base, id: 'older', gmailMessageId: 'gmail-1' },
+          { ...base, id: 'reviewed', gmailMessageId: 'gmail-1', reviewed: true, createdAt: '2026-10-20T10:00:01.000Z' },
+        ])).toEqual(['older']);
+      });
     });
     const duplicate = gmailExpenseKey({
       amount: 1700,
