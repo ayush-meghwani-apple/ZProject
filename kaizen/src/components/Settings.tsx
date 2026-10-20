@@ -96,7 +96,7 @@ async function checkForUpdates(onStatus: (status: UpdateStatus) => void): Promis
         registration.removeEventListener('updatefound', watchInstalling);
         onStatus('current');
       }
-    }, 2500);
+    }, 8000);
   } catch {
     onStatus('error');
   }

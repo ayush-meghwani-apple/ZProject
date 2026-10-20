@@ -69,7 +69,12 @@ async function bootstrap() {
 // worker then activates the new version and reloads.
 function setupServiceWorkerUpdates() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.ready
+  const scope = import.meta.env.BASE_URL;
+  const workerUrl = `${scope}sw.js?build=${encodeURIComponent(__BUILD_TIME__)}`;
+  navigator.serviceWorker.register(workerUrl, {
+    scope,
+    updateViaCache: 'none',
+  })
     .then((reg) => {
       const check = () => reg.update().catch(() => {});
       check();

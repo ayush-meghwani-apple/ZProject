@@ -17,6 +17,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'faaah.mp3'],
       manifest: {
         name: 'Kaizen',
