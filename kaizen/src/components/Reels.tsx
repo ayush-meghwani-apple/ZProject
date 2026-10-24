@@ -50,6 +50,8 @@ export default function Reels({ version, onChange }: Props) {
   const [cycleId, setCycleId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [methodMenuFor, setMethodMenuFor] = useState<string | null>(null);
+  const [methodFilter, setMethodFilter] = useState('');
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [categoryMenuFor, setCategoryMenuFor] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [noteEditingFor, setNoteEditingFor] = useState<string | null>(null);
@@ -98,6 +100,16 @@ export default function Reels({ version, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
+  useEffect(() => {
+    if (
+      methodFilter
+      && methodFilter !== '__none__'
+      && !methods.some((method) => method.id === methodFilter)
+    ) {
+      setMethodFilter('');
+    }
+  }, [methodFilter, methods]);
+
   // Close an open reel quick-edit menu when tapping elsewhere.
   useEffect(() => {
     if (!methodMenuFor && !categoryMenuFor) return;
@@ -114,16 +126,24 @@ export default function Reels({ version, onChange }: Props) {
   }, [methodMenuFor, categoryMenuFor]);
 
   const reels = useMemo(() => {
-    const list = cycleId ? expenses.filter((e) => e.salaryCycleId === cycleId) : expenses;
+    let list = cycleId ? expenses.filter((e) => e.salaryCycleId === cycleId) : expenses;
+    if (methodFilter === '__none__') {
+      list = list.filter((expense) => !expense.paymentMethodId);
+    } else if (methodFilter) {
+      list = list.filter((expense) => expense.paymentMethodId === methodFilter);
+    }
     return [...list].sort(compareExpensesNewest);
-  }, [expenses, cycleId]);
+  }, [expenses, cycleId, methodFilter]);
 
   const total = useMemo(() => reels.reduce((sum, e) => sum + e.amount, 0), [reels]);
 
   // A permanent “salary credited” marker reel for a cycle started from a salary.
   const viewedCycle = cycles.find((c) => c.id === cycleId);
-  const showSalary = !!viewedCycle?.autoSalary;
-  const reelCount = notes.length + reels.length + (showSalary ? 1 : 0);
+  const filteringByMethod = methodFilter !== '';
+  const visibleNotes = filteringByMethod ? [] : notes;
+  const showSalary = !filteringByMethod && !!viewedCycle?.autoSalary;
+  const reelCount = visibleNotes.length + reels.length + (showSalary ? 1 : 0);
+  const scrollKey = `${cycleId ?? 'all'}:${methodFilter || 'all'}`;
   const cycleIdx = cycles.findIndex((c) => c.id === cycleId);
   // cycles are sorted newest-first: older = higher index, newer = lower index.
   const hasOlder = cycles.length > 1 && cycleIdx >= 0;
@@ -136,7 +156,7 @@ export default function Reels({ version, onChange }: Props) {
     if (!cycleId) return;
     const el = trackRef.current;
     if (!el) return;
-    const target = Math.min(reelScrollPos[cycleId] ?? 0, Math.max(0, reelCount - 1));
+    const target = Math.min(reelScrollPos[scrollKey] ?? 0, Math.max(0, reelCount - 1));
     let timer = 0;
     const restore = () => {
       const h = el.clientHeight;
@@ -151,7 +171,7 @@ export default function Reels({ version, onChange }: Props) {
     restore();
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cycleId]);
+  }, [cycleId, methodFilter]);
 
   function onScroll() {
     const el = trackRef.current;
@@ -169,7 +189,7 @@ export default function Reels({ version, onChange }: Props) {
       goOlder(true);
       return;
     }
-    if (cycleId) reelScrollPos[cycleId] = reelIdx;
+    reelScrollPos[scrollKey] = reelIdx;
     if (reelIdx !== active) {
       setActive(reelIdx);
       setMethodMenuFor(null);
@@ -181,7 +201,7 @@ export default function Reels({ version, onChange }: Props) {
     changingCycle.current = true;
     const next = cycles[(cycleIdx + 1) % cycles.length];
     if (fromReelEnd) {
-      reelScrollPos[next.id] = 0;
+      reelScrollPos[`${next.id}:${methodFilter || 'all'}`] = 0;
       trackRef.current?.scrollTo({ top: 0 });
     }
     setCycleId(next.id);
@@ -194,6 +214,10 @@ export default function Reels({ version, onChange }: Props) {
   }
 
   const cycleTitle = cycleIdx >= 0 ? cycleName(cycles[cycleIdx]) : 'All expenses';
+  const selectedMethod = methods.find((method) => method.id === methodFilter);
+  const methodFilterLabel = methodFilter === '__none__'
+    ? 'No method'
+    : selectedMethod?.name ?? 'All methods';
   const categoryExpense = categoryMenuFor
     ? reels.find((expense) => expense.id === categoryMenuFor)
     : undefined;
@@ -378,6 +402,14 @@ export default function Reels({ version, onChange }: Props) {
               ›
             </button>
           </div>
+          <button
+            className={`reels__methodfilter ${filteringByMethod ? 'is-on' : ''}`}
+            onClick={() => setFilterMenuOpen(true)}
+            aria-label={`Filter by payment method: ${methodFilterLabel}`}
+            title={methodFilterLabel}
+          >
+            <AppIcon name="creditcard" size={18} />
+          </button>
           {reelCount > 0 && (
             <div className="reels__counter">
               <strong>{Math.min(active + 1, reelCount)}</strong>
@@ -387,16 +419,18 @@ export default function Reels({ version, onChange }: Props) {
         </div>
       </div>
 
-      {reels.length === 0 && notes.length === 0 && !showSalary ? (
+      {reels.length === 0 && visibleNotes.length === 0 && !showSalary ? (
         <div className="reels__empty">
           <div className="reels__empty-emoji">🎞️</div>
-          <p>No expenses in this cycle yet.</p>
-          <p className="muted">Add some from the Add tab, then scroll them here.</p>
+          <p>{filteringByMethod ? `No ${methodFilterLabel} expenses in this cycle.` : 'No expenses in this cycle yet.'}</p>
+          <p className="muted">
+            {filteringByMethod ? 'Choose another payment method or clear the filter.' : 'Add some from the Add tab, then scroll them here.'}
+          </p>
         </div>
       ) : (
         <>
           <div
-            key={cycleId}
+            key={scrollKey}
             className="reels__track"
             ref={trackRef}
             onScroll={onScroll}
@@ -407,7 +441,7 @@ export default function Reels({ version, onChange }: Props) {
                 <span>{cycleName(cycles[cycleIdx - 1])}</span>
               </section>
             )}
-            {notes.map((n) => (
+            {visibleNotes.map((n) => (
               <section className="reel reel--note" key={`note-${n.id}`}>
                 <div className="reel__flame reel__flame--note">📝 Note</div>
 
@@ -459,7 +493,7 @@ export default function Reels({ version, onChange }: Props) {
                       color={color}
                       icon={cat?.icon ?? '📦'}
                       name={cat ? `${cat.name} category` : 'Uncategorized expense'}
-                      active={active === notes.length + expenseIndex}
+                      active={active === visibleNotes.length + expenseIndex}
                     />
                   </div>
 
@@ -582,7 +616,7 @@ export default function Reels({ version, onChange }: Props) {
                     color="#10b981"
                     icon="🎉"
                     name="Salary credited"
-                    active={active === notes.length + reels.length}
+                    active={active === visibleNotes.length + reels.length}
                   />
                 </div>
                 <div className="reel__content">
@@ -609,6 +643,53 @@ export default function Reels({ version, onChange }: Props) {
       )}
 
       {toast && <div className="reels__toast">{toast}</div>}
+
+      {filterMenuOpen && createPortal(
+        <div className="modal__backdrop" onClick={() => setFilterMenuOpen(false)}>
+          <div className="modal__card reelcatpicker" onClick={(event) => event.stopPropagation()}>
+            <div className="reelcatpicker__head">
+              <div>
+                <h3>Filter payment method</h3>
+                <p className="card__subtitle">{cycleTitle}</p>
+              </div>
+              <button className="iconbtn" onClick={() => setFilterMenuOpen(false)} aria-label="Close payment method filter">×</button>
+            </div>
+            <div className="reelcatpicker__list">
+              <button
+                className={!methodFilter ? 'is-on' : ''}
+                onClick={() => {
+                  setMethodFilter('');
+                  setFilterMenuOpen(false);
+                }}
+              >
+                <span>💳</span> All methods
+              </button>
+              <button
+                className={methodFilter === '__none__' ? 'is-on' : ''}
+                onClick={() => {
+                  setMethodFilter('__none__');
+                  setFilterMenuOpen(false);
+                }}
+              >
+                <span>—</span> No method
+              </button>
+              {methods.map((method) => (
+                <button
+                  key={method.id}
+                  className={method.id === methodFilter ? 'is-on' : ''}
+                  onClick={() => {
+                    setMethodFilter(method.id);
+                    setFilterMenuOpen(false);
+                  }}
+                >
+                  <span>{method.icon || '💳'}</span> {method.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {categoryExpense && createPortal(
         <div className="modal__backdrop" onClick={() => setCategoryMenuFor(null)}>

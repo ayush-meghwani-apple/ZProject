@@ -2064,6 +2064,27 @@ input.pmrow__nameinput {
   font-size: 16px;
 }
 
+.reels__methodfilter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.reels__methodfilter.is-on {
+  border-color: color-mix(in srgb, var(--accent-strong) 65%, var(--border));
+  background: color-mix(in srgb, var(--accent-strong) 20%, var(--surface-2));
+  color: var(--text);
+}
+
 .reels__cycle-sub {
   font-size: 12px;
   color: var(--muted);
